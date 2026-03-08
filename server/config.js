@@ -347,3 +347,6 @@ export const FOLDER_HINTS = new Map([
 
 // Cores that bypass EmulatorJS and launch via native desktop emulators
 export const NATIVE_CORES = new Set(['native', 'flycast']);
+
+// Systems that require BIOS files for native emulators — scanned as test-only
+export const TEST_ONLY_SYSTEMS = new Set(['dreamcast', 'ps2', 'xbox']);

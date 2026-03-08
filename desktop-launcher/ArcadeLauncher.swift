@@ -132,6 +132,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // Check for required BIOS files before launching
+        if let missing = checkBIOS(system: system) {
+            showError(missing)
+            return
+        }
+
         await MainActor.run { self.statusItem?.button?.title = "📥" }
 
         do {
@@ -172,7 +178,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             try FileManager.default.createDirectory(atPath: cacheDir, withIntermediateDirectories: true)
             let romURL = serverURL.appendingPathComponent("rom-file/\(romId)/\(cfg.filename)")
             let (tmpURL, _) = try await URLSession.shared.download(from: romURL)
-            try FileManager.default.moveItem(atPath: tmpURL.path, toPath: cachedZip)
+            do {
+                try FileManager.default.moveItem(atPath: tmpURL.path, toPath: cachedZip)
+            } catch {
+                // Destination appeared between check and move (race condition) — overwrite it
+                try? FileManager.default.removeItem(atPath: cachedZip)
+                try FileManager.default.moveItem(atPath: tmpURL.path, toPath: cachedZip)
+            }
         }
 
         // For Dreamcast ZIPs: extract and return the disc image (.cue/.gdi/.chd)
@@ -223,6 +235,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         throw NSError(domain: "ArcadeLauncher", code: 1,
                       userInfo: [NSLocalizedDescriptionKey: "No disc image found in \(zipPath)"])
+    }
+
+    // MARK: BIOS check
+
+    func checkBIOS(system: String) -> String? {
+        let fm = FileManager.default
+        let biosDir: String
+        let required: [String]
+
+        switch system {
+        case "dreamcast":
+            biosDir = NSString(string: "~/Library/Application Support/Flycast/data").expandingTildeInPath
+            required = ["dc_boot.bin", "dc_flash.bin"]
+        default:
+            return nil   // no BIOS check for other systems
+        }
+
+        let missing = required.filter { !fm.fileExists(atPath: "\(biosDir)/\($0)") }
+        if missing.isEmpty { return nil }
+
+        return "\(system.uppercased()) BIOS files missing.\n\nPlace these in:\n\(biosDir)/\n\n\(missing.joined(separator: "\n"))"
     }
 
     // MARK: Emulator CLI args

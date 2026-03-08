@@ -2416,234 +2416,6 @@ select:focus { border-color: var(--purple-neon); }
 }
 
 /* ═══════════════════════════════════════════════════════════
-   CHEAT CODES VIEW
-   ═══════════════════════════════════════════════════════════ */
-.cheats-page { max-width: 900px; margin: 0 auto; padding: 24px; }
-
-.cheats-header { text-align: center; margin-bottom: 28px; }
-.cheats-title-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
-.cheats-skull { font-size: 32px; animation: skull-bob 2s ease-in-out infinite alternate; }
-@keyframes skull-bob { from { transform: translateY(-3px) rotate(-5deg); } to { transform: translateY(3px) rotate(5deg); } }
-.cheats-title {
-    font-family: 'Press Start 2P', monospace;
-    font-size: clamp(18px, 4vw, 28px);
-    background: linear-gradient(135deg, #EF4444, #F59E0B, #EF4444);
-    background-size: 200% auto;
-    animation: cheat-gradient 3s linear infinite;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin: 0;
-}
-@keyframes cheat-gradient { to { background-position: 200% center; } }
-.cheats-subtitle { color: #9CA3AF; font-size: 14px; margin-top: 8px; }
-.cheats-counter {
-    display: inline-block;
-    margin-top: 12px;
-    padding: 6px 16px;
-    border-radius: 999px;
-    background: rgba(239, 68, 68, 0.15);
-    color: #EF4444;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 10px;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-/* ── Terminal ── */
-.cheats-terminal {
-    background: #0A0A0A;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.08);
-    overflow: hidden;
-    margin-bottom: 32px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-}
-.terminal-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: rgba(255,255,255,0.05);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.terminal-dot { width: 11px; height: 11px; border-radius: 50%; }
-.terminal-dot.red { background: #FF5F57; }
-.terminal-dot.yellow { background: #FFBD2E; }
-.terminal-dot.green { background: #28CA41; }
-.terminal-title {
-    flex: 1;
-    text-align: center;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 8px;
-    color: rgba(255,255,255,0.4);
-    letter-spacing: 1px;
-}
-.terminal-body { padding: 16px; }
-.terminal-output {
-    min-height: 80px;
-    max-height: 200px;
-    overflow-y: auto;
-    margin-bottom: 12px;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 10px;
-    line-height: 1.8;
-}
-.terminal-line { padding: 2px 0; }
-.terminal-line.system { color: #06B6D4; }
-.terminal-line.hint { color: #6B7280; }
-.terminal-line.input { color: #D1D5DB; }
-.terminal-line.success { color: #10B981; }
-.terminal-line.warn { color: #F59E0B; }
-.terminal-line.error { color: #EF4444; }
-.terminal-line.master { color: #EC4899; font-weight: 700; text-shadow: 0 0 8px rgba(236, 72, 153, 0.5); }
-.terminal-input-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-top: 1px solid rgba(255,255,255,0.06);
-    padding-top: 12px;
-}
-.terminal-prompt {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 12px;
-    color: #10B981;
-}
-.terminal-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: #fff;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    caret-color: #10B981;
-}
-
-/* ── Cheats Grid ── */
-.cheats-grid-header h2 {
-    font-size: 16px;
-    color: #D1D5DB;
-    margin-bottom: 16px;
-}
-.cheats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px;
-    margin-bottom: 32px;
-}
-/* ── Cheat Cards (master name heading layout) ── */
-.cheat-card {
-    display: flex;
-    flex-direction: column;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.25s;
-    position: relative;
-}
-.cheat-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.12); }
-.cheat-card.unlocked { border-color: rgba(255,255,255,0.1); }
-.cheat-card.locked { opacity: 0.45; }
-.cheat-card.locked:hover { opacity: 0.6; }
-
-/* Master heading bar — name is the star */
-.cheat-card-master {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.02);
-}
-.cheat-card-master-icon { font-size: 24px; flex-shrink: 0; }
-.cheat-card-master-name {
-    font-family: Orbitron, sans-serif;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    flex: 1;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.cheat-card-lock {
-    font-size: 22px;
-    flex-shrink: 0;
-}
-.cheat-card-group {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 7px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    letter-spacing: 0.8px;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-/* Card body — code + description */
-.cheat-card-body {
-    padding: 12px 14px;
-    flex: 1;
-}
-.cheat-card-code-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-.cheat-card-code-label {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 7px;
-    color: #6B7280;
-    letter-spacing: 0.5px;
-}
-.cheat-card-code-value {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 10px;
-    color: #E5E7EB;
-    padding: 3px 10px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 4px;
-    letter-spacing: 1px;
-    border: 1px solid rgba(255,255,255,0.08);
-}
-.cheat-card-desc {
-    font-size: 12px;
-    color: #9CA3AF;
-    line-height: 1.5;
-}
-
-/* Toggle button */
-/* OFF state (default) */
-.cheat-toggle-btn {
-    padding: 8px 14px;
-    border: none;
-    border-top: 1px solid rgba(107, 114, 128, 0.2);
-    background: rgba(107, 114, 128, 0.08);
-    color: #6B7280;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 9px;
-    cursor: pointer;
-    letter-spacing: 1px;
-    transition: all 0.2s;
-}
-.cheat-toggle-btn:hover { background: rgba(107, 114, 128, 0.2); }
-/* ON state */
-.cheat-toggle-btn.active {
-    border-top-color: rgba(16, 185, 129, 0.3);
-    background: rgba(16, 185, 129, 0.12);
-    color: #10B981;
-}
-.cheat-toggle-btn.active:hover { background: rgba(16, 185, 129, 0.25); }
-/* Dim unlocked-but-OFF cards */
-.cheat-card.unlocked:not(.enabled) { opacity: 0.6; }
-.cheat-card.unlocked:not(.enabled):hover { opacity: 0.85; }
-.cheat-card.unlocked.enabled { opacity: 1; }
-
-/* ═══════════════════════════════════════════════════════════
    CUSTOMIZE / MAKE IT YOUR OWN VIEW
    ═══════════════════════════════════════════════════════════ */
 .customize-page { max-width: 700px; margin: 0 auto; padding: 24px; }
@@ -5235,6 +5007,73 @@ select:focus { border-color: var(--purple-neon); }
     color: #fff;
 }
 .postgame-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* Quick Actions Row */
+.postgame-quick-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 14px 0 4px;
+}
+.postgame-quick-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.postgame-quick-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    transform: translateY(-1px);
+}
+.postgame-quick-icon { font-size: 15px; }
+.postgame-quick-label { font-weight: 500; }
+.postgame-quick-btn-report:hover {
+    border-color: rgba(239,68,68,0.4);
+    background: rgba(239,68,68,0.12);
+}
+
+/* Inline Report Form */
+.postgame-report-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 6px 0 2px;
+    animation: fadeIn 0.2s ease;
+}
+.postgame-report-select, .postgame-report-text {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    color: #fff;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+.postgame-report-select option { background: #1a1a2e; }
+.postgame-report-text { resize: none; min-height: 40px; }
+.postgame-btn-report-submit {
+    align-self: flex-end;
+    padding: 6px 16px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(239,68,68,0.2);
+    color: #f87171;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.postgame-btn-report-submit:hover { background: rgba(239,68,68,0.35); }
 
 @keyframes bounceIn {
     0% { transform: scale(0.3); opacity: 0; }

@@ -12,8 +12,6 @@ window.arcade = {
     playSession: null,
     playStartTime: null,
     playRomId: null,
-    turbo: null,  // TurboEngine instance
-
     players: [],
 
     init() {
@@ -31,7 +29,6 @@ window.arcade = {
         Router.register('/challenge', () => ChallengeView.render());
         Router.register('/scores', () => ScoresView.render());
         Router.register('/quiz', () => QuizView.render());
-        Router.register('/cheats', () => CheatsView.render());
         Router.register('/customize', () => CustomizeView.render());
         Router.register('/cc', () => CommandCenterView.render());
         Router.register('/originals', () => OriginalsView.render());
@@ -437,8 +434,6 @@ window.arcade = {
                 overlay.addEventListener('click', overlay._ejsFocusHandler);
             }
 
-            // Inject TURBO + BULLET TIME touch controls
-            this.turbo = new TurboEngine(iframe);
         } catch (err) {
             H.toast('Failed to load game: ' + err.message, 'error');
         }
@@ -469,18 +464,14 @@ window.arcade = {
 
             // V5: Show post-game score/rating modal (after 30+ seconds of play)
             if (window.PostGame && duration >= 30) {
-                setTimeout(() => PostGame.show(romId, gameName, duration), 600);
+                const gameData = await API.game(romId).catch(() => null);
+                const isFavorite = !!gameData?.is_favorite;
+                setTimeout(() => PostGame.show(romId, gameName, duration, { isFavorite }), 600);
             }
 
             this.playSession = null;
             this.playStartTime = null;
             this.playRomId = null;
-        }
-
-        // Destroy turbo controls
-        if (this.turbo) {
-            this.turbo.destroy();
-            this.turbo = null;
         }
 
         // Just remove the iframe — clean destruction, no globals to clean up
