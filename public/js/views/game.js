@@ -18,14 +18,13 @@ window.GameView = {
 
             // ─── Desktop Mode detection ──────────────────────────────────────────
             const DESKTOP_INFO = {
-                ps3:       { emulator: 'RPCS3',   quality: '4K/60fps'  },
-                ps2:       { emulator: 'PCSX2',   quality: '4K/60fps'  },
-                gamecube:  { emulator: 'Dolphin', quality: '4K/60fps'  },
-                wii:       { emulator: 'Dolphin', quality: '4K/60fps'  },
-                dreamcast: { emulator: 'Flycast', quality: '4K/60fps'  },
-                xbox:      { emulator: 'Xemu',    quality: '4K/60fps'  },
-                switch:    { emulator: 'Sudachi', quality: '4K/60fps'  },
-                wiiu:      { emulator: 'Cemu',    quality: '4K/120fps' },
+                psx:       { emulator: 'DuckStation', quality: '4K/60fps'  },
+                ps2:       { emulator: 'PCSX2',       quality: '4K/60fps'  },
+                gamecube:  { emulator: 'Dolphin',     quality: '4K/60fps'  },
+                wii:       { emulator: 'Dolphin',     quality: '4K/60fps'  },
+                dreamcast: { emulator: 'Flycast',     quality: '4K/60fps'  },
+                xbox:      { emulator: 'Xemu',        quality: '4K/60fps'  },
+                wiiu:      { emulator: 'Cemu',        quality: '4K/60fps'  },
             };
             const isNative = game.core === 'native' || game.core === 'flycast';
             const deskInfo = isNative

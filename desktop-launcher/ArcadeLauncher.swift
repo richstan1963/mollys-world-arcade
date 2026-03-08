@@ -19,6 +19,8 @@ let DEFAULT_PATHS: [String: String] = [
 let SYSTEM_EMULATOR: [String: String] = [
     "psx":       "duckstation",
     "ps2":       "pcsx2",
+    "gamecube":  "dolphin",
+    "wii":       "dolphin",
     "dreamcast": "flycast",
     "xbox":      "xemu",
     "wiiu":      "cemu",
@@ -227,12 +229,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func buildArgs(system: String, romPath: String) -> [String] {
         switch system {
-        case "ps3":             return ["--no-gui", romPath]
+        case "psx":             return [romPath]
         case "ps2":             return ["--fullscreen", romPath]
         case "gamecube", "wii": return ["-e", romPath, "--batch"]
         case "dreamcast":       return [romPath]
         case "xbox":            return ["-dvd_path", romPath]
-        case "switch":          return [romPath]
         case "wiiu":            return ["-f", "-g", romPath]
         default:                return [romPath]
         }

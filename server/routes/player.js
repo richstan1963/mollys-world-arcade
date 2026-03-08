@@ -36,7 +36,8 @@ router.get('/config/:id', (req, res) => {
     };
 
     if (rom.bios_files) {
-        const biosFiles = JSON.parse(rom.bios_files);
+        let biosFiles;
+        try { biosFiles = JSON.parse(rom.bios_files); } catch { biosFiles = []; }
         if (biosFiles.length > 0) {
             // Only set biosUrl if the file actually exists on disk
             const biosPath = path.join(CONFIG.ROMS_DIR, rom.system_id, biosFiles[0]);

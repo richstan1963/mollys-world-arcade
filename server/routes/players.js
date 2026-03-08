@@ -393,6 +393,10 @@ router.post('/', (req, res) => {
     const { name, emoji, color } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
 
+    // Check for duplicate name
+    const existing = db.prepare('SELECT id FROM players WHERE LOWER(name) = LOWER(?)').get(name.trim());
+    if (existing) return res.status(409).json({ error: 'A player with that name already exists' });
+
     const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM players').get().m || 0;
     const result = db.prepare(
         'INSERT INTO players (name, emoji, color, sort_order) VALUES (?, ?, ?, ?)'
