@@ -81,7 +81,10 @@ router.patch('/:id', (req, res) => {
     const updates = [];
     const values = [];
 
-    if (name !== undefined && name.trim()) { updates.push('name = ?'); values.push(name.trim()); }
+    if (name !== undefined && name.trim()) {
+        if (name.trim().length > 30) return res.status(400).json({ error: 'Name must be 30 characters or less' });
+        updates.push('name = ?'); values.push(name.trim());
+    }
     if (emoji !== undefined) { updates.push('emoji = ?'); values.push(emoji); }
     if (color !== undefined) { updates.push('color = ?'); values.push(color); }
     if (theme !== undefined) { updates.push('theme = ?'); values.push(theme); }
@@ -110,7 +113,9 @@ router.put('/:id/preferences', (req, res) => {
     const playerId = parseInt(req.params.id);
     const player = db.prepare('SELECT * FROM players WHERE id = ?').get(playerId);
     if (!player) return res.status(404).json({ error: 'Player not found' });
-    db.prepare('UPDATE players SET preferences = ? WHERE id = ?').run(JSON.stringify(req.body), playerId);
+    const json = JSON.stringify(req.body);
+    if (json.length > 10000) return res.status(400).json({ error: 'Preferences too large' });
+    db.prepare('UPDATE players SET preferences = ? WHERE id = ?').run(json, playerId);
     res.json(req.body);
 });
 
@@ -392,6 +397,7 @@ router.post('/', (req, res) => {
     const db = getDB();
     const { name, emoji, color } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+    if (name.trim().length > 30) return res.status(400).json({ error: 'Name must be 30 characters or less' });
 
     // Check for duplicate name
     const existing = db.prepare('SELECT id FROM players WHERE LOWER(name) = LOWER(?)').get(name.trim());

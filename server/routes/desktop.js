@@ -2,6 +2,7 @@
 // Provides launch URLs and status checks for native emulator integration.
 import { Router } from 'express';
 import { getDB } from '../db.js';
+import { NATIVE_CORES } from '../config.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -18,9 +19,6 @@ const NATIVE_SYSTEMS = {
     dreamcast: { emulator: 'Flycast',     emuKey: 'flycast',     quality: '4K/60fps', tag: 'DC'   },
     xbox:      { emulator: 'Xemu',        emuKey: 'xemu',        quality: '4K/60fps', tag: 'Xbox' },
 };
-
-// Cores that use native launch (flycast = dreamcast before it was native)
-export const NATIVE_CORES = new Set(['native', 'flycast']);
 
 // GET /api/desktop/status
 // Returns launcher install state + per-emulator availability

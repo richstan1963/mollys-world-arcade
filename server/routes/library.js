@@ -50,6 +50,7 @@ function isBeatEmUp(cleanName, filename) {
 
 // Main library listing
 router.get('/', (req, res) => {
+  try {
     const db = getDB();
     const { system, search, tag, sort = 'name', order = 'asc', page = 1, limit = 60 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -143,6 +144,9 @@ router.get('/', (req, res) => {
         limit: parseInt(limit),
         pages: Math.ceil(countRow.total / parseInt(limit)),
     });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load library' });
+  }
 });
 
 // ── Genre Rooms — curated genre collections with counts + sample art ──────
@@ -219,86 +223,102 @@ router.get('/genres', (req, res) => {
 
 // ── New Arrivals — latest added games ─────────────────────────────────────
 router.get('/new-arrivals', (req, res) => {
-    const db = getDB();
-    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    try {
+        const db = getDB();
+        const limit = Math.min(parseInt(req.query.limit) || 20, 50);
 
-    const rows = db.prepare(`
-        SELECT r.id, COALESCE(m.title, r.clean_name) as title, r.clean_name,
-               r.system_id, r.added_at, m.artwork_path, m.year, m.genre,
-               s.short_name as system_name, s.color as system_color
-        FROM roms r
-        LEFT JOIN metadata m ON m.rom_id = r.id
-        LEFT JOIN systems s ON s.id = r.system_id
-        WHERE r.source != 'test'
-        ORDER BY r.added_at DESC
-        LIMIT ?
-    `).all(limit);
+        const rows = db.prepare(`
+            SELECT r.id, COALESCE(m.title, r.clean_name) as title, r.clean_name,
+                   r.system_id, r.added_at, m.artwork_path, m.year, m.genre,
+                   s.short_name as system_name, s.color as system_color
+            FROM roms r
+            LEFT JOIN metadata m ON m.rom_id = r.id
+            LEFT JOIN systems s ON s.id = r.system_id
+            WHERE r.source != 'test'
+            ORDER BY r.added_at DESC
+            LIMIT ?
+        `).all(limit);
 
-    res.json(rows);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to load new arrivals' });
+    }
 });
 
 // Favorites listing
 router.get('/favorites', (req, res) => {
-    const db = getDB();
-    const { limit = 60 } = req.query;
+    try {
+        const db = getDB();
+        const { limit = 60 } = req.query;
 
-    const rows = db.prepare(`
-        SELECT r.*, m.title, m.artwork_path, m.region, m.year, m.genre,
-               s.short_name as system_name, s.color as system_color,
-               1 as is_favorite,
-               (SELECT MAX(started_at) FROM play_history ph WHERE ph.rom_id = r.id) as last_played
-        FROM favorites f
-        JOIN roms r ON r.id = f.rom_id
-        LEFT JOIN metadata m ON m.rom_id = r.id
-        LEFT JOIN systems s ON s.id = r.system_id
-        WHERE r.source != 'test'
-        ORDER BY f.added_at DESC
-        LIMIT ?
-    `).all(parseInt(limit));
+        const rows = db.prepare(`
+            SELECT r.*, m.title, m.artwork_path, m.region, m.year, m.genre,
+                   s.short_name as system_name, s.color as system_color,
+                   1 as is_favorite,
+                   (SELECT MAX(started_at) FROM play_history ph WHERE ph.rom_id = r.id) as last_played
+            FROM favorites f
+            JOIN roms r ON r.id = f.rom_id
+            LEFT JOIN metadata m ON m.rom_id = r.id
+            LEFT JOIN systems s ON s.id = r.system_id
+            WHERE r.source != 'test'
+            ORDER BY f.added_at DESC
+            LIMIT ?
+        `).all(parseInt(limit));
 
-    const countRow = db.prepare("SELECT COUNT(*) as total FROM favorites f JOIN roms r ON r.id = f.rom_id WHERE r.source != 'test'").get();
+        const countRow = db.prepare("SELECT COUNT(*) as total FROM favorites f JOIN roms r ON r.id = f.rom_id WHERE r.source != 'test'").get();
 
-    res.json({
-        games: rows,
-        total: countRow.total,
-    });
+        res.json({
+            games: rows,
+            total: countRow.total,
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to load favorites' });
+    }
 });
 
 // System Test ROMs (source = 'test')
 router.get('/test-roms', (req, res) => {
-    const db = getDB();
-    const rows = db.prepare(`
-        SELECT r.id, r.clean_name, r.filename, r.system_id, r.size_bytes, r.source,
-               m.title, m.artwork_path,
-               s.short_name as system_name, s.color as system_color
-        FROM roms r
-        LEFT JOIN metadata m ON m.rom_id = r.id
-        LEFT JOIN systems s ON s.id = r.system_id
-        WHERE r.source = 'test'
-        ORDER BY r.system_id, r.clean_name
-    `).all();
-    res.json(rows);
+    try {
+        const db = getDB();
+        const rows = db.prepare(`
+            SELECT r.id, r.clean_name, r.filename, r.system_id, r.size_bytes, r.source,
+                   m.title, m.artwork_path,
+                   s.short_name as system_name, s.color as system_color
+            FROM roms r
+            LEFT JOIN metadata m ON m.rom_id = r.id
+            LEFT JOIN systems s ON s.id = r.system_id
+            WHERE r.source = 'test'
+            ORDER BY r.system_id, r.clean_name
+        `).all();
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to load test ROMs' });
+    }
 });
 
 // Random game
 router.get('/random', (req, res) => {
-    const db = getDB();
+    try {
+        const db = getDB();
 
-    const row = db.prepare(`
-        SELECT r.*, m.title, m.artwork_path, m.region, m.year, m.genre,
-               s.short_name as system_name, s.color as system_color, s.name as system_full_name,
-               CASE WHEN f.rom_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite
-        FROM roms r
-        LEFT JOIN metadata m ON m.rom_id = r.id
-        LEFT JOIN systems s ON s.id = r.system_id
-        LEFT JOIN favorites f ON f.rom_id = r.id
-        WHERE r.source != 'test'
-        ORDER BY RANDOM()
-        LIMIT 1
-    `).get();
+        const row = db.prepare(`
+            SELECT r.*, m.title, m.artwork_path, m.region, m.year, m.genre,
+                   s.short_name as system_name, s.color as system_color, s.name as system_full_name,
+                   CASE WHEN f.rom_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite
+            FROM roms r
+            LEFT JOIN metadata m ON m.rom_id = r.id
+            LEFT JOIN systems s ON s.id = r.system_id
+            LEFT JOIN favorites f ON f.rom_id = r.id
+            WHERE r.source != 'test'
+            ORDER BY RANDOM()
+            LIMIT 1
+        `).get();
 
-    if (!row) return res.status(404).json({ error: 'No games in library' });
-    res.json(row);
+        if (!row) return res.status(404).json({ error: 'No games in library' });
+        res.json(row);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to load random game' });
+    }
 });
 
 export default router;

@@ -13,7 +13,9 @@ window.GameView = {
             // Fetch all players and their fav status for this game
             const players = arcade.players.length ? arcade.players : await API.players();
             const favChecks = await Promise.all(
-                players.map(p => API.isPlayerFavorite(p.id, game.id).then(r => ({ ...p, isFav: r.favorited })))
+                players.map(p => API.isPlayerFavorite(p.id, game.id)
+                    .then(r => ({ ...p, isFav: r.favorited }))
+                    .catch(() => ({ ...p, isFav: false })))
             );
 
             // ─── Desktop Mode detection ──────────────────────────────────────────

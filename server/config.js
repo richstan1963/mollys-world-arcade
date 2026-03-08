@@ -281,17 +281,6 @@ export const SYSTEMS = [
         sort_order: 5,
     },
     {
-        id: 'switch',
-        name: 'Nintendo Switch',
-        short_name: 'NSW',
-        core: 'native',
-        extensions: ['.xci', '.nsp', '.nca'],
-        libretro_dir: 'Nintendo - Switch',
-        bios: [],
-        color: '#E60012',
-        sort_order: 9,
-    },
-    {
         id: 'ps2',
         name: 'PlayStation 2',
         short_name: 'PS2',
@@ -301,17 +290,6 @@ export const SYSTEMS = [
         bios: ['SCPH10000.BIN'],
         color: '#00308F',
         sort_order: 21,
-    },
-    {
-        id: 'ps3',
-        name: 'PlayStation 3',
-        short_name: 'PS3',
-        core: 'native',
-        extensions: ['.iso', '.pkg'],
-        libretro_dir: 'Sony - PlayStation 3',
-        bios: [],
-        color: '#00439C',
-        sort_order: 22,
     },
     {
         id: 'xbox',
@@ -363,9 +341,9 @@ export const FOLDER_HINTS = new Map([
     ['gamecube', 'gamecube'], ['gcn', 'gamecube'], ['gc', 'gamecube'], ['nintendo gamecube', 'gamecube'],
     ['wii', 'wii'], ['nintendo wii', 'wii'],
     ['wiiu', 'wiiu'], ['wii u', 'wiiu'], ['nintendo wii u', 'wiiu'],
-    ['switch', 'switch'], ['nsw', 'switch'], ['nintendo switch', 'switch'],
     ['ps2', 'ps2'], ['playstation 2', 'ps2'], ['playstation2', 'ps2'],
-    ['ps3', 'ps3'], ['playstation 3', 'ps3'], ['playstation3', 'ps3'],
     ['xbox', 'xbox'], ['xbox original', 'xbox'], ['microsoft xbox', 'xbox'],
-    ['xbox360', 'xbox360'], ['xbox 360', 'xbox360'], ['x360', 'xbox360'], ['microsoft xbox 360', 'xbox360'],
 ]);
+
+// Cores that bypass EmulatorJS and launch via native desktop emulators
+export const NATIVE_CORES = new Set(['native', 'flycast']);

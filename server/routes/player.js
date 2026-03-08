@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getDB } from '../db.js';
-import { CONFIG } from '../config.js';
+import { CONFIG, NATIVE_CORES } from '../config.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -20,8 +20,6 @@ router.get('/config/:id', (req, res) => {
 
     if (!rom) return res.status(404).json({ error: 'ROM not found' });
 
-    // Cores that bypass EmulatorJS and launch via native desktop app
-    const NATIVE_CORES = new Set(['native', 'flycast']);
     const isNative = NATIVE_CORES.has(rom.core);
 
     const config = {
