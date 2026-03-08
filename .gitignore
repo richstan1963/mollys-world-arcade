@@ -13,3 +13,7 @@ logs/
 .playwright-mcp/
 *.log
 originals-src/
+data/cores/
+*.png
+*.sh
+*.py
