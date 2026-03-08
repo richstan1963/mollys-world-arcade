@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Your World Arcade">
+    <meta name="theme-color" content="#0A0A1A">
+    <title>Your World Arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/arcade.css?v=48">
+    <link rel="stylesheet" href="/css/command-center.css?v=48">
+    <link rel="stylesheet" href="/css/originals.css?v=48">
+    <link rel="stylesheet" href="/css/clan-battles.css?v=48">
+    <link rel="stylesheet" href="/css/pro-features.css?v=48">
+    <link rel="stylesheet" href="/css/intel-hub.css?v=48">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+</head>
+<body>
+    <!-- ══ Startup Splash Screen (personalized per player) ══ -->
+    <div id="splashScreen" class="splash-screen">
+        <canvas id="staticCanvas" class="splash-static"></canvas>
+        <!-- V8: BIOS terminal — shows during static phase before logo -->
+        <div class="bios-terminal" id="biosTerminal"></div>
+        <div class="splash-content" id="splashContent">
+            <img src="/images/mollypop-bg.png" alt="Your World Arcade" class="splash-logo" id="splashLogo">
+            <div class="splash-player-greeting" id="splashGreeting" style="display:none;">
+                <span class="splash-player-emoji" id="splashPlayerEmoji"></span>
+                <span class="splash-player-name" id="splashPlayerName"></span>
+            </div>
+            <div class="splash-title" id="splashTitle">
+                <span class="splash-title-main" id="splashTitleMain">Your World Arcade</span>
+            </div>
+            <div class="splash-loading" id="splashLoading">
+                <div class="splash-loading-bar"><div class="splash-loading-fill" id="splashFill"></div></div>
+                <span class="splash-loading-text">LOADING...</span>
+            </div>
+        </div>
+        <div class="splash-scanlines"></div>
+    </div>
+    <!-- Personalize splash from saved prefs -->
+    <script>
+    (function() {
+        try {
+            const prefs = JSON.parse(localStorage.getItem('arcade_customize') || '{}');
+            const playerInfo = JSON.parse(localStorage.getItem('arcade_active_player_info') || 'null');
+
+            // ── Dynamic arcade name: "[Name]'s World" when player is active ──
+            if (playerInfo && playerInfo.name) {
+                const name = playerInfo.name;
+                const possessive = name.endsWith('s') ? name + "'" : name + "'s";
+                const worldName = possessive + ' World';
+
+                // Splash title
+                const titleMain = document.getElementById('splashTitleMain');
+                if (titleMain) titleMain.textContent = worldName + ' Arcade';
+
+                // Browser tab title
+                document.title = worldName + ' Arcade';
+
+                // Sidebar logo
+                const logoName = document.getElementById('logoWorldName');
+                if (logoName) logoName.textContent = worldName;
+            }
+
+            // Custom splash name — only when NO active player (player name takes priority)
+            // Also clear stale "Molly's World" values from pre-rebrand
+            if (prefs.splashName === "Molly's World" || prefs.splashName === "Molly's World Arcade") {
+                delete prefs.splashName;
+                localStorage.setItem('arcade_customize', JSON.stringify(prefs));
+            }
+            if (prefs.splashName && !(playerInfo && playerInfo.name)) {
+                const titleMain = document.getElementById('splashTitleMain');
+                if (titleMain) titleMain.textContent = prefs.splashName;
+            }
+
+            // Splash logo: use player emoji when active, else custom emoji, else default image
+            const splashEmoji = (playerInfo && playerInfo.emoji) ? playerInfo.emoji : prefs.splashEmoji;
+            if (splashEmoji) {
+                const logo = document.getElementById('splashLogo');
+                if (logo) {
+                    logo.style.display = 'none';
+                    const emojiEl = document.createElement('div');
+                    emojiEl.className = 'splash-custom-emoji';
+                    emojiEl.textContent = splashEmoji;
+                    logo.parentNode.insertBefore(emojiEl, logo);
+                }
+            }
+
+            // Player greeting
+            if (playerInfo && playerInfo.name) {
+                const greeting = document.getElementById('splashGreeting');
+                const emojiEl = document.getElementById('splashPlayerEmoji');
+                const nameEl = document.getElementById('splashPlayerName');
+                if (greeting && emojiEl && nameEl) {
+                    emojiEl.textContent = playerInfo.emoji || '🎮';
+                    nameEl.textContent = `Welcome back, ${playerInfo.name}!`;
+                    greeting.style.display = '';
+                }
+            }
+
+            // Custom accent color on splash
+            if (prefs.accentColor) {
+                const splash = document.getElementById('splashScreen');
+                if (splash) splash.style.setProperty('--splash-accent', prefs.accentColor);
+            }
+        } catch {}
+    })();
+    </script>
+
+    <!-- Ambient particle canvas -->
+    <canvas id="particleCanvas" style="position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.4;"></canvas>
+    <!-- CRT Scanline overlay -->
+    <div class="crt-overlay"></div>
+
+    <!-- Mobile Hamburger Menu -->
+    <button class="mobile-hamburger" id="mobileHamburger" onclick="toggleMobileNav()">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleMobileNav()"></div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🕹️</span>
+                <span class="logo-text"><span id="logoWorldName">Your World</span><br><span class="logo-sub">ARCADE</span></span>
+            </div>
+        </div>
+        <div class="nav-links">
+            <!-- Quick Play -->
+            <div style="padding:10px 12px 6px;">
+                <button class="random-play-btn" onclick="window.arcade.playRandomGame()">
+                    <span class="nav-icon">🎲</span><span>Play Random</span>
+                </button>
+            </div>
+
+            <div class="nav-section-label">Browse</div>
+            <a href="#/" class="nav-link active" data-view="home">
+                <span class="nav-icon">🏠</span><span class="nav-label">Home</span>
+            </a>
+            <a href="#/library" class="nav-link" data-view="library">
+                <span class="nav-icon">📚</span><span class="nav-label">Library</span>
+                <span class="nav-badge" id="gameCountBadge">—</span>
+            </a>
+            <a href="#/systems" class="nav-link" data-view="systems">
+                <span class="nav-icon">🎮</span><span class="nav-label">Systems</span>
+            </a>
+            <div class="nav-section-label">Clans & Players</div>
+            <div id="playerNavLinks"><!-- populated by JS --></div>
+
+            <div class="nav-section-label">Battle Zone</div>
+            <a href="#/battles" class="nav-link" data-view="battles">
+                <span class="nav-icon">⚔️</span><span class="nav-label">Clan Battles</span>
+            </a>
+
+            <div class="nav-section-label">Fun Stuff</div>
+            <a href="#/originals" class="nav-link" data-view="originals">
+                <span class="nav-icon">🎯</span><span class="nav-label">Originals</span>
+            </a>
+            <a href="#/challenge" class="nav-link" data-view="challenge">
+                <span class="nav-icon">🎯</span><span class="nav-label">Challenge Mode</span>
+            </a>
+            <a href="#/daily" class="nav-link" data-view="daily">
+                <span class="nav-icon">📅</span><span class="nav-label">Daily Challenge</span>
+            </a>
+            <a href="#/tournaments" class="nav-link" data-view="tournaments">
+                <span class="nav-icon">🏟️</span><span class="nav-label">Tournaments</span>
+            </a>
+            <a href="#/scores" class="nav-link" data-view="scores">
+                <span class="nav-icon">🏆</span><span class="nav-label">Leaderboard</span>
+            </a>
+            <a href="#/hall-of-fame" class="nav-link" data-view="hall-of-fame">
+                <span class="nav-icon">👑</span><span class="nav-label">Hall of Fame</span>
+            </a>
+            <a href="#/trophies" class="nav-link" data-view="trophies">
+                <span class="nav-icon">🏅</span><span class="nav-label">Trophy Case</span>
+            </a>
+            <a href="#/collections" class="nav-link" data-view="collections">
+                <span class="nav-icon">📦</span><span class="nav-label">Collections</span>
+            </a>
+            <a href="#/stats" class="nav-link" data-view="stats">
+                <span class="nav-icon">📊</span><span class="nav-label">Stats</span>
+            </a>
+            <a href="#/speedrun" class="nav-link" data-view="speedrun">
+                <span class="nav-icon">⏱️</span><span class="nav-label">Speed Runs</span>
+            </a>
+            <a href="#/friends" class="nav-link" data-view="friends">
+                <span class="nav-icon">👫</span><span class="nav-label">Friends</span>
+            </a>
+            <a href="#/quiz" class="nav-link" data-view="quiz">
+                <span class="nav-icon">🤔</span><span class="nav-label">What to Play?</span>
+            </a>
+
+            <div class="nav-section-label">Social</div>
+            <a href="#/social" class="nav-link" data-view="social">
+                <span class="nav-icon">👥</span><span class="nav-label">Player Hub</span>
+            </a>
+            <a href="#/chat" class="nav-link" data-view="chat">
+                <span class="nav-icon">💬</span><span class="nav-label">Live Chat</span>
+            </a>
+            <a href="#/messages" class="nav-link" data-view="messages">
+                <span class="nav-icon">📧</span><span class="nav-label">Messages</span>
+            </a>
+            <a href="#/game-requests" class="nav-link" data-view="game-requests">
+                <span class="nav-icon">📋</span><span class="nav-label">Game Requests</span>
+            </a>
+            <a href="#/ai" class="nav-link" data-view="ai">
+                <span class="nav-icon">🧠</span><span class="nav-label">AI Encyclopedia</span>
+            </a>
+
+            <div class="nav-section-label">Get Games</div>
+            <a href="#/archive" class="nav-link" data-view="archive">
+                <span class="nav-icon">🌐</span><span class="nav-label">Archive.org</span>
+            </a>
+            <a href="#/mamedev" class="nav-link" data-view="mamedev">
+                <span class="nav-icon">👾</span><span class="nav-label">Free ROMs</span>
+            </a>
+            <a href="#/downloads" class="nav-link" data-view="downloads">
+                <span class="nav-icon">⬇️</span><span class="nav-label">Downloads</span>
+            </a>
+
+            <div class="nav-section-label">Secret</div>
+            <a href="#/cheats" class="nav-link" data-view="cheats">
+                <span class="nav-icon">💀</span><span class="nav-label">Cheat Codes</span>
+            </a>
+
+            <div class="nav-section-label">Ops</div>
+            <a href="#/intel" class="nav-link" data-view="intel">
+                <span class="nav-icon">🧠</span><span class="nav-label">Intel Hub</span>
+            </a>
+            <a href="#/cc" class="nav-link" data-view="cc">
+                <span class="nav-icon">📊</span><span class="nav-label">Command Center</span>
+            </a>
+
+            <div class="nav-section-label">Config</div>
+            <a href="#/customize" class="nav-link" data-view="customize">
+                <span class="nav-icon">🎨</span><span class="nav-label">Make It Yours</span>
+            </a>
+            <a href="#/settings" class="nav-link" data-view="settings">
+                <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+            </a>
+        </div>
+        <!-- V2: Sidebar XP Bar -->
+        <div id="sidebarXP" class="sidebar-xp-container"></div>
+
+        <div class="sidebar-footer">
+            <div class="scan-btn" id="scanBtn" onclick="window.arcade.startScan()">
+                <span class="nav-icon">🔍</span><span class="nav-label">Scan ROMs</span>
+            </div>
+            <!-- V8: Cabinet mode toggle -->
+            <button class="cabinet-sidebar-btn" onclick="CabinetMode.toggle()" title="Toggle Cabinet Mode (Ctrl+K)">
+                <span>🕹️</span><span>Cabinet Mode</span>
+            </button>
+            <div class="sidebar-stats" id="sidebarStats"></div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="content" id="content">
+        <div id="app"></div>
+    </main>
+
+    <!-- Player Overlay (fullscreen EmulatorJS) -->
+    <div class="player-overlay" id="playerOverlay" style="display:none;">
+        <div class="player-toolbar">
+            <button class="player-back" onclick="window.arcade._originalGameId ? window.arcade.exitOriginal() : window.arcade.exitPlayer()">← Back</button>
+            <span class="player-title" id="playerTitle"></span>
+            <div class="player-actions">
+                <button onclick="window.arcade.toggleFullscreen()">⛶ Fullscreen</button>
+            </div>
+        </div>
+        <div id="emulator-container" class="emulator-container">
+            <div id="game"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Scan Progress Modal -->
+    <div class="modal-overlay" id="scanModal" style="display:none;">
+        <div class="modal scan-modal">
+            <h3>🔍 Scanning ROM Directories...</h3>
+            <div class="scan-progress">
+                <div class="progress-bar"><div class="progress-fill" id="scanProgress"></div></div>
+                <div class="scan-status" id="scanStatus">Starting scan...</div>
+                <div class="scan-stats" id="scanStats"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── V8: Cabinet Mode UI ──────────────────────────────────────── -->
+    <!-- Marquee banner (hidden unless cabinet-mode active) -->
+    <div id="cabinetMarquee" class="cabinet-marquee">
+        <span class="cabinet-marquee-text" id="cabinetMarqueeText">🕹️ YOUR WORLD ARCADE  ●  INSERT COIN TO PLAY  ●  PRESS C FOR CREDIT  ●  🕹️ YOUR WORLD ARCADE  ●  INSERT COIN TO PLAY  ●  PRESS C FOR CREDIT  ●</span>
+    </div>
+    <!-- Coin credit display (hidden unless cabinet-mode active) -->
+    <div id="coinDisplay" class="coin-display">
+        <div class="coin-display-label">CREDITS</div>
+        <div class="coin-display-count" id="coinCredits">3</div>
+        <div id="insertCoinBanner" class="insert-coin-banner">INSERT COIN</div>
+    </div>
+
+    <!-- ── V8: Operator Menu (Ctrl+Alt+O) ──────────────────────────── -->
+    <div id="operatorOverlay" class="operator-overlay" onclick="if(event.target===this)OperatorMenu.hide()">
+        <div class="operator-panel">
+            <div class="operator-header">
+                <span>⚙️ OPERATOR MENU</span>
+                <button onclick="OperatorMenu.hide()">✕</button>
+            </div>
+            <div class="operator-stats">
+                <div class="op-stat"><span id="opStatGames">—</span><label>ROMS</label></div>
+                <div class="op-stat"><span id="opStatSessions">—</span><label>SESSIONS</label></div>
+                <div class="op-stat"><span id="opStatPlayers">—</span><label>PLAYERS</label></div>
+                <div class="op-stat"><span id="opStatTime">—</span><label>TIME</label></div>
+            </div>
+            <div class="operator-leader" id="opLeader">Loading leaderboard...</div>
+            <div class="operator-actions">
+                <button onclick="window.arcade.startScan(); OperatorMenu.hide()">🔍<br>Scan ROMs</button>
+                <button onclick="Router.navigate('#/cc'); OperatorMenu.hide()">📊<br>Command Center</button>
+                <button onclick="Router.navigate('#/weekly'); OperatorMenu.hide()">🏆<br>Weekly Board</button>
+                <button onclick="CabinetMode.toggle(); OperatorMenu.hide()">🕹️<br>Toggle Cabinet</button>
+            </div>
+            <div class="operator-shortcut">CTRL+ALT+O TO CLOSE</div>
+        </div>
+    </div>
+
+    <script src="/js/utils/api.js?v=48"></script>
+    <script src="/js/utils/router.js?v=48"></script>
+    <script src="/js/utils/helpers.js?v=48"></script>
+    <script src="/js/utils/sound.js?v=48"></script>
+    <script src="/js/utils/confetti.js?v=48"></script>
+    <script src="/js/utils/turbo.js?v=48"></script>
+    <script src="/js/utils/arcade-engine.js?v=48"></script>
+    <script src="/js/utils/themes.js?v=48"></script>
+    <script src="/js/components/game-card.js?v=48"></script>
+    <script src="/js/components/search-bar.js?v=48"></script>
+    <script src="/js/components/pagination.js?v=48"></script>
+    <script src="/js/views/home.js?v=48"></script>
+    <script src="/js/views/library.js?v=48"></script>
+    <script src="/js/views/systems.js?v=48"></script>
+    <script src="/js/views/game.js?v=48"></script>
+    <script src="/js/views/archive.js?v=48"></script>
+    <script src="/js/views/mamedev.js?v=48"></script>
+    <script src="/js/views/downloads.js?v=48"></script>
+    <script src="/js/views/settings.js?v=48"></script>
+    <script src="/js/views/favorites.js?v=48"></script>
+    <script src="/js/views/challenge.js?v=48"></script>
+    <script src="/js/views/scores.js?v=48"></script>
+    <script src="/js/views/quiz.js?v=48"></script>
+    <script src="/js/views/cheats.js?v=48"></script>
+    <script src="/js/views/customize.js?v=48"></script>
+    <script src="/js/views/command-center.js?v=48"></script>
+    <script src="/js/views/originals.js?v=48"></script>
+    <script src="/js/views/clans.js?v=48"></script>
+    <script src="/js/views/clan-battles.js?v=48"></script>
+    <!-- V5 New Views -->
+    <script src="/js/views/hall-of-fame.js?v=48"></script>
+    <script src="/js/views/stats.js?v=48"></script>
+    <script src="/js/views/trophies.js?v=48"></script>
+    <script src="/js/views/completion.js?v=48"></script>
+    <script src="/js/views/recommendations.js?v=48"></script>
+    <script src="/js/views/weekly.js?v=48"></script>
+    <script src="/js/views/daily.js?v=48"></script>
+    <script src="/js/views/tournaments.js?v=48"></script>
+    <script src="/js/views/collections.js?v=48"></script>
+    <script src="/js/views/friends.js?v=48"></script>
+    <script src="/js/views/speedrun.js?v=48"></script>
+    <script src="/js/views/player-card.js?v=48"></script>
+    <script src="/js/utils/notifications.js?v=48"></script>
+    <script src="/js/utils/sound-mixer.js?v=48"></script>
+    <!-- Games -->
+    <script src="/js/games/mollypop.js?v=48"></script>
+    <script src="/js/games/tictacmae.js?v=48"></script>
+    <script src="/js/games/maetris.js?v=48"></script>
+    <script src="/js/games/maeteoroids.js?v=48"></script>
+    <script src="/js/games/maekout.js?v=48"></script>
+    <script src="/js/games/flappymae.js?v=48"></script>
+    <script src="/js/games/pacmae.js?v=48"></script>
+    <script src="/js/games/mollypong.js?v=48"></script>
+    <script src="/js/games/molliped.js?v=48"></script>
+    <script src="/js/games/mollycontrol.js?v=48"></script>
+    <script src="/js/utils/mollypops-reward.js?v=48"></script>
+    <script src="/js/utils/postgame.js?v=48"></script>
+    <!-- V6: Social Arcade -->
+    <script src="/js/views/chat.js?v=48"></script>
+    <script src="/js/views/messages.js?v=48"></script>
+    <script src="/js/views/game-requests.js?v=48"></script>
+    <script src="/js/views/ai-search.js?v=48"></script>
+    <script src="/js/views/social-hub.js?v=48"></script>
+    <!-- Intel Hub -->
+    <script src="/js/views/intel-hub.js?v=48"></script>
+    <!-- V8: Arcade OS -->
+    <script src="/js/utils/cabinet.js?v=48"></script>
+    <script src="/js/app.js?v=48"></script>
+    <script>
+    /* Mobile Nav Toggle */
+    function toggleMobileNav() {
+        const sidebar = document.getElementById('sidebar');
+        const hamburger = document.getElementById('mobileHamburger');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        const isOpen = sidebar.classList.toggle('mobile-open');
+        hamburger.classList.toggle('open', isOpen);
+        backdrop.classList.toggle('visible', isOpen);
+    }
+    /* Close mobile nav when clicking a nav link */
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.sidebar .nav-link, .sidebar .random-play-btn')) {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('mobile-open')) toggleMobileNav();
+        }
+    });
+    </script>
+
+    <!-- Startup Splash Boot Sequence -->
+    <script>
+    (function() {
+        const splash = document.getElementById('splashScreen');
+        if (!splash) return;
+
+        const staticCanvas = document.getElementById('staticCanvas');
+        const ctx = staticCanvas.getContext('2d');
+        const content = document.getElementById('splashContent');
+        const title = document.querySelector('.splash-title');
+        const loading = document.querySelector('.splash-loading');
+        const fill = document.getElementById('splashFill');
+        let animId;
+
+        // V8: BIOS terminal — scrolling system messages during static phase
+        const bios = document.getElementById('biosTerminal');
+        const biosMessages = [
+            'ARCADE OS v8.0 — INITIALIZING',
+            'CPU CHECK: OK',
+            'DISPLAY ADAPTER: OK',
+            'AUDIO SYSTEM: OK',
+            'STORAGE: OK',
+            'ROM LIBRARY: ONLINE',
+            'PLAYER DATA: LOADED',
+            '─────────────────────────',
+            'ALL SYSTEMS READY',
+        ];
+        let bi = 0;
+        const biosInt = setInterval(() => {
+            if (!bios || bi >= biosMessages.length) { clearInterval(biosInt); return; }
+            const line = document.createElement('div');
+            line.textContent = '> ' + biosMessages[bi++];
+            bios.appendChild(line);
+            bios.scrollTop = bios.scrollHeight;
+        }, 160);
+        // Fade out BIOS text as main content appears
+        setTimeout(() => {
+            if (bios) {
+                bios.style.transition = 'opacity 0.5s';
+                bios.style.opacity = '0';
+                setTimeout(() => { if (bios && bios.parentNode) bios.remove(); }, 500);
+            }
+        }, 1300);
+
+        // Use small canvas scaled up for chunky CRT static look + better perf
+        const sw = 160, sh = 120;
+        staticCanvas.width = sw;
+        staticCanvas.height = sh;
+        staticCanvas.style.imageRendering = 'pixelated';
+
+        const imgData = ctx.createImageData(sw, sh);
+        let staticIntensity = 1.0;
+
+        function drawStatic() {
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const v = Math.random() * 255 * staticIntensity;
+                data[i]     = v * 0.7;
+                data[i + 1] = v * 0.7;
+                data[i + 2] = v * 0.85 + 20 * staticIntensity;
+                data[i + 3] = 255;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            animId = requestAnimationFrame(drawStatic);
+        }
+        drawStatic();
+
+        // Unlock audio on first user interaction (required by browsers)
+        let audioUnlocked = false;
+        function unlockAndPlay() {
+            if (audioUnlocked) return;
+            audioUnlocked = true;
+            // Start TV static hiss + CRT power-on
+            SFX.playStatic(2.8, 0.10);
+            SFX.playPowerOn();
+            document.removeEventListener('click', unlockAndPlay);
+            document.removeEventListener('touchstart', unlockAndPlay);
+        }
+        // Try to play immediately (works on desktop), fall back to interaction
+        try {
+            SFX.playStatic(2.8, 0.10);
+            SFX.playPowerOn();
+            audioUnlocked = true;
+        } catch (e) {
+            document.addEventListener('click', unlockAndPlay, { once: true });
+            document.addEventListener('touchstart', unlockAndPlay, { once: true });
+        }
+
+        // Boot sequence timeline
+        setTimeout(() => {
+            // Phase 1: Static dims, content fades in
+            staticIntensity = 0.3;
+            content.classList.add('visible');
+        }, 600);
+
+        setTimeout(() => {
+            // Phase 2: Title appears
+            title.classList.add('visible');
+        }, 1000);
+
+        setTimeout(() => {
+            // Phase 3: Loading bar appears + theme jingle plays
+            loading.classList.add('visible');
+            SFX.playTheme();
+        }, 1400);
+
+        // Animate loading bar
+        let progress = 0;
+        const loadInterval = setInterval(() => {
+            progress += Math.random() * 15 + 5;
+            if (progress > 100) progress = 100;
+            fill.style.width = progress + '%';
+            if (progress >= 100) clearInterval(loadInterval);
+        }, 200);
+
+        setTimeout(() => {
+            // Phase 4: Kill static, full fadeout
+            cancelAnimationFrame(animId);
+            staticCanvas.style.opacity = '0';
+            staticCanvas.style.transition = 'opacity 0.4s';
+        }, 2800);
+
+        setTimeout(() => {
+            // Phase 5: Splash fades out, reveal arcade
+            splash.classList.add('fade-out');
+        }, 3200);
+
+        setTimeout(() => {
+            // Phase 6: Remove splash from DOM entirely
+            splash.remove();
+        }, 4100);
+    })();
+    </script>
+
+    <!-- Ambient floating particles -->
+    <script>
+    (function() {
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let w, h, particles = [];
+
+        function resize() {
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        const colors = [
+            'rgba(168, 85, 247, 0.6)',
+            'rgba(255, 105, 180, 0.5)',
+            'rgba(0, 206, 209, 0.5)',
+            'rgba(255, 215, 0, 0.4)',
+            'rgba(192, 132, 252, 0.3)',
+        ];
+
+        for (let i = 0; i < 40; i++) {
+            particles.push({
+                x: Math.random() * w,
+                y: Math.random() * h,
+                r: Math.random() * 2 + 0.5,
+                dx: (Math.random() - 0.5) * 0.3,
+                dy: (Math.random() - 0.5) * 0.3,
+                color: colors[Math.floor(Math.random() * colors.length)],
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, w, h);
+            for (const p of particles) {
+                p.x += p.dx;
+                p.y += p.dy;
+                if (p.x < 0) p.x = w;
+                if (p.x > w) p.x = 0;
+                if (p.y < 0) p.y = h;
+                if (p.y > h) p.y = 0;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+
+                // Small glow
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+                ctx.fillStyle = p.color.replace(/[\d.]+\)$/, '0.1)');
+                ctx.fill();
+            }
+            requestAnimationFrame(draw);
+        }
+        draw();
+    })();
+    </script>
+    <!-- ── PWA: Service Worker + Install Prompt ──────────────────────── -->
+    <script>
+    (function() {
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
+
+        // Install prompt (A2HS)
+        let deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show subtle install banner after 10s if not already installed
+            setTimeout(() => showInstallBanner(), 10000);
+        });
+
+        function showInstallBanner() {
+            if (!deferredPrompt) return;
+            if (document.getElementById('pwaInstallBanner')) return;
+            const banner = document.createElement('div');
+            banner.id = 'pwaInstallBanner';
+            banner.innerHTML = `
+                <div class="pwa-banner-icon">🕹️</div>
+                <div class="pwa-banner-text">
+                    <strong>Install Your Arcade</strong>
+                    <span>Play offline &amp; launch from home screen</span>
+                </div>
+                <button class="pwa-banner-btn" id="pwaInstallBtn">Install</button>
+                <button class="pwa-banner-close" id="pwaInstallClose">✕</button>
+            `;
+            document.body.appendChild(banner);
+            requestAnimationFrame(() => banner.classList.add('visible'));
+
+            document.getElementById('pwaInstallBtn').onclick = async () => {
+                banner.remove();
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            };
+            document.getElementById('pwaInstallClose').onclick = () => {
+                banner.classList.remove('visible');
+                setTimeout(() => banner.remove(), 300);
+                deferredPrompt = null;
+            };
+        }
+
+        // Expose so settings page can trigger manually
+        window.showPwaInstallPrompt = () => showInstallBanner();
+    })();
+    </script>
+</body>
+</html>

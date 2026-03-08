@@ -1,0 +1,13 @@
+# Exclude large local-only directories from Railway deploy
+roms/
+roms-removed/
+artwork/
+saves/
+node_modules/
+originals-src/
+.claude/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.log

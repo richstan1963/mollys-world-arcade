@@ -1,0 +1,15 @@
+node_modules/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+roms/
+roms-removed/
+artwork/
+saves/
+logs/
+.DS_Store
+.env
+.playwright-mcp/
+*.log
+originals-src/

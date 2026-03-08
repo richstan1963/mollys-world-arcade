@@ -1,0 +1,45 @@
+MollyPop Candy Assets - License Attribution
+=============================================
+
+PACK 1: Candy Pack 1
+  Source: https://opengameart.org/content/candy-pack-1
+  Author: popup-pixie
+  License: CC0 (Public Domain)
+  Contents: 340 PNGs (16 candy types, 8+ colors, 3 sizes), SVG vectors, explosion animations
+  Directory: pack1-candy-pack/
+
+PACK 2: Candy Match 3
+  Source: https://opengameart.org/content/candy-match-3
+  Author: Kicked-in-Teeth
+  License: CC0 (Public Domain)
+  Contents: Candy sprite sheet, explosion animation, 2 backgrounds
+  Directory: pack2-candy-match3/
+
+PACK 3: Candy Match 3 Game Assets
+  Source: https://opengameart.org/content/candy-match-3-game-assets
+  Author: pzUH
+  License: OGA-BY 3.0
+  Contents: 21 candy icons, 7 UI elements, background, samples
+  Directory: pack3-match3-assets/
+
+PACK 4: Candy Match 3 Animated Spinning Sprites
+  Source: https://opengameart.org/content/candy-match-3-animated-spinning-sprites
+  Author: Code Inferno Games (codeinferno.com)
+  License: CC-BY 3.0
+  Attribution: "Code Inferno Games - codeinferno.com"
+  Contents: 6 spinning candy sprite sheets (64x64), 6 color bomb sprite sheets
+  Directory: pack4-spinning-sprites/
+
+PACK 5: Match 3 Game Blocks Tiles
+  Source: https://opengameart.org/content/match-3-game-blocks-tiles
+  Author: gembutterfly
+  License: GPL 3.0
+  Contents: 11 jelly block tile PNGs
+  Directory: pack5-jelly-blocks/
+
+PACK 6: Match 3 UI Icons
+  Source: https://opengameart.org/content/match-3-ui-icons
+  Author: Genaralskar
+  License: CC-BY-SA 4.0
+  Contents: 5 high-quality match-3 icons (Clover, Heart, Moon, Star, Water)
+  Directory: pack6-ui-icons/

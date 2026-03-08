@@ -1,0 +1,250 @@
+/* ═══════════════════════════════════════════
+   Clan Battles CSS — Leaderboard, Profiles,
+   Challenges, Territories, Wars, Trash Talk
+   ═══════════════════════════════════════════ */
+
+/* ── Tabs ── */
+.cb-tabs {
+    display: flex; gap: 4px; padding: 0 8px; margin-bottom: 20px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.cb-tabs::-webkit-scrollbar { display: none; }
+.cb-tab {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.6);
+    font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: all 0.2s;
+}
+.cb-tab:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.cb-tab.active {
+    background: linear-gradient(135deg, rgba(168,85,247,0.25), rgba(236,72,153,0.15));
+    border-color: rgba(168,85,247,0.4); color: #fff;
+}
+
+/* ── Leaderboard ── */
+.cb-leaderboard { display: flex; flex-direction: column; gap: 8px; }
+.cb-lb-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 18px; border-radius: 12px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    cursor: pointer; transition: all 0.2s;
+}
+.cb-lb-row:hover {
+    background: rgba(255,255,255,0.06); border-color: var(--clan-color, rgba(255,255,255,0.15));
+    transform: translateX(4px);
+}
+.cb-lb-top { border-left: 3px solid var(--clan-color, #A855F7); }
+.cb-lb-rank { font-size: 22px; width: 40px; text-align: center; flex-shrink: 0; }
+.cb-lb-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.cb-lb-emoji { font-size: 28px; }
+.cb-lb-name { font-size: 16px; font-weight: 700; }
+.cb-lb-rank-title { font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; }
+.cb-lb-stats { display: flex; gap: 16px; }
+.cb-lb-stat { text-align: center; }
+.cb-lb-stat-val { display: block; font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.9); }
+.cb-lb-stat-lbl { display: block; font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+.cb-lb-power {
+    text-align: center; padding: 8px 14px; border-radius: 8px;
+    background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(236,72,153,0.15));
+    border: 1px solid rgba(168,85,247,0.3); min-width: 80px;
+}
+.cb-lb-power-val { font-size: 18px; font-weight: 800; color: #C084FC; font-family: 'Orbitron', monospace; }
+.cb-lb-power-lbl { font-size: 9px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1.5px; }
+
+/* ── Clan Profile ── */
+.cb-profile-banner {
+    position: relative; padding: 32px 24px; border-radius: 16px; margin-bottom: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.cb-profile-identity { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.cb-profile-emoji { font-size: 56px; }
+.cb-profile-name { font-size: 28px; font-weight: 800; margin: 0; }
+.cb-profile-motto { font-size: 14px; color: rgba(255,255,255,0.5); font-style: italic; margin: 4px 0 0; }
+.cb-profile-quick-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+.cb-qs { text-align: center; min-width: 60px; }
+.cb-qs-val { display: block; font-size: 18px; font-weight: 700; color: #fff; }
+.cb-qs-lbl { display: block; font-size: 10px; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+.cb-profile-rival {
+    margin-top: 12px; font-size: 13px; color: rgba(255,255,255,0.6);
+    padding: 8px 12px; background: rgba(0,0,0,0.2); border-radius: 8px; display: inline-block;
+}
+.cb-profile-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+.cb-section {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 16px;
+}
+.cb-section-full { grid-column: 1 / -1; }
+.cb-section-title { font-size: 15px; font-weight: 700; margin: 0 0 12px; color: rgba(255,255,255,0.8); }
+
+/* Roster */
+.cb-roster { display: flex; flex-direction: column; gap: 6px; }
+.cb-member {
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+    border-radius: 8px; text-decoration: none; transition: background 0.2s;
+}
+.cb-member:hover { background: rgba(255,255,255,0.06); }
+.cb-member-emoji {
+    font-size: 22px; width: 32px; height: 32px; display: flex; align-items: center;
+    justify-content: center; border-radius: 50%; border: 2px solid;
+}
+.cb-member-name { font-size: 14px; font-weight: 600; flex: 1; }
+.cb-member-stat { font-size: 11px; color: rgba(255,255,255,0.4); }
+.cb-mvp-badge {
+    font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-weight: 700;
+}
+
+/* Achievements */
+.cb-achievements { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+.cb-achievement { display: flex; align-items: center; gap: 8px; padding: 6px; }
+.cb-ach-icon { font-size: 22px; }
+.cb-ach-title { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); }
+.cb-ach-desc { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+/* Territories list in profile */
+.cb-territories-list { display: flex; flex-direction: column; gap: 4px; max-height: 250px; overflow-y: auto; }
+.cb-territory-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 8px; border-radius: 6px; background: rgba(255,255,255,0.03);
+}
+.cb-terr-game { font-size: 13px; color: rgba(255,255,255,0.7); }
+.cb-terr-score { font-size: 12px; font-weight: 600; color: #10B981; font-family: monospace; }
+
+/* Battles list in profile */
+.cb-battles-list { display: flex; flex-direction: column; gap: 4px; }
+.cb-battle-row { font-size: 13px; color: rgba(255,255,255,0.6); padding: 4px 0; }
+
+/* Feed list */
+.cb-feed-list { display: flex; flex-direction: column; gap: 4px; }
+.cb-feed-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px;
+}
+.cb-feed-icon { font-size: 16px; flex-shrink: 0; }
+.cb-feed-body { flex: 1; min-width: 0; }
+.cb-feed-clan { font-weight: 600; margin-right: 4px; }
+.cb-feed-msg { color: rgba(255,255,255,0.6); }
+.cb-feed-time { font-size: 11px; color: rgba(255,255,255,0.3); flex-shrink: 0; }
+
+/* ── Challenges ── */
+.cb-challenges { }
+.cb-challenge-actions { margin-bottom: 12px; }
+.cb-challenge-list { display: flex; flex-direction: column; gap: 12px; }
+.cb-challenge-card {
+    padding: 16px; border-radius: 12px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+}
+.cb-ch-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.cb-ch-title { font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.9); }
+.cb-badge {
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px;
+    background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px;
+}
+.cb-badge-active { background: rgba(16,185,129,0.2); color: #34D399; }
+.cb-badge-done { background: rgba(168,85,247,0.2); color: #C084FC; }
+.cb-ch-versus { display: flex; align-items: center; gap: 12px; justify-content: center; }
+.cb-ch-team { display: flex; align-items: center; gap: 6px; font-weight: 600; flex: 1; }
+.cb-ch-team:last-child { justify-content: flex-end; }
+.cb-ch-emoji { font-size: 24px; }
+.cb-ch-vs {
+    font-size: 18px; font-weight: 800; color: rgba(255,255,255,0.3);
+    padding: 4px 8px; font-family: 'Orbitron', monospace;
+}
+.cb-ch-score {
+    font-size: 18px; font-weight: 800; color: #10B981; font-family: 'Orbitron', monospace;
+    margin-left: 8px;
+}
+.cb-ch-winner { text-align: center; margin-top: 8px; font-size: 14px; color: #F59E0B; font-weight: 600; }
+
+/* ── Territories Grid ── */
+.cb-territories { }
+.cb-terr-desc { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 16px; }
+.cb-terr-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;
+}
+.cb-terr-card {
+    padding: 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-left: 3px solid var(--clan-color, #A855F7);
+}
+.cb-terr-game-name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 2px; }
+.cb-terr-system { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 6px; }
+.cb-terr-owner { font-size: 12px; font-weight: 600; }
+.cb-terr-score { font-size: 14px; font-weight: 700; color: #10B981; font-family: monospace; margin-top: 4px; }
+.cb-terr-holder { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+/* ── Bounties ── */
+.cb-bounty-list { display: flex; flex-direction: column; gap: 10px; }
+.cb-bounty-card {
+    padding: 14px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(245,158,11,0.15);
+    border-left: 3px solid #F59E0B;
+}
+.cb-bounty-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.cb-bounty-icon { font-size: 20px; }
+.cb-bounty-target { font-size: 18px; font-weight: 800; color: #F59E0B; font-family: 'Orbitron', monospace; }
+.cb-bounty-game { font-size: 12px; color: rgba(255,255,255,0.5); }
+.cb-bounty-posted { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+.cb-bounty-reward { font-size: 13px; color: rgba(255,255,255,0.7); font-weight: 500; }
+
+/* ── Wars ── */
+.cb-war-list { display: flex; flex-direction: column; gap: 12px; }
+.cb-war-card {
+    padding: 16px; border-radius: 12px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(239,68,68,0.15);
+    border-left: 3px solid #EF4444;
+}
+.cb-war-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.cb-war-name { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.9); }
+.cb-war-desc { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 10px; }
+.cb-war-standings { display: flex; flex-direction: column; gap: 4px; }
+.cb-war-entry {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+    border-radius: 6px; font-size: 14px;
+}
+.cb-war-leader { background: rgba(255,255,255,0.04); }
+.cb-war-pos { font-weight: 700; color: rgba(255,255,255,0.3); width: 20px; }
+.cb-war-total { margin-left: auto; font-weight: 700; color: #10B981; font-family: monospace; }
+
+/* ── Trash Talk ── */
+.cb-trashtalk { }
+.cb-msg-compose { display: flex; gap: 8px; }
+.cb-msg-list { display: flex; flex-direction: column; gap: 8px; }
+.cb-msg {
+    padding: 10px 14px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+}
+.cb-msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.cb-msg-player { font-size: 13px; font-weight: 600; }
+.cb-msg-clan { font-size: 11px; opacity: 0.6; }
+.cb-msg-to { font-size: 11px; opacity: 0.5; }
+.cb-msg-time { font-size: 10px; color: rgba(255,255,255,0.25); margin-left: auto; }
+.cb-msg-text { font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.4; }
+
+/* ── Feed (global) ── */
+.cb-feed { display: flex; flex-direction: column; gap: 6px; }
+
+/* ── Button colors for battles ── */
+.btn-amber { background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; }
+.btn-amber:hover { filter: brightness(1.1); }
+.btn-red { background: linear-gradient(135deg, #EF4444, #DC2626); color: #fff; }
+.btn-red:hover { filter: brightness(1.1); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .cb-lb-stats { display: none; }
+    .cb-profile-grid { grid-template-columns: 1fr; }
+    .cb-ch-versus { flex-direction: column; gap: 8px; }
+    .cb-ch-team:last-child { justify-content: flex-start; }
+    .cb-tabs { gap: 2px; }
+    .cb-tab { padding: 6px 10px; font-size: 12px; }
+    .cb-terr-grid { grid-template-columns: 1fr 1fr; }
+    .cb-profile-quick-stats { gap: 12px; }
+}
+
+@media (max-width: 480px) {
+    .cb-terr-grid { grid-template-columns: 1fr; }
+}

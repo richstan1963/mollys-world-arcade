@@ -1,0 +1,36 @@
+{
+  "name": "Your World Arcade",
+  "short_name": "Arcade",
+  "description": "Your personal retro game arcade — thousands of games, all in one place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A1A",
+  "theme_color": "#7B2D8E",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Surprise Me",
+      "short_name": "Random",
+      "description": "Play a random game",
+      "url": "/#/random",
+      "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>", "sizes": "any"}]
+    },
+    {
+      "name": "Library",
+      "short_name": "Library",
+      "description": "Browse all games",
+      "url": "/#/library",
+      "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>", "sizes": "any"}]
+    }
+  ]
+}

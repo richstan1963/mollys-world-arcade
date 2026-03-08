@@ -1,0 +1,11 @@
+{
+  "_comment": "Copy this to ~/.ywa/emulator-paths.json and edit paths for your machine",
+  "rpcs3":    "/Applications/RPCS3.app/Contents/MacOS/rpcs3",
+  "pcsx2":    "/Applications/PCSX2.app/Contents/MacOS/PCSX2",
+  "dolphin":  "/Applications/Dolphin.app/Contents/MacOS/Dolphin",
+  "flycast":  "/Applications/Flycast.app/Contents/MacOS/Flycast",
+  "xemu":     "/Applications/xemu.app/Contents/MacOS/xemu",
+  "sudachi":  "/usr/local/bin/sudachi",
+  "cemu":     "/Applications/Cemu.app/Contents/MacOS/Cemu",
+  "cacheDir": "~/.ywa/rom-cache"
+}
