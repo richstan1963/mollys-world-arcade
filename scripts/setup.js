@@ -34,7 +34,8 @@ const systems = [
 ];
 
 for (const sys of systems) {
-    const sysDir = path.join(ROOT, 'roms', sys);
+    const romsBase = process.env.ARCADE_ROMS_DIR || path.join(ROOT, 'roms');
+    const sysDir = path.join(romsBase, sys);
     if (!fs.existsSync(sysDir)) {
         fs.mkdirSync(sysDir, { recursive: true });
     }

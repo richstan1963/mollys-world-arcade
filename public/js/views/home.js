@@ -135,7 +135,7 @@ window.HomeView = {
                                 <div class="arrival-card" onclick="Router.navigate('#/game/${g.id}')" title="${title}">
                                     <div class="arrival-art" style="background:${sysColor}18;">
                                         ${art
-                                            ? `<img src="${art}" alt="${title}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+                                            ? `<img src="${art}" alt="${title}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
                                             : ''
                                         }
                                         <span class="arrival-emoji" style="${art ? 'display:none' : ''}">${H.systemEmoji(g.system_id)}</span>
@@ -167,7 +167,7 @@ window.HomeView = {
                                 <div class="arrival-card" onclick="Router.navigate('#/game/${g.id}')" title="${title}">
                                     <div class="arrival-art" style="background:${sysColor}18;">
                                         ${art
-                                            ? `<img src="${art}" alt="${title}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+                                            ? `<img src="${art}" alt="${title}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
                                             : ''
                                         }
                                         <span class="arrival-emoji" style="${art ? 'display:none' : ''}">${H.systemEmoji(g.system_id)}</span>
@@ -200,7 +200,7 @@ window.HomeView = {
                                 <div class="arrival-card" onclick="Router.navigate('#/game/${g.id}')" title="${title}">
                                     <div class="arrival-art" style="background:${sysColor}18;">
                                         ${art
-                                            ? `<img src="${art}" alt="${title}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+                                            ? `<img src="${art}" alt="${title}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
                                             : ''
                                         }
                                         <span class="arrival-emoji" style="${art ? 'display:none' : ''}">${H.systemEmoji(g.system_id)}</span>
@@ -224,7 +224,9 @@ window.HomeView = {
                     </div>
                     <div class="genre-grid">
                         ${genreRooms.map(room => {
-                            const href = room.type === 'system'
+                            const href = room.type === 'genre'
+                                ? `#/library?genre=${encodeURIComponent(room.value)}`
+                                : room.type === 'system'
                                 ? `#/library?system=${room.value}`
                                 : room.type === 'tag'
                                 ? `#/library?tag=${room.value}`
@@ -263,7 +265,7 @@ window.HomeView = {
                                 <div class="arrival-card" onclick="Router.navigate('#/game/${g.id}')" title="${title}">
                                     <div class="arrival-art" style="background:${sysColor}18;">
                                         ${art
-                                            ? `<img src="${art}" alt="${title}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+                                            ? `<img src="${art}" alt="${title}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
                                             : ''
                                         }
                                         <span class="arrival-emoji" style="${art ? 'display:none' : ''}">${H.systemEmoji(g.system_id)}</span>

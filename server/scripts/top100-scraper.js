@@ -11,7 +11,7 @@
  *   node server/scripts/top100-scraper.js snes gba  # multiple systems
  *
  * Systems: nes, snes, genesis, gba, gb, gbc, n64, atari2600, sms,
- *          gamegear, saturn, dreamcast, psx, ps2, psp, threeds, gamecube, wii, arcade
+ *          gamegear, saturn, dreamcast, psx, ps2, psp, nds, threeds, gamecube, wii, arcade
  */
 
 import https from 'https';
@@ -34,12 +34,13 @@ const MYRIENT = {
     gba:       'https://myrient.erista.me/files/No-Intro/Nintendo%20-%20Game%20Boy%20Advance/',
     gb:        'https://myrient.erista.me/files/No-Intro/Nintendo%20-%20Game%20Boy/',
     gbc:       'https://myrient.erista.me/files/No-Intro/Nintendo%20-%20Game%20Boy%20Color/',
-    n64:       'https://myrient.erista.me/files/No-Intro/Nintendo%20-%20Nintendo%2064/',
+    n64:       'https://myrient.erista.me/files/No-Intro/Nintendo%20-%20Nintendo%2064%20(BigEndian)/',
+    nds:       'https://myrient.erista.me/files/No-Intro/Nintendo%20-%20Nintendo%20DS%20(Decrypted)/',
     atari2600: 'https://myrient.erista.me/files/No-Intro/Atari%20-%202600/',
     sms:       'https://myrient.erista.me/files/No-Intro/Sega%20-%20Master%20System%20-%20Mark%20III/',
     // Cartridge
     gamegear:  'https://myrient.erista.me/files/No-Intro/Sega%20-%20Game%20Gear/',
-    psp:       'https://myrient.erista.me/files/No-Intro/Sony%20-%20PlayStation%20Portable/',
+    psp:       'https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation%20Portable/',
     // Cartridge (No-Intro)
     threeds:   'https://myrient.erista.me/files/No-Intro/Nintendo%20-%20Nintendo%203DS/',
     // Redump (disc)
@@ -1165,6 +1166,65 @@ const GAME_LISTS = {
         ],
     },
 
+    // ── Nintendo DS ──────────────────────────────────────────────────────────
+    nds: {
+        libretroDir: 'Nintendo - Nintendo DS',
+        romExt: '.nds',
+        myrientBase: MYRIENT.nds,
+        games: [
+            { title: 'New Super Mario Bros.',                              year: 2006, publisher: 'Nintendo',          genre: 'Platformer'   },
+            { title: 'Mario Kart DS',                                      year: 2005, publisher: 'Nintendo',          genre: 'Racing'       },
+            { title: 'Super Mario 64 DS',                                  year: 2004, publisher: 'Nintendo',          genre: 'Platformer'   },
+            { title: 'The Legend of Zelda: Phantom Hourglass',             year: 2007, publisher: 'Nintendo',          genre: 'Action RPG'   },
+            { title: 'The Legend of Zelda: Spirit Tracks',                 year: 2009, publisher: 'Nintendo',          genre: 'Action RPG'   },
+            { title: 'Pokemon Diamond',                                    year: 2006, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Pokemon Pearl',                                      year: 2006, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Pokemon HeartGold',                                  year: 2009, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Pokemon SoulSilver',                                 year: 2009, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Pokemon Black',                                      year: 2010, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Pokemon White',                                      year: 2010, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Pokemon Platinum',                                   year: 2008, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Chrono Trigger',                                     year: 2008, publisher: 'Square Enix',       genre: 'RPG'          },
+            { title: 'Dragon Quest IX: Sentinels of the Starry Skies',     year: 2009, publisher: 'Square Enix',       genre: 'RPG'          },
+            { title: 'Dragon Quest V: Hand of the Heavenly Bride',         year: 2008, publisher: 'Square Enix',       genre: 'RPG'          },
+            { title: 'Final Fantasy IV',                                   year: 2007, publisher: 'Square Enix',       genre: 'RPG'          },
+            { title: 'The World Ends with You',                            year: 2007, publisher: 'Square Enix',       genre: 'Action RPG'   },
+            { title: 'Castlevania: Dawn of Sorrow',                        year: 2005, publisher: 'Konami',            genre: 'Action'       },
+            { title: 'Castlevania: Portrait of Ruin',                      year: 2006, publisher: 'Konami',            genre: 'Action'       },
+            { title: 'Castlevania: Order of Ecclesia',                     year: 2008, publisher: 'Konami',            genre: 'Action'       },
+            { title: 'Advance Wars: Dual Strike',                          year: 2005, publisher: 'Nintendo',          genre: 'Strategy'     },
+            { title: 'Advance Wars: Days of Ruin',                         year: 2008, publisher: 'Nintendo',          genre: 'Strategy'     },
+            { title: 'Fire Emblem: Shadow Dragon',                         year: 2008, publisher: 'Nintendo',          genre: 'Strategy RPG' },
+            { title: 'Kirby: Canvas Curse',                                year: 2005, publisher: 'Nintendo',          genre: 'Platformer'   },
+            { title: 'Kirby Super Star Ultra',                             year: 2008, publisher: 'Nintendo',          genre: 'Platformer'   },
+            { title: 'Kirby: Squeak Squad',                                year: 2006, publisher: 'Nintendo',          genre: 'Platformer'   },
+            { title: 'Metroid Prime Hunters',                              year: 2006, publisher: 'Nintendo',          genre: 'Action'       },
+            { title: 'Mega Man ZX',                                        year: 2006, publisher: 'Capcom',            genre: 'Action'       },
+            { title: 'Mega Man Zero Collection',                           year: 2010, publisher: 'Capcom',            genre: 'Action'       },
+            { title: 'Phoenix Wright: Ace Attorney',                       year: 2005, publisher: 'Capcom',            genre: 'Adventure'    },
+            { title: 'Phoenix Wright: Ace Attorney - Justice for All',     year: 2006, publisher: 'Capcom',            genre: 'Adventure'    },
+            { title: 'Apollo Justice: Ace Attorney',                       year: 2007, publisher: 'Capcom',            genre: 'Adventure'    },
+            { title: 'Professor Layton and the Curious Village',           year: 2007, publisher: 'Level-5',           genre: 'Puzzle'       },
+            { title: 'Professor Layton and the Diabolical Box',            year: 2007, publisher: 'Level-5',           genre: 'Puzzle'       },
+            { title: 'Professor Layton and the Unwound Future',            year: 2008, publisher: 'Level-5',           genre: 'Puzzle'       },
+            { title: 'Mario & Luigi: Bowser\'s Inside Story',              year: 2009, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Mario & Luigi: Partners in Time',                    year: 2005, publisher: 'Nintendo',          genre: 'RPG'          },
+            { title: 'Animal Crossing: Wild World',                        year: 2005, publisher: 'Nintendo',          genre: 'Simulation'   },
+            { title: 'Sonic Rush',                                         year: 2005, publisher: 'Sega',              genre: 'Platformer'   },
+            { title: 'Sonic Rush Adventure',                               year: 2007, publisher: 'Sega',              genre: 'Platformer'   },
+            { title: 'Tetris DS',                                          year: 2006, publisher: 'Nintendo',          genre: 'Puzzle'       },
+            { title: 'WarioWare: Touched!',                                year: 2004, publisher: 'Nintendo',          genre: 'Party'        },
+            { title: 'Yoshi\'s Island DS',                                 year: 2006, publisher: 'Nintendo',          genre: 'Platformer'   },
+            { title: 'Ghost Trick: Phantom Detective',                     year: 2010, publisher: 'Capcom',            genre: 'Puzzle'       },
+            { title: 'Radiant Historia',                                   year: 2010, publisher: 'Atlus',             genre: 'RPG'          },
+            { title: 'Shin Megami Tensei: Devil Survivor',                 year: 2009, publisher: 'Atlus',             genre: 'Strategy RPG' },
+            { title: 'Etrian Odyssey',                                     year: 2007, publisher: 'Atlus',             genre: 'RPG'          },
+            { title: '999: Nine Hours, Nine Persons, Nine Doors',          year: 2009, publisher: 'Aksys',             genre: 'Adventure'    },
+            { title: 'Contra 4',                                           year: 2007, publisher: 'Konami',            genre: 'Action'       },
+            { title: 'Elite Beat Agents',                                  year: 2006, publisher: 'Nintendo',          genre: 'Rhythm'       },
+        ],
+    },
+
     // ── PSP ───────────────────────────────────────────────────────────────────
     psp: {
         libretroDir: 'Sony - PlayStation Portable',
@@ -1777,8 +1837,10 @@ async function getMyrientListing(baseUrl) {
     return files;
 }
 
-const BAD_DUMP = /\b(pirate|unl|hack|proto|demo|sample|beta|aftermarket|homebrew)\b/i;
-const REGION_PREF = /\b(usa|world|en,)\b/i;
+const BAD_DUMP = /\b(pirate|unl|hack|proto|demo|sample|beta|aftermarket|homebrew|debug|lodgenet)\b/i;
+const REGION_USA   = /\(USA\)/i;
+const REGION_WORLD = /\(World\)/i;
+const REGION_EUR   = /\(Europe\)/i;
 
 // Find best matching file in Myrient listing
 // For arcade: uses MAME_ROM_MAP exact lookup (MAME filenames are short cryptic IDs)
@@ -1801,7 +1863,10 @@ function findMyrientFile(title, files, sysId) {
         let s = matchScore(title, baseName);
         if (s === 0) continue;
         if (alias && f.toLowerCase().includes(alias.toLowerCase())) s += 200;
-        if (REGION_PREF.test(f)) s += 30;        // prefer USA/World
+        // Region preference: USA > World > Europe > other
+        if (REGION_USA.test(f))        s += 100;
+        else if (REGION_WORLD.test(f)) s += 80;
+        else if (REGION_EUR.test(f))   s += 30;
 
         if (s > bestScore) { bestScore = s; best = f; }
     }
@@ -2000,15 +2065,24 @@ async function processSystem(systemId, cfg) {
 
     for (let i = 0; i < cfg.games.length; i++) {
         const game = cfg.games[i];
-        console.log(`\n[${i + 1}/${cfg.games.length}] ${game.title}`);
 
-        // Find the ROM file on Myrient
+        // Fast skip: if ROM + artwork both exist locally, skip entirely
+        const artFile = path.join(artDir, `${game.title.replace(/[/\\?%*:|"<>]/g, '_')}.png`);
         const myrientFile = findMyrientFile(game.title, listing, systemId);
-        let romOk = false;
+        const romDest = myrientFile ? path.join(romsDir, myrientFile) : null;
+        const hasRom = romDest && fs.existsSync(romDest);
+        const hasArt = fs.existsSync(artFile);
 
+        if (hasRom && hasArt) {
+            skipped++;
+            continue; // both exist — nothing to do
+        }
+
+        console.log(`\n[${i + 1}/${cfg.games.length}] ${game.title}${hasRom ? ' (need art)' : hasArt ? ' (need rom)' : ''}`);
+
+        let romOk = false;
         if (myrientFile) {
             const romUrl  = cfg.myrientBase + encodeURIComponent(myrientFile);
-            const romDest = path.join(romsDir, myrientFile);
             const alreadyHad = fs.existsSync(romDest);
 
             romOk = await downloadFile(romUrl, romDest, myrientFile);
@@ -2019,7 +2093,7 @@ async function processSystem(systemId, cfg) {
             failed++;
         }
 
-        // Download artwork in parallel (non-blocking)
+        // Download artwork (skips internally if already exists)
         const artPromise = downloadArtwork(game, cfg.libretroDir, artDir);
 
         // Delay between ROMs to be polite

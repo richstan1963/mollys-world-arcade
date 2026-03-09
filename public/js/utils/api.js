@@ -318,6 +318,24 @@ window.API = {
     aiConversation(id) { return this.get(`/api/llm/conversation/${id}`); },
     deleteAIConversation(id) { return this.del(`/api/llm/conversation/${id}`); },
 
+    // ═══ METADATA ENRICHMENT ═══
+    matchNoIntro()          { return this.post('/api/metadata/nointro/match'); },
+    noIntroStatus()         { return this.get('/api/metadata/nointro/status'); },
+    fetchScreenScraper(id)  { return this.post(`/api/metadata/screenscraper/fetch/${id}`); },
+    batchScreenScraper()    { return this.post('/api/metadata/screenscraper/batch'); },
+    screenScraperStatus()   { return this.get('/api/metadata/screenscraper/status'); },
+    fetchIGDB(id)           { return this.post(`/api/metadata/igdb/fetch/${id}`); },
+    batchIGDB()             { return this.post('/api/metadata/igdb/batch'); },
+    igdbStatus()            { return this.get('/api/metadata/igdb/status'); },
+    fetchRA(id)             { return this.post(`/api/metadata/ra/fetch/${id}`); },
+    batchRA()               { return this.post('/api/metadata/ra/batch'); },
+    raStatus()              { return this.get('/api/metadata/ra/status'); },
+    fetchManual(id)         { return this.post(`/api/metadata/manuals/fetch/${id}`); },
+    batchManuals()          { return this.post('/api/metadata/manuals/batch'); },
+    manualsStatus()         { return this.get('/api/metadata/manuals/status'); },
+    enrichAll(sources)      { return this.post('/api/metadata/enrich', { sources }); },
+    enrichStatus()          { return this.get('/api/metadata/enrich/status'); },
+
     // ═══ V8 GAME INTELLIGENCE ═══
     gameIntel(romId)              { return this.get(`/api/intel/${romId}`); },
     gameIntelDoc(romId, type)     { return this.get(`/api/intel/${romId}/${type}`); },

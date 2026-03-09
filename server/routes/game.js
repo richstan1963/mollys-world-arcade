@@ -9,13 +9,16 @@ router.get('/:id', (req, res) => {
         const game = db.prepare(`
             SELECT r.*, m.title, m.artwork_path, m.artwork_url, m.region, m.year,
                    m.publisher, m.genre, m.players, m.description, m.rating,
+                   m.developer, m.manual_url, m.screenshots,
                    s.name as system_full_name, s.short_name as system_name,
                    s.color as system_color, s.emulatorjs_core as core,
-                   CASE WHEN f.rom_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite
+                   CASE WHEN f.rom_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite,
+                   ra.achievement_count, ra.ra_icon_url, ra.ra_game_id
             FROM roms r
             LEFT JOIN metadata m ON m.rom_id = r.id
             LEFT JOIN systems s ON s.id = r.system_id
             LEFT JOIN favorites f ON f.rom_id = r.id
+            LEFT JOIN retro_achievements ra ON ra.rom_id = r.id
             WHERE r.id = ?
         `).get(req.params.id);
 
@@ -57,6 +60,19 @@ router.put('/:id/metadata', (req, res) => {
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to update metadata' });
+    }
+});
+
+router.delete('/:id', (req, res) => {
+    try {
+        const db = getDB();
+        const id = parseInt(req.params.id);
+        // Cascade: metadata, favorites, play_history all have ON DELETE CASCADE
+        const result = db.prepare('DELETE FROM roms WHERE id = ?').run(id);
+        if (result.changes === 0) return res.status(404).json({ error: 'Game not found' });
+        res.json({ ok: true, deleted: id });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete game' });
     }
 });
 

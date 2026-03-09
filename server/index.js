@@ -4,6 +4,16 @@ import path from 'path';
 import fs from 'fs';
 import { CONFIG, ROOT } from './config.js';
 
+process.on('uncaughtException', (err) => {
+    console.error('[UNCAUGHT]', err.stack);
+});
+process.on('unhandledRejection', (err) => {
+    console.error('[UNHANDLED]', err);
+});
+
+// Cache headers for static assets (artwork, CSS, JS) — 1 day browser cache
+const staticCache = { maxAge: '1d', etag: true, lastModified: true };
+
 // Ensure writable dirs exist (critical in cloud environments with mounted volumes)
 for (const dir of [CONFIG.ROMS_DIR, CONFIG.ARTWORK_DIR, CONFIG.SAVES_DIR,
                    path.join(ROOT, 'data'), path.join(ROOT, 'data/cores')]) {
@@ -60,19 +70,24 @@ import intelRoutes from './routes/intel.js';
 
 const app = express();
 
-// Gzip/Brotli compression for all responses
-app.use(compression());
+// Gzip/Brotli compression — skip binary ROM file responses
+app.use(compression({
+    filter: (req, res) => {
+        if (req.path.startsWith('/rom-file/')) return false;
+        return compression.filter(req, res);
+    },
+}));
 
 // COOP/COEP for SharedArrayBuffer (EmulatorJS threading)
 app.use(coopCoep);
 app.use(express.json({ limit: '1mb' }));
 app.use(sanitizeBody); // Strip HTML + control chars from all request bodies
 
-// Static serving
-app.use('/', express.static(path.join(ROOT, 'public')));
-app.use('/data', express.static(path.join(ROOT, 'data')));
-app.use('/artwork', express.static(path.join(ROOT, 'artwork')));
-app.use('/saves', express.static(path.join(ROOT, 'saves')));
+// Static serving (with cache headers for assets)
+app.use('/', express.static(path.join(ROOT, 'public'), staticCache));
+app.use('/data', express.static(path.join(ROOT, 'data'), staticCache));
+app.use('/artwork', express.static(CONFIG.ARTWORK_DIR, staticCache));
+app.use('/saves', express.static(CONFIG.SAVES_DIR));
 
 // API routes
 app.use('/api/library', libraryRoutes);
@@ -123,10 +138,10 @@ app.get('/bios/:system/:file', (req, res) => {
     const system = path.basename(req.params.system);
     const file = path.basename(req.params.file);
     console.log(`[BIOS] Request: /bios/${system}/${file}`);
-    const biosPath = path.join(ROOT, 'roms', system, file);
+    const biosPath = path.join(CONFIG.ROMS_DIR, system, file);
     if (!fs.existsSync(biosPath)) {
         // Also check alternate locations (e.g. arcade/ folder for Neo Geo)
-        const altPath = path.join(ROOT, 'roms', 'arcade', file);
+        const altPath = path.join(CONFIG.ROMS_DIR, 'arcade', file);
         if (fs.existsSync(altPath)) return res.sendFile(altPath);
         return res.status(404).json({ error: 'BIOS file not found' });
     }
@@ -139,37 +154,47 @@ app.get('/rom-file/:id/{*splat}', romFileHandler);
 app.get('/rom-file/:id', romFileHandler);
 
 function romFileHandler(req, res) {
-    const db = req.app.get('db');
-    const rom = db.prepare('SELECT filepath, filename FROM roms WHERE id = ?').get(req.params.id);
-    if (!rom) return res.status(404).json({ error: 'ROM not found' });
+    try {
+        const db = req.app.get('db');
+        const rom = db.prepare('SELECT filepath, filename FROM roms WHERE id = ?').get(req.params.id);
+        if (!rom) return res.status(404).json({ error: 'ROM not found' });
 
-    const scanPaths = db.prepare('SELECT path FROM scan_paths WHERE enabled = 1').all();
-    const isAllowed = scanPaths.some(sp => rom.filepath.startsWith(sp.path));
-    if (!isAllowed) return res.status(403).json({ error: 'Access denied' });
-    if (!fs.existsSync(rom.filepath)) return res.status(404).json({ error: 'File missing from disk' });
+        const scanPaths = db.prepare('SELECT path FROM scan_paths WHERE enabled = 1').all();
+        const isAllowed = scanPaths.some(sp => rom.filepath.startsWith(sp.path));
+        if (!isAllowed) return res.status(403).json({ error: 'Access denied' });
+        if (!fs.existsSync(rom.filepath)) return res.status(404).json({ error: 'File missing from disk' });
 
-    const stat = fs.statSync(rom.filepath);
-    const range = req.headers.range;
+        const stat = fs.statSync(rom.filepath);
 
-    if (range) {
-        const parts = range.replace(/bytes=/, '').split('-');
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
-        res.writeHead(206, {
-            'Content-Range': `bytes ${start}-${end}/${stat.size}`,
-            'Accept-Ranges': 'bytes',
-            'Content-Length': end - start + 1,
+        // CORP header required for COEP cross-origin isolation (EmulatorJS iframe)
+        const commonHeaders = {
             'Content-Type': 'application/octet-stream',
-        });
-        fs.createReadStream(rom.filepath, { start, end }).pipe(res);
-    } else {
-        res.writeHead(200, {
-            'Content-Length': stat.size,
-            'Content-Type': 'application/octet-stream',
-            'Content-Disposition': `inline; filename="${rom.filename}"`,
             'Accept-Ranges': 'bytes',
-        });
-        fs.createReadStream(rom.filepath).pipe(res);
+            'Cross-Origin-Resource-Policy': 'same-origin',
+        };
+
+        const range = req.headers.range;
+        if (range) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+            res.writeHead(206, {
+                ...commonHeaders,
+                'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+                'Content-Length': end - start + 1,
+            });
+            fs.createReadStream(rom.filepath, { start, end }).pipe(res);
+        } else {
+            res.writeHead(200, {
+                ...commonHeaders,
+                'Content-Length': stat.size,
+                'Content-Disposition': `inline; filename="${rom.filename}"`,
+            });
+            fs.createReadStream(rom.filepath).pipe(res);
+        }
+    } catch (err) {
+        console.error('[ROM-FILE] Error serving ROM:', err);
+        if (!res.headersSent) res.status(500).json({ error: 'Failed to serve ROM' });
     }
 }
 

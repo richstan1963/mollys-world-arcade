@@ -22,6 +22,31 @@ export const CONFIG = {
     ARCHIVE_ORG_API: 'https://archive.org/advancedsearch.php',
     MAMEDEV_ROMS_URL: 'https://www.mamedev.org/roms/',
     METADATA_FETCH_DELAY: 100,
+
+    // Metadata enrichment APIs
+    DATS_DIR: path.join(ROOT, 'data', 'dats'),
+    SCREENSCRAPER_API: 'https://api.screenscraper.fr/api2',
+    IGDB_API: 'https://api.igdb.com/v4',
+    TWITCH_AUTH_URL: 'https://id.twitch.tv/oauth2/token',
+    RETROACHIEVEMENTS_API: 'https://retroachievements.org/API',
+};
+
+// ScreenScraper system ID mapping (our system_id → SS systemeid)
+export const SS_SYSTEM_MAP = {
+    nes: 3, snes: 4, gba: 12, genesis: 1, gamegear: 21, saturn: 22,
+    dreamcast: 23, '32x': 19, psx: 57, atari2600: 26, atari7800: 41,
+    jaguar: 27, lynx: 28, tg16: 31, neogeo: 142, ngp: 25, arcade: 75,
+    fbneo: 75, wonderswan: 45, vb: 11, gamecube: 13, wii: 16, wiiu: 18,
+    ps2: 58, xbox: 32,
+};
+
+// IGDB platform ID mapping (our system_id → IGDB platform)
+export const IGDB_PLATFORM_MAP = {
+    nes: 18, snes: 19, gba: 24, genesis: 29, gamegear: 35, saturn: 32,
+    dreamcast: 23, '32x': 30, psx: 7, atari2600: 59, atari7800: 60,
+    jaguar: 62, lynx: 61, tg16: 86, neogeo: 80, ngp: 119, arcade: 52,
+    fbneo: 52, wonderswan: 57, vb: 87, gamecube: 21, wii: 5, wiiu: 41,
+    ps2: 8, xbox: 11,
 };
 
 export const SYSTEMS = [
@@ -245,6 +270,72 @@ export const SYSTEMS = [
         color: '#CC0000',
         sort_order: 61,
     },
+    {
+        id: 'gb',
+        name: 'Game Boy',
+        short_name: 'GB',
+        core: 'gambatte',
+        extensions: ['.gb'],
+        libretro_dir: 'Nintendo - Game Boy',
+        bios: [],
+        color: '#8B956D',
+        sort_order: 7,
+    },
+    {
+        id: 'gbc',
+        name: 'Game Boy Color',
+        short_name: 'GBC',
+        core: 'gambatte',
+        extensions: ['.gbc'],
+        libretro_dir: 'Nintendo - Game Boy Color',
+        bios: [],
+        color: '#6A0DAD',
+        sort_order: 8,
+    },
+    {
+        id: 'sms',
+        name: 'Sega Master System',
+        short_name: 'SMS',
+        core: 'genesis_plus_gx',
+        extensions: ['.sms'],
+        libretro_dir: 'Sega - Master System - Mark III',
+        bios: [],
+        color: '#CC0000',
+        sort_order: 11,
+    },
+    {
+        id: 'n64',
+        name: 'Nintendo 64',
+        short_name: 'N64',
+        core: 'mupen64plus_next',
+        extensions: ['.z64', '.n64', '.v64'],
+        libretro_dir: 'Nintendo - Nintendo 64',
+        bios: [],
+        color: '#009900',
+        sort_order: 3,
+    },
+    {
+        id: 'nds',
+        name: 'Nintendo DS',
+        short_name: 'NDS',
+        core: 'melonds',
+        extensions: ['.nds'],
+        libretro_dir: 'Nintendo - Nintendo DS',
+        bios: ['bios7.bin', 'bios9.bin', 'firmware.bin'],
+        color: '#A0A0A0',
+        sort_order: 9,
+    },
+    {
+        id: 'psp',
+        name: 'PlayStation Portable',
+        short_name: 'PSP',
+        core: 'ppsspp',
+        extensions: ['.iso', '.cso', '.pbp'],
+        libretro_dir: 'Sony - PlayStation Portable',
+        bios: [],
+        color: '#000000',
+        sort_order: 22,
+    },
 
     // ── Desktop Mode: Native Emulator Systems ────────────────────────────────
     {
@@ -337,6 +428,12 @@ export const FOLDER_HINTS = new Map([
     ['fbneo', 'fbneo'], ['fba', 'fbneo'],
     ['wonderswan', 'wonderswan'], ['ws', 'wonderswan'],
     ['virtualboy', 'vb'], ['virtual boy', 'vb'],
+    ['gb', 'gb'], ['gameboy', 'gb'], ['game boy', 'gb'],
+    ['gbc', 'gbc'], ['gameboy color', 'gbc'], ['game boy color', 'gbc'],
+    ['sms', 'sms'], ['master system', 'sms'], ['sega master system', 'sms'],
+    ['n64', 'n64'], ['nintendo 64', 'n64'], ['nintendo64', 'n64'],
+    ['nds', 'nds'], ['nintendo ds', 'nds'], ['ds', 'nds'],
+    ['psp', 'psp'], ['playstation portable', 'psp'],
     // Native systems
     ['gamecube', 'gamecube'], ['gcn', 'gamecube'], ['gc', 'gamecube'], ['nintendo gamecube', 'gamecube'],
     ['wii', 'wii'], ['nintendo wii', 'wii'],
@@ -346,7 +443,8 @@ export const FOLDER_HINTS = new Map([
 ]);
 
 // Cores that bypass EmulatorJS and launch via native desktop emulators
-export const NATIVE_CORES = new Set(['native', 'flycast']);
+export const NATIVE_CORES = new Set(['native']);
 
-// Systems that require BIOS files for native emulators — scanned as test-only
-export const TEST_ONLY_SYSTEMS = new Set(['dreamcast', 'ps2', 'xbox']);
+// Systems with core='native' — no browser play, require Windows PC + NVIDIA GPU
+// ROMs scanned for these systems are auto-marked source='test' (hidden from public library)
+export const TEST_ONLY_SYSTEMS = new Set(['gamecube', 'ps2', 'ps3', 'switch', 'wii', 'wiiu', 'xbox']);

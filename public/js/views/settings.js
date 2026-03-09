@@ -95,6 +95,22 @@ window.SettingsView = {
                     </div>
                 </div>
 
+                <!-- Metadata Enrichment -->
+                <div class="settings-section">
+                    <h3>🔍 Metadata Sources</h3>
+                    <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Enrich your library with box art, descriptions, achievements, and manuals from multiple sources.</p>
+
+                    <div class="enrich-buttons">
+                        <button class="btn btn-sm btn-ghost" onclick="SettingsView.runEnrich('nointro')">📋 No-Intro DATs</button>
+                        <button class="btn btn-sm btn-ghost" onclick="SettingsView.runEnrich('screenscraper')">🖼️ ScreenScraper</button>
+                        <button class="btn btn-sm btn-ghost" onclick="SettingsView.runEnrich('igdb')">📖 IGDB</button>
+                        <button class="btn btn-sm btn-ghost" onclick="SettingsView.runEnrich('ra')">🏆 RetroAchievements</button>
+                        <button class="btn btn-sm btn-ghost" onclick="SettingsView.runEnrich('manuals')">📕 Manuals</button>
+                        <button class="btn btn-sm btn-yellow" onclick="SettingsView.runEnrichAll()">⚡ Enrich All</button>
+                    </div>
+                    <div id="enrichProgress" style="margin-top:10px;"></div>
+                </div>
+
                 <!-- System Test ROMs -->
                 <div class="settings-section" id="testRomsSection">
                     <h3>⚙️ System Test ROMs</h3>
@@ -134,8 +150,8 @@ window.SettingsView = {
             }
 
             // Apply scanline toggle
-            document.querySelector('.crt-overlay').style.display =
-                settings.crt_scanlines === 'true' ? '' : 'none';
+            const crtEl = document.querySelector('.crt-overlay');
+            if (crtEl) crtEl.style.display = settings.crt_scanlines === 'true' ? '' : 'none';
 
             // Load test ROMs async
             this.loadTestRoms();
@@ -201,6 +217,65 @@ window.SettingsView = {
         }
     },
 
+    async runEnrich(source) {
+        const el = document.getElementById('enrichProgress');
+        try {
+            const map = {
+                nointro: { fn: () => API.matchNoIntro(), status: () => API.noIntroStatus(), label: 'No-Intro' },
+                screenscraper: { fn: () => API.batchScreenScraper(), status: () => API.screenScraperStatus(), label: 'ScreenScraper' },
+                igdb: { fn: () => API.batchIGDB(), status: () => API.igdbStatus(), label: 'IGDB' },
+                ra: { fn: () => API.batchRA(), status: () => API.raStatus(), label: 'RetroAchievements' },
+                manuals: { fn: () => API.batchManuals(), status: () => API.manualsStatus(), label: 'Manuals' },
+            };
+            const src = map[source];
+            if (!src) return;
+
+            const result = await src.fn();
+            if (result.ok === false) { H.toast(result.message, 'error'); return; }
+            H.toast(`${src.label} started — ${result.message || result.queued + ' ROMs queued'}`, 'success');
+            if (el) el.innerHTML = `<span style="color:var(--teal);font-size:13px;">⏳ ${src.label} running…</span>`;
+            this._pollStatus(src.status, src.label, el);
+        } catch (err) {
+            H.toast(err.message, 'error');
+        }
+    },
+
+    async runEnrichAll() {
+        const el = document.getElementById('enrichProgress');
+        try {
+            const result = await API.enrichAll();
+            if (result.ok === false) { H.toast(result.message, 'error'); return; }
+            H.toast('Enrichment pipeline started', 'success');
+            if (el) el.innerHTML = '<span style="color:var(--teal);font-size:13px;">⏳ Enrichment pipeline running…</span>';
+            this._pollStatus(() => API.enrichStatus(), 'Enrichment', el);
+        } catch (err) {
+            H.toast(err.message, 'error');
+        }
+    },
+
+    _pollStatus(statusFn, label, el) {
+        const poll = async () => {
+            try {
+                const s = await statusFn();
+                if (s.running) {
+                    const pct = s.total ? Math.round((s.processed / s.total) * 100) : 0;
+                    const detail = s.currentSource ? ` — ${s.currentSource}` : (s.currentRom ? ` — ${s.currentRom}` : '');
+                    if (el) el.innerHTML = `<div style="font-size:13px;color:var(--teal);">⏳ ${label}: ${s.processed || s.currentIndex || 0}/${s.total || s.totalSources || '?'} (${pct}%)${detail}</div>
+                        <div style="height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:var(--teal);transition:width 0.3s;"></div>
+                        </div>`;
+                    setTimeout(poll, 2000);
+                } else {
+                    if (el) el.innerHTML = `<span style="color:var(--green, #4CAF50);font-size:13px;">✅ ${label} complete!</span>`;
+                    H.toast(`${label} complete!`, 'success');
+                }
+            } catch {
+                if (el) el.innerHTML = '';
+            }
+        };
+        setTimeout(poll, 2000);
+    },
+
     async toggleSetting(key, el) {
         const isOn = el.classList.contains('on');
         const newVal = isOn ? 'false' : 'true';
@@ -209,7 +284,8 @@ window.SettingsView = {
             el.classList.toggle('on');
 
             if (key === 'crt_scanlines') {
-                document.querySelector('.crt-overlay').style.display = newVal === 'true' ? '' : 'none';
+                const crt = document.querySelector('.crt-overlay');
+                if (crt) crt.style.display = newVal === 'true' ? '' : 'none';
             }
             if (key === 'sound_effects') {
                 SFX.setEnabled(newVal === 'true');

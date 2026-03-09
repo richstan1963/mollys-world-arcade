@@ -147,7 +147,7 @@ CREATE INDEX IF NOT EXISTS idx_achievements_player ON achievements(player_id);
 
 function seedSystems(database) {
     const insert = database.prepare(`
-        INSERT OR IGNORE INTO systems (id, name, short_name, emulatorjs_core, extensions, libretro_dir, bios_files, color, sort_order)
+        INSERT OR REPLACE INTO systems (id, name, short_name, emulatorjs_core, extensions, libretro_dir, bios_files, color, sort_order)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
@@ -237,15 +237,21 @@ function seedDefaults(database) {
     insert.run('crt_scanlines', 'true');
     insert.run('default_rom_path', CONFIG.ROMS_DIR);
 
-    // Add default ROM path as a scan path
-    const addPath = database.prepare('INSERT OR IGNORE INTO scan_paths (path) VALUES (?)');
-    addPath.run(CONFIG.ROMS_DIR);
+    // Add default ROM path as a scan path only if none exist yet
+    const existing = database.prepare('SELECT COUNT(*) as c FROM scan_paths').get();
+    if (existing.c === 0) {
+        database.prepare('INSERT INTO scan_paths (path) VALUES (?)').run(CONFIG.ROMS_DIR);
+    }
 }
 
 export function initDB() {
     db = new Database(CONFIG.DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
+    // Performance: 64MB cache, memory-mapped I/O, temp tables in memory
+    db.pragma('cache_size = -64000');
+    db.pragma('mmap_size = 268435456');
+    db.pragma('temp_store = MEMORY');
     db.exec(SCHEMA);
     // Migrations — add columns that might be missing on existing DBs
     try { db.exec("ALTER TABLE players ADD COLUMN preferences TEXT DEFAULT '{}'"); } catch {}
@@ -615,17 +621,62 @@ export function initDB() {
     try { db.exec('CREATE INDEX IF NOT EXISTS idx_ph_player_date ON play_history(player_id, started_at DESC)'); } catch {}
 
     // V8: Game Intelligence — AI-generated bios and gameplay guides
+    // Keyed by game_title so one bio serves all systems (e.g. "Killer Instinct" across SNES, Arcade, GB)
     db.exec(`CREATE TABLE IF NOT EXISTS game_intel (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        rom_id       INTEGER NOT NULL REFERENCES roms(id) ON DELETE CASCADE,
+        game_title   TEXT NOT NULL,
         doc_type     TEXT NOT NULL DEFAULT 'bio' CHECK(doc_type IN ('bio','guide','trivia','movelist')),
         content_md   TEXT NOT NULL,
         model        TEXT,
         tokens_used  INTEGER,
         generated_at TEXT DEFAULT (datetime('now')),
-        UNIQUE(rom_id, doc_type)
+        UNIQUE(game_title, doc_type)
     )`);
-    try { db.exec('CREATE INDEX IF NOT EXISTS idx_intel_rom ON game_intel(rom_id)'); } catch {}
+    try { db.exec('CREATE INDEX IF NOT EXISTS idx_intel_title ON game_intel(game_title)'); } catch {}
+    // Migration: drop old rom_id-based table if it exists (was never populated)
+    try {
+        const hasRomId = db.prepare("SELECT COUNT(*) as n FROM pragma_table_info('game_intel') WHERE name='rom_id'").get().n;
+        if (hasRomId) {
+            db.exec('DROP TABLE game_intel');
+            db.exec(`CREATE TABLE game_intel (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_title   TEXT NOT NULL,
+                doc_type     TEXT NOT NULL DEFAULT 'bio' CHECK(doc_type IN ('bio','guide','trivia','movelist')),
+                content_md   TEXT NOT NULL,
+                model        TEXT,
+                tokens_used  INTEGER,
+                generated_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(game_title, doc_type)
+            )`);
+            db.exec('CREATE INDEX IF NOT EXISTS idx_intel_title ON game_intel(game_title)');
+        }
+    } catch {}
+
+    // V9: Genre normalization — merge duplicates into canonical names
+    const GENRE_NORMALIZE = {
+        'Beat-em-up':       'Beat em Up',
+        'Action/RPG':       'Action RPG',
+        'Action/Platform':  'Platformer',
+        'Action/Puzzle':    'Puzzle',
+        'Wrestling/Fighting': 'Fighting',
+        'Racing/Shooter':   'Shooter',
+        'Run-and-Gun':      'Shooter',
+    };
+    for (const [from, to] of Object.entries(GENRE_NORMALIZE)) {
+        try { db.prepare('UPDATE metadata SET genre = ? WHERE genre = ?').run(to, from); } catch {}
+    }
+
+    // V10: Purge macOS resource fork entries (._filename) — fake ROMs from macOS metadata
+    try {
+        const forkCount = db.prepare("SELECT COUNT(*) as c FROM roms WHERE filename LIKE '.__%'").get();
+        if (forkCount.c > 0) {
+            // Delete metadata rows for forks first (FK constraint)
+            db.prepare("DELETE FROM metadata WHERE rom_id IN (SELECT id FROM roms WHERE filename LIKE '.__%')").run();
+            // Delete the fork ROM entries
+            const result = db.prepare("DELETE FROM roms WHERE filename LIKE '.__%'").run();
+            console.log(`[db] Purged ${result.changes} macOS resource fork entries`);
+        }
+    } catch (e) { console.error('[db] Fork purge error:', e.message); }
 
     // V6: Chat Messages (global, clan, DM channels)
     db.exec(`CREATE TABLE IF NOT EXISTS chat_messages (
@@ -737,6 +788,27 @@ export function initDB() {
     try {
         db.exec("ALTER TABLE players ADD COLUMN theme TEXT DEFAULT 'retro'");
     } catch { /* column already exists */ }
+
+    // V9: Metadata enrichment — extra columns
+    try { db.exec("ALTER TABLE metadata ADD COLUMN developer TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN screenshots TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN manual_url TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN igdb_id INTEGER"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN screenscraper_id INTEGER"); } catch {}
+
+    // V9: RetroAchievements per-game stats
+    db.exec(`CREATE TABLE IF NOT EXISTS retro_achievements (
+        rom_id INTEGER PRIMARY KEY REFERENCES roms(id) ON DELETE CASCADE,
+        ra_game_id INTEGER,
+        achievement_count INTEGER DEFAULT 0,
+        ra_icon_url TEXT,
+        fetched_at TEXT DEFAULT (datetime('now'))
+    )`);
+
+    // Performance indexes for common queries
+    db.exec('CREATE INDEX IF NOT EXISTS idx_metadata_genre ON metadata(genre)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_history_player ON play_history(player_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_roms_source ON roms(source)');
 
     seedSystems(db);
     seedPlayers(db);

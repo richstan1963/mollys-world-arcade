@@ -34,6 +34,9 @@ router.post('/scrape', requireKey, (req, res) => {
         return res.status(409).json({ error: 'Scrape already running', started: activeJob.started });
     }
 
+    // Reserve slot immediately to prevent race condition
+    activeJob = { reserving: true };
+
     const { systems = 'all' } = req.body;
     const systemArgs = systems === 'all' ? [] : (Array.isArray(systems) ? systems : [systems]);
 
@@ -45,7 +48,13 @@ router.post('/scrape', requireKey, (req, res) => {
     };
 
     const args = [SCRAPER, ...systemArgs];
-    const proc = spawn(process.execPath, args, { env, cwd: path.join(__dirname, '..', '..') });
+    let proc;
+    try {
+        proc = spawn(process.execPath, args, { env, cwd: path.join(__dirname, '..', '..') });
+    } catch (err) {
+        activeJob = null;
+        return res.status(500).json({ error: err.message });
+    }
 
     activeJob = {
         proc,
@@ -120,17 +129,22 @@ router.get('/scrape/stream', requireKey, (req, res) => {
 
     // Pipe future output
     const onData = d => res.write(`data: ${JSON.stringify({ line: d.toString() })}\n\n`);
-    activeJob.proc.stdout.on('data', onData);
-    activeJob.proc.stderr.on('data', onData);
-    activeJob.proc.on('exit', code => {
+    const proc = activeJob.proc;
+    proc.stdout.on('data', onData);
+    proc.stderr.on('data', onData);
+
+    const cleanup = () => {
+        proc.stdout.removeListener('data', onData);
+        proc.stderr.removeListener('data', onData);
+    };
+
+    proc.on('exit', code => {
+        cleanup();
         res.write(`data: ${JSON.stringify({ done: true, exitCode: code })}\n\n`);
         res.end();
     });
 
-    req.on('close', () => {
-        activeJob?.proc?.stdout?.removeListener('data', onData);
-        activeJob?.proc?.stderr?.removeListener('data', onData);
-    });
+    req.on('close', cleanup);
 });
 
 // ── GET /api/admin/storage — disk info ────────────────────────────────────────

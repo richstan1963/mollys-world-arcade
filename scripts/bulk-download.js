@@ -11,7 +11,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROMS_DIR = path.join(__dirname, '..', 'roms');
+const ROMS_DIR = process.env.ARCADE_ROMS_DIR || path.join(__dirname, '..', 'roms');
 
 // Map collection folder names → system IDs
 const FOLDER_TO_SYSTEM = {

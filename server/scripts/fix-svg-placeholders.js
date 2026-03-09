@@ -13,7 +13,7 @@ import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', '..');
-const ARTWORK_DIR = path.join(ROOT, 'artwork');
+const ARTWORK_DIR = process.env.ARCADE_ARTWORK_DIR || path.join(ROOT, 'artwork');
 
 const SYSTEM_COLORS = {
     'nes': '#CE1124', 'snes': '#7B2D8E', 'n64': '#009E60', 'gb': '#8BA858',

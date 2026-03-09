@@ -19,7 +19,7 @@ router.get('/stats', (req, res) => {
         // ── PULSE ──
         const totalRoms = db.prepare('SELECT COUNT(*) as c FROM roms').get().c;
         const totalSystems = db.prepare('SELECT COUNT(DISTINCT system_id) as c FROM roms').get().c;
-        const allSystems = db.prepare('SELECT COUNT(*) as c FROM systems').get().c;
+        const allSystems = totalSystems;
         const totalPlayers = db.prepare('SELECT COUNT(*) as c FROM players').get().c;
         const totalSessions = db.prepare('SELECT COUNT(*) as c FROM play_history').get().c;
         const totalPlayTime = db.prepare('SELECT COALESCE(SUM(duration_seconds),0) as s FROM play_history').get().s;
@@ -71,7 +71,9 @@ router.get('/stats', (req, res) => {
             SELECT s.*,
                 COALESCE((SELECT COUNT(*) FROM roms WHERE system_id = s.id), 0) as rom_count,
                 COALESCE((SELECT COUNT(*) FROM metadata m JOIN roms r ON m.rom_id = r.id WHERE r.system_id = s.id AND m.artwork_path IS NOT NULL), 0) as artwork_count
-            FROM systems s ORDER BY s.sort_order
+            FROM systems s
+            WHERE (SELECT COUNT(*) FROM roms WHERE system_id = s.id) > 0
+            ORDER BY s.sort_order
         `).all();
 
         // ── METADATA / IMAGE PIPELINE ──

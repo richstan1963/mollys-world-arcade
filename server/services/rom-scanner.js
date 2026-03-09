@@ -115,6 +115,9 @@ async function collectFiles(dirPath, forcedSystem, depth = 0) {
             const subFiles = await collectFiles(fullPath, folderSystem, depth + 1);
             files.push(...subFiles);
         } else if (entry.isFile()) {
+            // Skip macOS resource forks (._filename)
+            if (entry.name.startsWith('._')) continue;
+
             const ext = path.extname(entry.name).toLowerCase();
             const system = forcedSystem || detectSystemFromFolder(path.basename(dirPath)) || EXT_TO_SYSTEM.get(ext);
 

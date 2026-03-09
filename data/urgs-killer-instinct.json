@@ -1,0 +1,405 @@
+{
+  "schema": "URGS-1.0",
+  "entity_type": "video_game",
+
+  "metadata": {
+    "title": "Killer Instinct",
+    "series": "Killer Instinct",
+    "genre": "Fighting",
+    "subgenre": "2D Fighter with pre-rendered 3D sprites",
+    "developer": "Rare Ltd.",
+    "publisher": "Midway (Arcade), Nintendo (Console)",
+    "release_year": 1994,
+    "arcade_board": "Midway Wolf Unit (R4600 MIPS CPU, custom hardware)",
+    "players": "1-2 (versus)",
+    "camera": "Side view",
+    "control_type": "8-way joystick + 6 attack buttons",
+    "esrb": "T (Teen)",
+    "tagline": "The arcade fighting game that changed combos forever."
+  },
+
+  "release": {
+    "arcade": { "year": 1994, "region": "Worldwide", "notes": "Hard drive-based arcade board, first of its kind" },
+    "snes": { "year": 1995, "region": "Worldwide", "notes": "Bundled with Killer Cuts music CD. Rare feat of SNES hardware." },
+    "game_boy": { "year": 1995, "region": "Worldwide", "notes": "Surprisingly full roster despite hardware limits" }
+  },
+
+  "development": {
+    "engine": "Custom Midway Wolf Unit hardware",
+    "technology": "Pre-rendered 3D character sprites created in SGI workstations, then converted to 2D sprite sheets. Same technique as Donkey Kong Country.",
+    "team_leads": ["Tim Stamper", "Chris Stamper", "Ken Lobb"],
+    "fun_fact": "Killer Instinct was originally a tech demo to showcase what would become the Nintendo Ultra 64 (N64) hardware. The arcade version ran on a hard drive — unheard of at the time.",
+    "development_time": "Approximately 2 years (1992-1994)",
+    "innovations": [
+      "First arcade cabinet to use a hard drive instead of ROM chips",
+      "Pre-rendered 3D sprites at a time when most fighters were hand-drawn",
+      "Combo system that tracked and announced hit counts in real-time",
+      "Double health bar system with No Mercy finishers"
+    ]
+  },
+
+  "platforms": [
+    {
+      "name": "Arcade",
+      "hardware": "Midway Wolf Unit — R4600 MIPS 100MHz, 8MB RAM, custom DMA, hard drive storage",
+      "storage": "Hard drive (not ROM)",
+      "resolution": "320x240",
+      "audio": "DCS (Digital Compression System) stereo sound",
+      "notes": "Definitive version. Full animation frames, CD-quality announcer, cabinet with large speakers."
+    },
+    {
+      "name": "SNES",
+      "hardware": "65C816 @ 3.58MHz, custom DSP",
+      "storage": "32 Mbit (4MB) cartridge",
+      "resolution": "256x224",
+      "notes": "Reduced animation frames and audio samples. Still impressive for SNES. Bundled with Killer Cuts CD."
+    },
+    {
+      "name": "Game Boy",
+      "hardware": "Sharp LR35902 @ 4.19MHz",
+      "storage": "Cartridge",
+      "resolution": "160x144 (4 shades of green)",
+      "notes": "Full roster present. Simplified combos and visuals. Remarkable portable conversion."
+    }
+  ],
+
+  "gameplay": {
+    "objective": "Defeat your opponent by depleting both of their health bars across best-of-three rounds.",
+    "round_structure": "Each fighter has TWO health bars. Deplete the first to start round 2. When the second bar flashes red, Ultra Combos become available.",
+    "signature_system": "Combo chaining — Opener → Auto-Double → Linker → Auto-Double → Ender. Each piece can be light, medium, or fierce strength.",
+    "unique_mechanics": [
+      "Combo Breakers — Interrupt opponent's combo by matching the strength of their auto-double (light breaks light, medium breaks medium, fierce breaks fierce)",
+      "Ultra Combos — Massive cinematic combos available when opponent's 2nd health bar is flashing. Can exceed 20+ hits.",
+      "No Mercy / Danger Moves — Finishing moves performed at the end of the final round. Stage-specific environmental kills.",
+      "Humiliation — Forces opponent to dance uncontrollably. The ultimate disrespect.",
+      "Ultra Ender — End an Ultra Combo early for guaranteed damage instead of risking a drop",
+      "Double health bar system — Each round has two full health bars, making matches longer and more dramatic",
+      "Knockdown recovery — Different wakeup timings create okizeme (wake-up pressure) situations"
+    ],
+    "combo_system_explained": "Combos in KI are not freestyle — they follow a grammar. An Opener starts the combo. Auto-Doubles are automatic two-hit attacks that follow. Linkers are special moves that connect auto-doubles together. Enders finish the combo with bonus damage or knockdown. The defender can break auto-doubles by matching strength, creating a mind game within the combo itself."
+  },
+
+  "controls": {
+    "layout": "6-button fighter (Street Fighter style arrangement)",
+    "buttons": {
+      "quick_punch": "QP — Light punch. Fast, low damage. Hard to break.",
+      "medium_punch": "MP — Medium punch. Balanced speed and damage.",
+      "fierce_punch": "FP — Heavy punch. Slow but powerful. Easiest to react to.",
+      "quick_kick": "QK — Light kick. Fast poke.",
+      "medium_kick": "MK — Medium kick. Good range.",
+      "fierce_kick": "FK — Heavy kick. Slow, high damage."
+    },
+    "movement": {
+      "walk_forward": "Hold joystick toward opponent",
+      "walk_backward": "Hold joystick away from opponent (also blocks standing attacks)",
+      "jump": "Tap up. Can jump forward, backward, or neutral.",
+      "crouch": "Hold down. Crouch blocks low attacks.",
+      "crouch_block": "Hold down-back. Blocks low attacks."
+    },
+    "universal_mechanics": {
+      "throw": "Close range — Forward + FP or FK",
+      "combo_breaker": "During opponent's auto-double — match the strength with your own attack button (QP breaks QP, MP breaks MP, FP breaks FP, same for kicks)"
+    }
+  },
+
+  "systems": {
+    "combo_structure": {
+      "opener": "A special move or jump-in attack that starts a combo. Examples: Jago's Wind Kick, Sabrewulf's Jumping Slash.",
+      "auto_double": "After an opener or linker, pressing any attack button triggers an automatic 2-hit attack. Strength determines speed and damage. Light = fast but weak, Fierce = slow but strong and breakable.",
+      "linker": "A special move performed during a combo to connect auto-doubles. Extends the combo. Each character has unique linkers.",
+      "ender": "A special move that ends the combo. Different enders have different properties — damage ender, launcher ender, battery ender.",
+      "structure": "Opener → Auto-Double → Linker → Auto-Double → Linker → Auto-Double → Ender"
+    },
+    "defense": {
+      "blocking": "Hold back to block high/mid attacks. Hold down-back to block low attacks. No chip damage on normals.",
+      "combo_breaker": "The signature defensive mechanic. During an opponent's auto-double, input the SAME strength attack to break the combo. Requires reads — guess wrong and nothing happens. Guess right and the combo ends immediately.",
+      "spacing": "Keep distance using long-range normals and projectiles. Many characters have tools to control space.",
+      "anti_air": "Use crouching fierce or character-specific anti-air specials to stop jump-ins."
+    },
+    "meter": "No traditional super meter. Ultra Combos are gated by opponent's health (2nd bar flashing). Combo Breakers have no cooldown — pure read-based."
+  },
+
+  "characters": [
+    {
+      "name": "Jago",
+      "archetype": "Balanced warrior monk",
+      "lore": "A Tibetan monk chosen by the Tiger Spirit to fight in the tournament. The 'Ryu' of KI.",
+      "playstyle": "All-around. Good at every range. Strong fireball and uppercut. Best character to learn the game with.",
+      "difficulty": "Beginner",
+      "signature_moves": [
+        { "name": "Endokuken", "input": "QCF + Punch", "description": "Fireball projectile. Controls space." },
+        { "name": "Wind Kick", "input": "QCF + Kick", "description": "Rushing kick. Great opener and linker." },
+        { "name": "Tiger Fury", "input": "DP + Punch", "description": "Rising uppercut. Anti-air and combo ender." },
+        { "name": "Laser Blade", "input": "QCB + Punch", "description": "Spinning blade attack. Good combo linker." }
+      ],
+      "ultra_combo": "Wind Kick opener into extended auto-double chain — 18+ hits",
+      "no_mercy": "Stabs opponent with energy blade",
+      "tip": "Start here. Endokuken to control space, Wind Kick to get in, Tiger Fury to anti-air. Simple but effective."
+    },
+    {
+      "name": "B. Orchid",
+      "archetype": "Secret agent rushdown",
+      "lore": "A secret agent investigating Ultratech. Jago's sister (revealed later in the series).",
+      "playstyle": "Aggressive rushdown with fast mixups. Ichi Ni San gives frame advantage. Flik Flak crosses up.",
+      "difficulty": "Intermediate",
+      "signature_moves": [
+        { "name": "Ichi Ni San", "input": "QCB + Punch", "description": "Quick 1-2-3 punch string. Excellent pressure." },
+        { "name": "Flik Flak", "input": "QCB + Kick", "description": "Flipping kick. Can cross up." },
+        { "name": "Fire Cat", "input": "QCF + Punch", "description": "Flaming cat projectile." },
+        { "name": "Air Buster", "input": "DP + Kick", "description": "Rising knee. Anti-air." }
+      ],
+      "ultra_combo": "Rapid Ichi Ni San chains — 20+ hits",
+      "no_mercy": "Flash attack (infamous — the most controversial No Mercy in the game)",
+      "tip": "Pressure relentlessly. Mix Ichi Ni San with throws. Don't give opponents room to breathe."
+    },
+    {
+      "name": "Glacius",
+      "archetype": "Alien ice creature / zoner",
+      "lore": "An alien being made of ice, captured by Ultratech for the tournament.",
+      "playstyle": "Keep-away and zoning. Long-range normals, ice lance, and cold shoulder to control space. Weak up close.",
+      "difficulty": "Intermediate",
+      "signature_moves": [
+        { "name": "Cold Shoulder", "input": "QCB + Punch", "description": "Charging shoulder rush." },
+        { "name": "Ice Lance", "input": "QCF + Punch", "description": "Long-range ice projectile." },
+        { "name": "Liquidize", "input": "QCB + Kick", "description": "Melts into puddle, reappears elsewhere." },
+        { "name": "Arctic Blast", "input": "DP + Punch", "description": "Anti-air ice spike." }
+      ],
+      "ultra_combo": "Ice Lance into extended freeze combos — 17+ hits",
+      "tip": "Stay at full screen. Zone with Ice Lance. Use Cold Shoulder to punish jumps. Avoid close range."
+    },
+    {
+      "name": "Thunder",
+      "archetype": "Native American grappler",
+      "lore": "A Nez Perce warrior searching for his lost brother Eagle.",
+      "playstyle": "Grappler with command throws and raw power. Slower but devastating damage per hit.",
+      "difficulty": "Intermediate",
+      "signature_moves": [
+        { "name": "Triplax", "input": "HCF + Punch", "description": "Triple axe chop. Devastating." },
+        { "name": "Sammamish", "input": "DP + Kick", "description": "Rising knee attack. Anti-air." },
+        { "name": "Call of Earth", "input": "360 + Punch", "description": "Command grab. Huge damage." },
+        { "name": "Mohawk Press", "input": "QCF + Kick", "description": "Diving attack from air." }
+      ],
+      "ultra_combo": "Command grab into slam chain — 15+ hits",
+      "tip": "Get in close. Tick throws with light attacks into Call of Earth. One good grab can turn the match."
+    },
+    {
+      "name": "Sabrewulf",
+      "archetype": "Werewolf rushdown",
+      "lore": "Count Von Sabrewulf, a nobleman cursed with lycanthropy. Enters the tournament seeking a cure.",
+      "playstyle": "Pure aggression. Fastest character in the game. Relentless pressure with Ragged Edge and Jumping Slash.",
+      "difficulty": "Beginner-Intermediate",
+      "signature_moves": [
+        { "name": "Ragged Edge", "input": "QCF + Punch", "description": "Rapid claw swipe. Great linker." },
+        { "name": "Jumping Slash", "input": "QCF + Kick", "description": "Leaping overhead attack. Opener." },
+        { "name": "Howl", "input": "QCB + All Punches", "description": "Powered-up state. Increased damage." },
+        { "name": "Eclipse", "input": "DP + Punch", "description": "Spinning claw uppercut. Anti-air." }
+      ],
+      "ultra_combo": "Ragged Edge loops — 22+ hits. One of the longest Ultras.",
+      "tip": "Never stop attacking. Sabrewulf's speed lets him overwhelm slower characters. Mix Ragged Edge with throws."
+    },
+    {
+      "name": "Spinal",
+      "archetype": "Skeletal pirate / trickster",
+      "lore": "An ancient warrior resurrected by Ultratech. A living skeleton fueled by dark magic.",
+      "playstyle": "Tricky and unpredictable. Teleports, shield absorb, and curse mechanics. High skill ceiling.",
+      "difficulty": "Advanced",
+      "signature_moves": [
+        { "name": "Soul Sword", "input": "QCF + Punch", "description": "Skull projectile that curses on hit." },
+        { "name": "Skeleport", "input": "QCB + Kick", "description": "Teleport behind opponent." },
+        { "name": "Bone Shield", "input": "QCB + Punch", "description": "Absorbs projectiles for power." },
+        { "name": "Slide", "input": "QCF + Kick", "description": "Low sliding attack." }
+      ],
+      "ultra_combo": "Teleport mixup into curse chain — 19+ hits",
+      "tip": "Play mind games. Teleport to confuse, absorb projectiles with Shield, and curse opponents to limit their options."
+    },
+    {
+      "name": "Fulgore",
+      "archetype": "Cybernetic soldier / all-rounder",
+      "lore": "Ultratech's ultimate weapon. A cybernetic soldier prototype designed to win the tournament.",
+      "playstyle": "Balanced with strong zoning and decent rushdown. Eye Laser for range, Cyber Dash for approach. Jack of all trades.",
+      "difficulty": "Intermediate",
+      "signature_moves": [
+        { "name": "Eye Laser", "input": "QCF + Punch", "description": "Triple laser beam. Excellent zoning." },
+        { "name": "Cyber Dash", "input": "QCF + Kick", "description": "Charging dash attack." },
+        { "name": "Plasma Storm", "input": "DP + Punch", "description": "Rising plasma uppercut. Anti-air." },
+        { "name": "Reflect", "input": "QCB + Punch", "description": "Reflects projectiles." }
+      ],
+      "ultra_combo": "Eye Laser into Cyber Dash chain — 20+ hits",
+      "tip": "Zone with Eye Laser, punish approaches with Plasma Storm, and rush down when you have the life lead."
+    },
+    {
+      "name": "Cinder",
+      "archetype": "Fire elemental / aerial",
+      "lore": "Ben Ferris, a convicted criminal transformed into a being of living flame by Ultratech experiments.",
+      "playstyle": "Aerial dominance. Juggles and air combos. Inferno controls ground, aerial attacks control air.",
+      "difficulty": "Intermediate-Advanced",
+      "signature_moves": [
+        { "name": "Inferno", "input": "QCF + Punch", "description": "Ground flame projectile." },
+        { "name": "Trailblazer", "input": "QCF + Kick (air)", "description": "Air dash engulfed in flames." },
+        { "name": "Fire Flash", "input": "DP + Punch", "description": "Rising flame uppercut." },
+        { "name": "Orbital", "input": "QCB + Kick", "description": "Flaming orbit kick." }
+      ],
+      "ultra_combo": "Juggle into Trailblazer loops — 18+ hits",
+      "tip": "Control the air. Use Inferno to force opponents to jump, then catch them with Trailblazer. Flashy and fun."
+    },
+    {
+      "name": "Riptor",
+      "archetype": "Cybernetic raptor / rushdown",
+      "lore": "A genetically engineered raptor with cybernetic enhancements. Ultratech's biological weapon.",
+      "playstyle": "Low-hitting rushdown. Fast, dangerous close-range mixups. Tail flip and claw rake keep opponents guessing.",
+      "difficulty": "Intermediate",
+      "signature_moves": [
+        { "name": "Claw Rake", "input": "QCF + Punch", "description": "Rapid claw combo." },
+        { "name": "Tail Flip", "input": "QCB + Kick", "description": "Overhead tail attack." },
+        { "name": "Flame Breath", "input": "QCF + Kick", "description": "Short-range fire projectile." },
+        { "name": "Leaping Slash", "input": "DP + Kick", "description": "Jumping claw attack." }
+      ],
+      "ultra_combo": "Claw Rake into Tail Flip chain — 17+ hits",
+      "tip": "Stay low and fast. Mix Claw Rake with Tail Flip overhead. Riptor's low attacks are some of the best in the game."
+    },
+    {
+      "name": "TJ Combo",
+      "archetype": "Boxer / combo specialist",
+      "lore": "A disgraced heavyweight boxing champion with cybernetic arm implants. Fights to reclaim his title.",
+      "playstyle": "Pure rushdown boxing. Fastest combo potential in the game. Tremor for range, Powerline for approach.",
+      "difficulty": "Intermediate",
+      "signature_moves": [
+        { "name": "Powerline", "input": "QCF + Punch", "description": "Charging straight punch." },
+        { "name": "Tremor", "input": "QCF + Kick", "description": "Ground-pound shockwave." },
+        { "name": "Rising Uppercut", "input": "DP + Punch", "description": "Classic boxer uppercut." },
+        { "name": "Rollercoaster", "input": "QCB + Punch", "description": "Body blow combo." }
+      ],
+      "ultra_combo": "Powerline into Rolling Thunder — 24+ hits. Highest hit count Ultra in the game.",
+      "tip": "Get in and stay in. TJ's auto-doubles are fast and hard to break. Pressure with Powerline and throw when they freeze."
+    },
+    {
+      "name": "Eyedol",
+      "archetype": "Two-headed demon / final boss",
+      "lore": "An ancient two-headed demon lord. The final boss of the tournament.",
+      "playstyle": "Overpowered boss character. Massive damage, long reach, teleport stomp. Not balanced for competitive play.",
+      "difficulty": "Easy (because he's broken)",
+      "signature_moves": [
+        { "name": "Mace Swing", "input": "QCF + Punch", "description": "Huge mace attack. Enormous range." },
+        { "name": "Stomp", "input": "QCB + Kick", "description": "Ground stomp that hits anywhere on screen." },
+        { "name": "Fireball", "input": "QCF + Kick", "description": "Large fireball projectile." },
+        { "name": "Headbutt", "input": "DP + Punch", "description": "Rising two-headed headbutt." }
+      ],
+      "ultra_combo": "Mace Swing chain — 16+ hits",
+      "tip": "The boss. Banned in most competitive settings. If you can select him (secret code), enjoy the chaos. Stomp is absurdly good."
+    }
+  ],
+
+  "stages": [
+    { "name": "Jago's Stage — Tiger's Lair", "theme": "Mountain temple at dawn", "visual_features": ["Misty peaks", "Tiger spirit statue", "Prayer flags"], "music_mood": "Spiritual, driving" },
+    { "name": "Orchid's Stage — Rooftop", "theme": "City rooftop at night", "visual_features": ["Neon skyline", "Helicopter searchlights", "Rain"], "music_mood": "Techno-spy" },
+    { "name": "Glacius's Stage — Ice Cave", "theme": "Frozen alien cavern", "visual_features": ["Ice crystals", "Frozen waterfalls", "Alien artifacts"], "music_mood": "Eerie, cold" },
+    { "name": "Thunder's Stage — Desert", "theme": "Canyon under stormy skies", "visual_features": ["Lightning strikes", "Totem poles", "Red rock formations"], "music_mood": "Tribal, powerful" },
+    { "name": "Sabrewulf's Stage — Castle", "theme": "Gothic castle exterior", "visual_features": ["Full moon", "Wolves howling", "Crumbling stonework"], "music_mood": "Gothic horror" },
+    { "name": "Spinal's Stage — Ghost Ship", "theme": "Haunted pirate galleon", "visual_features": ["Skeleton crew", "Storm-tossed seas", "Ghostly green lighting"], "music_mood": "Dark nautical" },
+    { "name": "Fulgore's Stage — Factory", "theme": "Ultratech weapons factory", "visual_features": ["Assembly lines", "Sparking machinery", "Industrial lighting"], "music_mood": "Industrial metal" },
+    { "name": "Cinder's Stage — Volcano", "theme": "Volcanic crater", "visual_features": ["Lava flows", "Eruptions", "Heat shimmer"], "music_mood": "Intense, fiery" },
+    { "name": "Riptor's Stage — Lab", "theme": "Ultratech genetics lab", "visual_features": ["Containment tubes", "Failed experiments", "Green lighting"], "music_mood": "Sci-fi horror" },
+    { "name": "TJ Combo's Stage — Arena", "theme": "Underground fight arena", "visual_features": ["Crowd cheering", "Spotlights", "Boxing ring"], "music_mood": "Hip-hop, hype" },
+    { "name": "Eyedol's Stage — Bridge of Doom", "theme": "Hellish stone bridge", "visual_features": ["Fire pits", "Demon statues", "Red sky"], "music_mood": "Dark orchestral" }
+  ],
+
+  "versions": [
+    { "platform": "Arcade v1.0", "differences": "Original release. Some infinite combos possible." },
+    { "platform": "Arcade v1.5D", "differences": "Rebalanced. Infinites removed. Tournament standard." },
+    { "platform": "SNES", "differences": "Reduced animation frames. Simplified stages. Fewer voice samples. Added training mode. Bundled with Killer Cuts CD." },
+    { "platform": "Game Boy", "differences": "Monochrome. Simplified combos. All 11 characters present. Impressive for the hardware." }
+  ],
+
+  "strategy": {
+    "beginner": [
+      "Start with Jago. His moveset is straightforward and teaches KI fundamentals.",
+      "Learn ONE opener for your character. Wind Kick (Jago) or Ragged Edge (Sabrewulf) are good starters.",
+      "Practice short combos first: Opener → Auto-Double → Ender. Resist the urge to extend.",
+      "Block! Hold back to block high, down-back to block low. Many beginners never block.",
+      "Learn to combo break. Listen for the auto-double sound — if it's slow, it's fierce. If it's fast, it's quick."
+    ],
+    "intermediate": [
+      "Extend combos: Opener → Auto-Double → Linker → Auto-Double → Ender. This doubles your damage.",
+      "Mix auto-double strengths to make combo breaking harder. Alternate light and fierce.",
+      "Learn your character's anti-air. Stopping jump-ins is crucial in KI.",
+      "Use throws as a mixup tool. If the opponent is blocking too much, throw them.",
+      "Study your opponent's patterns. Do they always break fierce? Then use light auto-doubles."
+    ],
+    "advanced": [
+      "Bait combo breakers by intentionally pausing in your combo. If they mash break, punish.",
+      "Learn Ultra Combo timing. Start the Ultra when the 2nd health bar is flashing — too early and it won't activate.",
+      "Master Opener → Manuals (manual auto-doubles with precise timing) for unbreakable combo extensions.",
+      "Use stage positioning. Corner carry with combos gives you better okizeme (wake-up pressure).",
+      "Study matchup-specific strategies. Each character pairing has different optimal ranges and punishes."
+    ]
+  },
+
+  "cheats": [
+    { "type": "mechanic", "name": "Combo Breaker", "effect": "Interrupt opponent's combo by matching auto-double strength. The most important defensive tool." },
+    { "type": "secret", "name": "Select Eyedol", "effect": "At character select, perform a specific button code to unlock the boss character." },
+    { "type": "secret", "name": "Random Select", "effect": "Hold up and press start at character select for a random fighter." },
+    { "type": "mechanic", "name": "Ultra Combo Activation", "effect": "When opponent's 2nd health bar flashes red, perform your Ultra input during a combo for a devastating finisher." },
+    { "type": "mechanic", "name": "Humiliation", "effect": "End-of-match finisher that forces your opponent to dance. Requires specific input after winning the final round." }
+  ],
+
+  "trivia": [
+    "Killer Instinct was the FIRST arcade game to use a hard drive for storage instead of ROM chips.",
+    "The 'C-C-C-COMBO BREAKER!' announcer call became one of the most iconic sound bites in all of gaming.",
+    "Ken Lobb, the game's design lead, has a gun named after him in GoldenEye 007 — the Klobb.",
+    "The SNES version shipped with the 'Killer Cuts' music CD — a rare pack-in that featured arranged versions of every stage theme.",
+    "Rare used Silicon Graphics Inc. (SGI) workstations to create the pre-rendered 3D character models — the same technology used for Jurassic Park's CGI.",
+    "KI was originally conceived as a tech demo to showcase the upcoming Nintendo Ultra 64 (later renamed N64).",
+    "The announcer's voice was performed by Chris Sutherland, a Rare programmer who also voiced characters in Banjo-Kazooie.",
+    "TJ Combo's name is a play on the real boxer Thomas 'The Hitman' Hearns.",
+    "Eyedol was intentionally overpowered as the final boss. Players developed specific anti-Eyedol strategies involving spacing and patience.",
+    "The attract mode on the arcade cabinet was designed to be as loud and flashy as possible — arcade operators loved it because it drew crowds.",
+    "KI's combo counter would track hits up to 80+ — some extended combos lasted over 15 seconds.",
+    "The game's announcer had over 50 unique voice callouts including 'MONSTER COMBO', 'AWESOME COMBO', 'BLASTER COMBO', and 'KING COMBO'."
+  ],
+
+  "arcade_cabinet": {
+    "controls": "8-way joystick + 6 attack buttons per player (QP, MP, FP, QK, MK, FK)",
+    "layout": "Two-player side-by-side configuration. Japanese-style ball-top joystick.",
+    "display": "25-inch CRT monitor, 320x240 resolution",
+    "audio": "DCS stereo sound system with large dedicated speakers mounted in the cabinet",
+    "features": [
+      "Hard drive-based storage (revolutionary for 1994)",
+      "Large top-mounted speakers for booming announcer audio",
+      "Attract mode with full combo showcases and character intros",
+      "Coin-op with adjustable difficulty settings for operators",
+      "Cabinet art featuring all main characters in action poses"
+    ],
+    "notable": "The loud announcer and speaker system made KI cabinets the noisiest machines in any arcade. You could hear 'ULTRA COMBO!' from across the room."
+  },
+
+  "cultural_impact": {
+    "iconic_phrases": [
+      "C-C-C-COMBO BREAKER!",
+      "ULTRA COMBO!",
+      "SUPREME VICTORY!",
+      "MONSTER COMBO!",
+      "AWESOME COMBO!",
+      "HUMILIATION!"
+    ],
+    "influence_on_genre": "KI's combo system influenced virtually every fighting game that followed. The concept of structured combo routes (opener/linker/ender) became standard. The combo breaker mechanic introduced meaningful defensive counterplay during combos — something Street Fighter didn't have.",
+    "legacy": "Spawned Killer Instinct 2 (arcade, 1996), Killer Instinct Gold (N64, 1996), and a critically acclaimed Xbox One reboot (2013) by Double Helix / Iron Galaxy. The franchise has remained relevant for 30 years.",
+    "in_popular_culture": "'Combo Breaker' became internet slang used far beyond gaming. The phrase appears in memes, sports commentary, and everyday conversation to mean 'interrupting a streak.' FGC (Fighting Game Community) major tournament 'Combo Breaker' is named after this mechanic.",
+    "soundtrack": "Killer Cuts (the pack-in SNES CD) is considered one of the best fighting game soundtracks. Tracks like 'The Way U Move' (Orchid) and 'K.I. Feeling' (main theme) have a cult following."
+  },
+
+  "guide_generation": {
+    "chapter_template": [
+      "introduction",
+      "mechanics",
+      "controls",
+      "characters",
+      "strategy",
+      "trivia",
+      "legacy"
+    ],
+    "target_length_per_chapter": 900,
+    "tone": "arcade documentary",
+    "style": "human narrative, not listicle",
+    "voice": "Write like you're a veteran arcade player who was THERE in 1994, telling stories to the next generation. Mix facts with atmosphere. Make the reader feel the quarters on the cabinet, the crowd behind them, the announcer shaking the speakers."
+  }
+}

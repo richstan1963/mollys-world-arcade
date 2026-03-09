@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "ywa-server",
+      "name": "ywa",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server/index.js"],
+      "runtimeArgs": ["--env-file=.env", "server/index.js"],
       "port": 3000,
       "autoPort": false
     }

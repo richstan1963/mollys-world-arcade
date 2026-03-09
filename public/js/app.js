@@ -349,6 +349,9 @@ window.arcade = {
                 ? `EJS_gameName = '${config.filename.replace('.zip', '')}';\n    EJS_threads = false;`
                 : '';
 
+            // PSP (PPSSPP) core requires SharedArrayBuffer / threads support
+            const pspThreadsTag = config.core === 'ppsspp' ? 'EJS_threads = true;' : '';
+
             // Per-system BIOS-missing handler — show toast and build HLE options
             if (config.biosMissing) {
                 if (config.core === 'handy') {
@@ -389,6 +392,7 @@ window.arcade = {
     EJS_color = '${safeColor}';
     EJS_startOnLoaded = true;
     ${gameNameTag}
+    ${pspThreadsTag}
     ${biosConfig}
 
     // ═══ V2 SUPER POWERS ═══

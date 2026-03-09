@@ -11,6 +11,7 @@ router.get('/', (req, res) => {
             FROM systems s
             LEFT JOIN (SELECT system_id, COUNT(*) as count FROM roms GROUP BY system_id) rc
                 ON rc.system_id = s.id
+            WHERE COALESCE(rc.count, 0) > 0
             ORDER BY s.sort_order ASC
         `).all();
 

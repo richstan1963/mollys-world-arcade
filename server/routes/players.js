@@ -216,19 +216,19 @@ router.get('/:id/stats', (req, res) => {
         LIMIT 4
     `).all(playerId);
 
-    // Arcade Originals — all games + player's best score per game
+    // Arcade Originals — all games + player's best score per game (single query)
     let originalGames = [];
     try {
-        originalGames = db.prepare('SELECT * FROM original_games ORDER BY added_at').all();
-        const bestScoreStmt = db.prepare(
-            'SELECT MAX(score) as best_score, MAX(level) as best_level, COUNT(*) as play_count FROM original_scores WHERE player_id = ? AND game_id = ?'
-        );
-        for (const g of originalGames) {
-            const s = bestScoreStmt.get(playerId, g.id);
-            g.best_score = s?.best_score || 0;
-            g.best_level = s?.best_level || 0;
-            g.play_count = s?.play_count || 0;
-        }
+        originalGames = db.prepare(`
+            SELECT og.*,
+                   COALESCE(MAX(os.score), 0) as best_score,
+                   COALESCE(MAX(os.level), 0) as best_level,
+                   COUNT(os.id) as play_count
+            FROM original_games og
+            LEFT JOIN original_scores os ON os.game_id = og.id AND os.player_id = ?
+            GROUP BY og.id
+            ORDER BY og.added_at
+        `).all(playerId);
     } catch {}
 
     let prefs = {};

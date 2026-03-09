@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const DB_PATH = path.join(ROOT, 'mollys-arcade.db');
-const ARTWORK_DIR = path.join(ROOT, 'artwork');
+const ARTWORK_DIR = process.env.ARCADE_ARTWORK_DIR || path.join(ROOT, 'artwork');
 const CDN_BASE = 'https://thumbnails.libretro.com';
 
 const db = new Database(DB_PATH);

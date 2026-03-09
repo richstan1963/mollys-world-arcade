@@ -17,23 +17,55 @@ const batch = {
     current: null, startedAt: null, finishedAt: null,
 };
 
+// ── Helper: normalize game title for matching ────────────────────────────────
+function normalizeTitle(game) {
+    return (game.title || game.clean_name || game.filename.replace(/\.[^.]+$/, '')).trim();
+}
+
+// ── Helper: gather all systems + metadata for a game title ───────────────────
+function gatherGameInfo(db, gameTitle) {
+    const rows = db.prepare(`
+        SELECT r.system_id, s.name as system_name, m.year, m.publisher, m.genre,
+               m.players, m.description, m.developer
+        FROM roms r
+        LEFT JOIN metadata m ON m.rom_id = r.id
+        LEFT JOIN systems  s ON s.id = r.system_id
+        WHERE COALESCE(m.title, r.clean_name) = ?
+        GROUP BY r.system_id
+        ORDER BY s.sort_order
+    `).all(gameTitle);
+
+    if (!rows.length) return null;
+
+    // Merge best metadata from all systems
+    const systems = rows.map(r => r.system_name || r.system_id);
+    const year = rows.find(r => r.year)?.year || 'unknown year';
+    const publisher = rows.find(r => r.publisher)?.publisher || 'unknown publisher';
+    const developer = rows.find(r => r.developer)?.developer || null;
+    const genre = rows.find(r => r.genre)?.genre || 'unknown genre';
+    const players = rows.find(r => r.players)?.players || '1-2 Players';
+    const desc = rows.find(r => r.description)?.description || '';
+
+    return { systems, year, publisher, developer, genre, players, desc };
+}
+
 // ── Shared: build prompt ──────────────────────────────────────────────────────
-function buildPrompt(game, type) {
-    const gameTitle = game.title || game.clean_name || game.filename.replace(/\.[^.]+$/, '');
-    const year      = game.year      || 'unknown year';
-    const publisher = game.publisher || 'unknown publisher';
-    const platform  = game.system_name || game.system_id;
-    const genre     = game.genre     || 'unknown genre';
-    const players   = game.players   || '1-2 Players';
-    const desc      = game.description ? `\nKnown description: ${game.description}` : '';
+function buildPrompt(gameTitle, info, type) {
+    const platformList = info.systems.join(', ');
+    const devLine = info.developer ? `, developed by ${info.developer}` : '';
+    const descLine = info.desc ? `\nKnown description: ${info.desc}` : '';
 
     if (type === 'bio') {
-        return `You are a passionate video game historian writing for a private family arcade encyclopedia. Write a complete, detailed game biography for "${gameTitle}" (${year}) published by ${publisher} for ${platform}. Genre: ${genre} | ${players}${desc}
+        return `You are a passionate video game historian writing for a private family arcade encyclopedia. Write a complete, detailed game biography for "${gameTitle}" (${info.year}) published by ${info.publisher}${devLine}. Genre: ${info.genre} | ${info.players}
+
+This game appeared on the following platforms: ${platformList}.${descLine}
+
+IMPORTANT: This biography covers the game across ALL its platforms — do not write about just one version. Discuss the original release, notable ports, and differences between versions where relevant.
 
 Format your response in clean markdown. Use ## for main sections, ### for sub-sections, **bold** for key terms, and bullet lists where appropriate.
 
 ## Platform & Specs
-Hardware platform, technical specs, PCB/cartridge details, notable hardware capabilities for this game.
+All platforms this game appeared on. Technical differences between versions — what each platform's hardware brought to the table.
 
 ## Overview
 2-3 paragraphs on what this game is, why it matters, and its place in gaming history.
@@ -62,11 +94,11 @@ One punchy closing paragraph on why this game holds up and deserves a place in a
 Write with enthusiasm and depth. Be accurate — don't fabricate specific facts you're unsure of. Write like a collector who genuinely loves this era of gaming.`;
 
     } else { // guide
-        const isFighter  = /fight|beat|battle|vs|combat|brawl/i.test(genre);
-        const isShooter  = /shoot|shmup|blast|gun/i.test(genre);
-        const isPlatform = /platform|jump|run|adventure/i.test(genre);
-        const isPuzzle   = /puzzle|tetris|block|match/i.test(genre);
-        const isRpg      = /rpg|role|quest/i.test(genre);
+        const isFighter  = /fight|beat|battle|vs|combat|brawl/i.test(info.genre);
+        const isShooter  = /shoot|shmup|blast|gun/i.test(info.genre);
+        const isPlatform = /platform|jump|run|adventure/i.test(info.genre);
+        const isPuzzle   = /puzzle|tetris|block|match/i.test(info.genre);
+        const isRpg      = /rpg|role|quest/i.test(info.genre);
 
         const lastSection = isFighter  ? '## Character Breakdown\nTips and strategy for each playable character.'
                           : isShooter  ? '## Enemy & Boss Guide\nPatterns and strategies for key enemies and bosses.'
@@ -75,7 +107,11 @@ Write with enthusiasm and depth. Be accurate — don't fabricate specific facts 
                           : isRpg      ? '## Character & Progression Guide\nBuild advice and key story choices.'
                           :              '## Modes & Progression\nGame modes, unlockables, and long-term goals.';
 
-        return `You are a video game strategy writer for a private family arcade. Write a complete gameplay guide for "${gameTitle}" (${year}) for ${platform}. Genre: ${genre} | ${players}${desc}
+        return `You are a video game strategy writer for a private family arcade. Write a complete gameplay guide for "${gameTitle}" (${info.year}). Genre: ${info.genre} | ${info.players}
+
+Available on: ${platformList}.${descLine}
+
+If controls differ significantly across platforms, note the differences. Otherwise focus on general gameplay.
 
 Format in clean markdown with ## main headers, ### sub-headers, bullet lists, and numbered steps where useful.
 
@@ -194,11 +230,14 @@ router.post('/batch', async (req, res) => {
     const typeList = types.filter(t => ['bio', 'guide'].includes(t));
     if (typeList.length === 0) return res.status(400).json({ error: 'No valid types requested' });
 
+    // Build queue of unique game titles that still need intel
     const unionParts = typeList.map(t =>
-        `SELECT r.id as romId, '${t}' as type FROM roms r
-         WHERE NOT EXISTS (SELECT 1 FROM game_intel WHERE rom_id = r.id AND doc_type = '${t}')`
+        `SELECT DISTINCT COALESCE(m.title, r.clean_name) as game_title, '${t}' as type
+         FROM roms r LEFT JOIN metadata m ON m.rom_id = r.id
+         WHERE COALESCE(m.title, r.clean_name) IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM game_intel WHERE game_title = COALESCE(m.title, r.clean_name) AND doc_type = '${t}')`
     );
-    const queue = db.prepare(`${unionParts.join(' UNION ALL ')} ORDER BY romId, type`).all();
+    const queue = db.prepare(`${unionParts.join(' UNION ALL ')} ORDER BY game_title, type`).all();
 
     if (queue.length === 0) {
         return res.json({
@@ -218,36 +257,26 @@ router.post('/batch', async (req, res) => {
 
     // Background loop — runs after response is sent
     (async () => {
-        const gameStmt = db.prepare(`
-            SELECT r.id, r.clean_name, r.filename, r.system_id,
-                   m.title, m.year, m.publisher, m.genre, m.players, m.region, m.description,
-                   s.name as system_name
-            FROM roms r
-            LEFT JOIN metadata m ON m.rom_id = r.id
-            LEFT JOIN systems  s ON s.id = r.system_id
-            WHERE r.id = ?
-        `);
         const insertStmt = db.prepare(`
-            INSERT OR REPLACE INTO game_intel (rom_id, doc_type, content_md, model, tokens_used)
+            INSERT OR REPLACE INTO game_intel (game_title, doc_type, content_md, model, tokens_used)
             VALUES (?, ?, ?, ?, ?)
         `);
 
-        for (const { romId, type } of queue) {
+        for (const { game_title, type } of queue) {
             if (batch.stop) break;
 
-            const game = gameStmt.get(romId);
-            if (!game) { batch.done++; continue; }
+            const info = gatherGameInfo(db, game_title);
+            if (!info) { batch.done++; continue; }
 
-            const gameTitle = game.title || game.clean_name || game.filename.replace(/\.[^.]+$/, '');
-            batch.current = { romId, type, title: gameTitle };
+            batch.current = { title: game_title, type, systems: info.systems.length };
 
             try {
-                const prompt = buildPrompt(game, type);
+                const prompt = buildPrompt(game_title, info, type);
                 const { content, modelName, tokensUsed } = await callAI(prompt);
-                insertStmt.run(romId, type, content, modelName, tokensUsed);
-                console.log(`[Intel Batch] ${batch.done + 1}/${batch.total} ✓ ${type} — "${gameTitle}" (${tokensUsed} tok)`);
+                insertStmt.run(game_title, type, content, modelName, tokensUsed);
+                console.log(`[Intel Batch] ${batch.done + 1}/${batch.total} ✓ ${type} — "${game_title}" on ${info.systems.length} systems (${tokensUsed} tok)`);
             } catch (err) {
-                console.error(`[Intel Batch] ✗ ROM ${romId} ${type}:`, err.message);
+                console.error(`[Intel Batch] ✗ "${game_title}" ${type}:`, err.message);
                 batch.errors++;
             }
 
@@ -275,18 +304,19 @@ router.get('/config', (req, res) => {
 // ── GET /api/intel/stats — aggregate counts ────────────────────────────────────
 router.get('/stats', (req, res) => {
     const db   = getDB();
-    const total  = db.prepare('SELECT COUNT(*) as n FROM roms').get().n;
-    const bios   = db.prepare("SELECT COUNT(DISTINCT rom_id) as n FROM game_intel WHERE doc_type='bio'").get().n;
-    const guides = db.prepare("SELECT COUNT(DISTINCT rom_id) as n FROM game_intel WHERE doc_type='guide'").get().n;
+    // Count unique game titles (not ROMs — one title = one bio)
+    const total  = db.prepare('SELECT COUNT(DISTINCT COALESCE(m.title, r.clean_name)) as n FROM roms r LEFT JOIN metadata m ON m.rom_id = r.id WHERE COALESCE(m.title, r.clean_name) IS NOT NULL').get().n;
+    const bios   = db.prepare("SELECT COUNT(DISTINCT game_title) as n FROM game_intel WHERE doc_type='bio'").get().n;
+    const guides = db.prepare("SELECT COUNT(DISTINCT game_title) as n FROM game_intel WHERE doc_type='guide'").get().n;
     const both   = db.prepare(
         `SELECT COUNT(*) as n FROM (
-            SELECT rom_id FROM game_intel WHERE doc_type='bio'
+            SELECT game_title FROM game_intel WHERE doc_type='bio'
             INTERSECT
-            SELECT rom_id FROM game_intel WHERE doc_type='guide'
+            SELECT game_title FROM game_intel WHERE doc_type='guide'
         )`
     ).get().n;
     res.json({
-        total, bios, guides, both,
+        total_titles: total, bios, guides, both,
         missing_bio: total - bios, missing_guide: total - guides, missing_both: total - both,
     });
 });
@@ -310,44 +340,61 @@ router.get('/games', (req, res) => {
     }
 
     const filterSQL = {
-        missing_bio:   'bio.rom_id IS NULL',
-        missing_guide: 'guide.rom_id IS NULL',
-        missing_both:  'bio.rom_id IS NULL AND guide.rom_id IS NULL',
-        complete:      'bio.rom_id IS NOT NULL AND guide.rom_id IS NOT NULL',
+        missing_bio:   'bio.game_title IS NULL',
+        missing_guide: 'guide.game_title IS NULL',
+        missing_both:  'bio.game_title IS NULL AND guide.game_title IS NULL',
+        complete:      'bio.game_title IS NOT NULL AND guide.game_title IS NOT NULL',
     };
     if (filterSQL[filter]) conds.push(filterSQL[filter]);
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
+    // Group by game title to show unique titles, not per-ROM dupes
     const baseFrom = `
-        FROM roms r
-        LEFT JOIN metadata m ON m.rom_id = r.id
-        LEFT JOIN systems  s ON s.id = r.system_id
-        LEFT JOIN (SELECT rom_id FROM game_intel WHERE doc_type='bio')   bio   ON bio.rom_id   = r.id
-        LEFT JOIN (SELECT rom_id FROM game_intel WHERE doc_type='guide') guide ON guide.rom_id = r.id
+        FROM (
+            SELECT COALESCE(m.title, r.clean_name) as game_title,
+                   MIN(r.id) as id, MIN(r.clean_name) as clean_name, MIN(r.filename) as filename,
+                   GROUP_CONCAT(DISTINCT s.name) as system_names,
+                   COUNT(DISTINCT r.system_id) as system_count
+            FROM roms r
+            LEFT JOIN metadata m ON m.rom_id = r.id
+            LEFT JOIN systems  s ON s.id = r.system_id
+            WHERE COALESCE(m.title, r.clean_name) IS NOT NULL
+            GROUP BY COALESCE(m.title, r.clean_name)
+        ) g
+        LEFT JOIN (SELECT game_title FROM game_intel WHERE doc_type='bio')   bio   ON bio.game_title   = g.game_title
+        LEFT JOIN (SELECT game_title FROM game_intel WHERE doc_type='guide') guide ON guide.game_title = g.game_title
         ${where}
     `;
 
     const total = db.prepare(`SELECT COUNT(*) as n ${baseFrom}`).get(...params).n;
     const games = db.prepare(`
-        SELECT r.id, r.clean_name, r.filename, r.system_id,
-               m.title, s.name as system_name,
-               CASE WHEN bio.rom_id   IS NOT NULL THEN 1 ELSE 0 END as has_bio,
-               CASE WHEN guide.rom_id IS NOT NULL THEN 1 ELSE 0 END as has_guide
+        SELECT g.id, g.clean_name, g.filename, g.game_title,
+               g.system_names, g.system_count,
+               CASE WHEN bio.game_title   IS NOT NULL THEN 1 ELSE 0 END as has_bio,
+               CASE WHEN guide.game_title IS NOT NULL THEN 1 ELSE 0 END as has_guide
         ${baseFrom}
-        ORDER BY COALESCE(m.title, r.clean_name)
+        ORDER BY g.game_title
         LIMIT ? OFFSET ?
     `).all(...params, limit, offset);
 
     res.json({ games, total, page, limit, pages: Math.ceil(total / limit) });
 });
 
-// ── GET /api/intel/:romId — all docs for a game ───────────────────────────────
+// ── GET /api/intel/:romId — all docs for a game (looks up by title) ──────────
 router.get('/:romId', (req, res) => {
     const db   = getDB();
+    // Resolve ROM → game title, then look up intel by title
+    const rom = db.prepare(`
+        SELECT COALESCE(m.title, r.clean_name) as game_title
+        FROM roms r LEFT JOIN metadata m ON m.rom_id = r.id
+        WHERE r.id = ?
+    `).get(req.params.romId);
+    if (!rom?.game_title) return res.json({});
+
     const rows = db.prepare(
-        'SELECT doc_type, content_md, model, tokens_used, generated_at FROM game_intel WHERE rom_id = ?'
-    ).all(req.params.romId);
+        'SELECT doc_type, content_md, model, tokens_used, generated_at FROM game_intel WHERE game_title = ?'
+    ).all(rom.game_title);
     const result = {};
     for (const row of rows) result[row.doc_type] = row;
     res.json(result);
@@ -356,9 +403,16 @@ router.get('/:romId', (req, res) => {
 // ── GET /api/intel/:romId/:type — one doc ─────────────────────────────────────
 router.get('/:romId/:type', (req, res) => {
     const db  = getDB();
+    const rom = db.prepare(`
+        SELECT COALESCE(m.title, r.clean_name) as game_title
+        FROM roms r LEFT JOIN metadata m ON m.rom_id = r.id
+        WHERE r.id = ?
+    `).get(req.params.romId);
+    if (!rom?.game_title) return res.status(404).json({ error: 'Not found' });
+
     const row = db.prepare(
-        'SELECT doc_type, content_md, model, tokens_used, generated_at FROM game_intel WHERE rom_id = ? AND doc_type = ?'
-    ).get(req.params.romId, req.params.type);
+        'SELECT doc_type, content_md, model, tokens_used, generated_at FROM game_intel WHERE game_title = ? AND doc_type = ?'
+    ).get(rom.game_title, req.params.type);
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json(row);
 });
@@ -366,7 +420,13 @@ router.get('/:romId/:type', (req, res) => {
 // ── DELETE /api/intel/:romId/:type — force regenerate ────────────────────────
 router.delete('/:romId/:type', (req, res) => {
     const db = getDB();
-    db.prepare('DELETE FROM game_intel WHERE rom_id = ? AND doc_type = ?').run(req.params.romId, req.params.type);
+    const rom = db.prepare(`
+        SELECT COALESCE(m.title, r.clean_name) as game_title
+        FROM roms r LEFT JOIN metadata m ON m.rom_id = r.id
+        WHERE r.id = ?
+    `).get(req.params.romId);
+    if (!rom?.game_title) return res.status(404).json({ error: 'Not found' });
+    db.prepare('DELETE FROM game_intel WHERE game_title = ? AND doc_type = ?').run(rom.game_title, req.params.type);
     res.json({ ok: true });
 });
 
@@ -375,8 +435,14 @@ router.put('/:romId/:type', (req, res) => {
     const { content_md } = req.body;
     if (!content_md) return res.status(400).json({ error: 'content_md required' });
     const db = getDB();
-    db.prepare(`INSERT OR REPLACE INTO game_intel (rom_id, doc_type, content_md, model)
-                VALUES (?, ?, ?, 'manual')`).run(req.params.romId, req.params.type, content_md);
+    const rom = db.prepare(`
+        SELECT COALESCE(m.title, r.clean_name) as game_title
+        FROM roms r LEFT JOIN metadata m ON m.rom_id = r.id
+        WHERE r.id = ?
+    `).get(req.params.romId);
+    if (!rom?.game_title) return res.status(404).json({ error: 'Not found' });
+    db.prepare(`INSERT OR REPLACE INTO game_intel (game_title, doc_type, content_md, model)
+                VALUES (?, ?, ?, 'manual')`).run(rom.game_title, req.params.type, content_md);
     res.json({ ok: true });
 });
 
@@ -394,30 +460,28 @@ router.post('/:romId/generate', async (req, res) => {
     }
 
     const db   = getDB();
-    const game = db.prepare(`
-        SELECT r.id, r.clean_name, r.filename, r.system_id,
-               m.title, m.year, m.publisher, m.genre, m.players, m.region, m.description,
-               s.name as system_name
-        FROM roms r
-        LEFT JOIN metadata m ON m.rom_id = r.id
-        LEFT JOIN systems  s ON s.id = r.system_id
+    const rom = db.prepare(`
+        SELECT COALESCE(m.title, r.clean_name) as game_title
+        FROM roms r LEFT JOIN metadata m ON m.rom_id = r.id
         WHERE r.id = ?
     `).get(req.params.romId);
 
-    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (!rom?.game_title) return res.status(404).json({ error: 'Game not found' });
 
-    const gameTitle = game.title || game.clean_name || game.filename.replace(/\.[^.]+$/, '');
+    const gameTitle = rom.game_title;
+    const info = gatherGameInfo(db, gameTitle);
+    if (!info) return res.status(404).json({ error: 'No game data found' });
 
     try {
-        const prompt = buildPrompt(game, type);
+        const prompt = buildPrompt(gameTitle, info, type);
         const { content, modelName, tokensUsed } = await callAI(prompt);
 
-        db.prepare(`INSERT OR REPLACE INTO game_intel (rom_id, doc_type, content_md, model, tokens_used)
+        db.prepare(`INSERT OR REPLACE INTO game_intel (game_title, doc_type, content_md, model, tokens_used)
                     VALUES (?, ?, ?, ?, ?)`).run(
-            req.params.romId, type, content, modelName, tokensUsed
+            gameTitle, type, content, modelName, tokensUsed
         );
 
-        console.log(`[Intel] Generated ${type} for ROM ${req.params.romId} — "${gameTitle}" via ${INTEL_PROVIDER} (${tokensUsed} tok)`);
+        console.log(`[Intel] Generated ${type} for "${gameTitle}" on ${info.systems.length} systems via ${INTEL_PROVIDER} (${tokensUsed} tok)`);
 
         res.json({ doc_type: type, content_md: content, model: modelName, tokens_used: tokensUsed, generated: true });
 

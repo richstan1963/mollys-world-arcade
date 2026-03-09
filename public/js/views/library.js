@@ -1,15 +1,18 @@
 /* Library View — Browse all games with search, filter, sort, pagination */
 window.LibraryView = {
-    state: { page: 1, search: '', system: '', sort: 'name', order: 'asc', tag: '' },
+    state: { page: 1, search: '', system: '', sort: 'name', order: 'asc', tag: '', genre: '' },
 
     async render() {
         const app = document.getElementById('app');
 
-        // Check for system/tag filter from URL
+        // Check for system/tag/genre filter from URL
         const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
         if (hashParams.has('system')) this.state.system = hashParams.get('system');
         if (hashParams.has('tag')) this.state.tag = hashParams.get('tag');
         else this.state.tag = '';
+        if (hashParams.has('genre')) this.state.genre = hashParams.get('genre');
+        else if (!this.state.genre) this.state.genre = '';
+        if (hashParams.has('search')) this.state.search = hashParams.get('search');
 
         app.innerHTML = '<div class="loading">Loading...</div>';
 
@@ -20,15 +23,22 @@ window.LibraryView = {
             ]);
 
             const tagTitles = { neogeo: '🔥 Neo Geo Collection', beatemup: '👊 Beat-Em-Ups' };
-            const pageTitle = this.state.tag ? tagTitles[this.state.tag] || 'Game Library' : 'Game Library';
-            const pageSubtitle = this.state.tag
-                ? `${data.total} ${this.state.tag === 'neogeo' ? 'Neo Geo' : 'Beat-Em-Up'} games — MOTU's Favs`
-                : `${data.total} games in your collection`;
+            let pageTitle = 'Game Library';
+            let pageSubtitle = `${data.total} games in your collection`;
+
+            if (this.state.tag) {
+                pageTitle = tagTitles[this.state.tag] || 'Game Library';
+                pageSubtitle = `${data.total} ${this.state.tag === 'neogeo' ? 'Neo Geo' : 'Beat-Em-Up'} games`;
+            } else if (this.state.genre) {
+                pageTitle = `🎭 ${this.state.genre}`;
+                pageSubtitle = `${data.total} ${this.state.genre} games`;
+            }
 
             let html = `
                 <div class="page-header">
                     <h1 class="page-title">${pageTitle}</h1>
                     <p class="page-subtitle">${pageSubtitle}</p>
+                    ${this.state.genre ? `<button class="btn btn-sm btn-ghost" onclick="LibraryView.clearGenre()" style="margin-top:8px">✕ Clear Genre Filter</button>` : ''}
                 </div>
 
                 <div class="toolbar">
@@ -79,6 +89,13 @@ window.LibraryView = {
     filterSystem(val) {
         this.state.system = val;
         this.state.page = 1;
+        this.render();
+    },
+
+    clearGenre() {
+        this.state.genre = '';
+        this.state.page = 1;
+        window.location.hash = '#/library';
         this.render();
     },
 

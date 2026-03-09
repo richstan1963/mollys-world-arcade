@@ -15,7 +15,7 @@ import Database from 'better-sqlite3';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', '..');
 const DB_PATH = path.join(ROOT, 'mollys-arcade.db');
-const ARTWORK_DIR = path.join(ROOT, 'artwork');
+const ARTWORK_DIR = process.env.ARCADE_ARTWORK_DIR || path.join(ROOT, 'artwork');
 const CDN = 'https://thumbnails.libretro.com';
 
 // System → Libretro directory mapping

@@ -16,7 +16,7 @@ import sharp from 'sharp';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', '..');
 const DB_PATH = path.join(ROOT, 'mollys-arcade.db');
-const ARTWORK_DIR = path.join(ROOT, 'artwork');
+const ARTWORK_DIR = process.env.ARCADE_ARTWORK_DIR || path.join(ROOT, 'artwork');
 
 // ══════════════════════════════════════════════════════════════
 // MAME SHORTNAME → FULL TITLE DATABASE

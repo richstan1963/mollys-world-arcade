@@ -10,7 +10,7 @@ router.get('/global', (req, res) => {
 
         const totals = db.prepare(`
             SELECT COUNT(*) as total_roms,
-                   (SELECT COUNT(DISTINCT id) FROM systems) as total_systems,
+                   (SELECT COUNT(DISTINCT system_id) FROM roms) as total_systems,
                    (SELECT COUNT(*) FROM players) as total_players,
                    (SELECT COUNT(*) FROM play_history) as total_plays,
                    (SELECT COALESCE(SUM(duration_seconds), 0) FROM play_history) as total_play_seconds,
@@ -78,8 +78,9 @@ router.get('/systems', (req, res) => {
                    (SELECT COUNT(*) FROM play_history ph JOIN roms r2 ON r2.id = ph.rom_id WHERE r2.system_id = s.id) as play_count,
                    (SELECT COALESCE(SUM(ph2.duration_seconds), 0) FROM play_history ph2 JOIN roms r3 ON r3.id = ph2.rom_id WHERE r3.system_id = s.id) as total_seconds
             FROM systems s
-            LEFT JOIN roms r ON r.system_id = s.id
+            JOIN roms r ON r.system_id = s.id
             GROUP BY s.id
+            HAVING COUNT(r.id) > 0
             ORDER BY play_count DESC
         `).all();
         res.json(stats);

@@ -3,6 +3,7 @@ window.GameView = {
     async render(params) {
         const app = document.getElementById('app');
         const id = params.id || params[0];
+        this._currentRomId = id;
         app.innerHTML = '<div class="loading">Loading...</div>';
 
         try {
@@ -67,31 +68,27 @@ window.GameView = {
                     <div class="game-detail-meta">
                         <div class="game-title-wrap">
                             <h1 class="game-detail-title">${title}</h1>
-                            ${game.publisher ? `<span class="game-maker-tag">by ${H.escHtml(game.publisher)}</span>` : ''}
+                            ${game.publisher || game.developer ? `<span class="game-maker-tag">by ${H.escHtml(game.developer || game.publisher)}${game.developer && game.publisher && game.developer !== game.publisher ? ` · ${H.escHtml(game.publisher)}` : ''}</span>` : ''}
                         </div>
 
-                        ${(game.year || game.genre || game.players || game.region) ? `
+                        ${(game.year || game.genre || game.players || game.region || game.achievement_count) ? `
                         <div class="game-fun-pills">
                             ${game.year ? `<span class="fun-pill">📅 ${H.escHtml(game.year)}</span>` : ''}
                             ${game.genre ? `<span class="fun-pill">🕹️ ${H.escHtml(game.genre)}</span>` : ''}
                             ${game.players ? `<span class="fun-pill">👥 ${H.escHtml(game.players)}</span>` : ''}
                             ${game.region ? `<span class="fun-pill">🌍 ${H.escHtml(game.region)}</span>` : ''}
+                            ${game.achievement_count ? `<span class="fun-pill fun-pill-gold">🏆 ${game.achievement_count} Achievement${game.achievement_count !== 1 ? 's' : ''}</span>` : ''}
                         </div>` : ''}
 
-                        ${game.description ? `
-                        <div class="game-summary-box">
-                            <div class="game-summary-label">📖 The Story</div>
-                            <div class="game-summary-text">${H.escHtml(game.description)}</div>
-                        </div>` : ''}
-
-                        <div class="game-trivia-box">
-                            <div class="game-trivia-header">⚡ Did You Know?</div>
-                            <div class="game-trivia-items">
-                                ${game.year ? `<div class="trivia-item">📅 Released in <strong>${H.escHtml(game.year)}</strong>${getEraQuip(game.year)}</div>` : ''}
-                                ${game.total_play_time > 3600 ? `<div class="trivia-item">🔥 Arcade legends have burned through <strong>${H.formatDuration(game.total_play_time)}</strong> on this one!</div>` : game.total_play_time > 0 ? `<div class="trivia-item">🕹️ Logged <strong>${H.formatDuration(game.total_play_time)}</strong> here so far — keep it going!</div>` : `<div class="trivia-item">🚀 No one has played this yet — <strong>be the first legend!</strong></div>`}
-                                ${game.history && game.history.length > 0 ? `<div class="trivia-item">🏆 Played <strong>${game.history.length} time${game.history.length !== 1 ? 's' : ''}</strong> in this arcade</div>` : ''}
-                                ${game.size_bytes > 209715200 ? `<div class="trivia-item">💾 A chunky <strong>${H.formatBytes(game.size_bytes)}</strong> of gaming goodness</div>` : ''}
-                            </div>
+                        <div class="game-hero-summary" id="heroSummary">
+                            ${game.description
+                                ? `<p class="hero-text">${H.escHtml(game.description)}</p>`
+                                : `<p class="hero-text hero-placeholder">Loading game intel...</p>`
+                            }
+                        </div>
+                        <div class="hero-era-quip">
+                            ${game.year ? `📅 ${H.escHtml(game.year)}${getEraQuip(game.year)}` : ''}
+                            ${game.total_play_time > 3600 ? ` · 🔥 ${H.formatDuration(game.total_play_time)} played` : game.total_play_time > 0 ? ` · 🕹️ ${H.formatDuration(game.total_play_time)} played` : ''}
                         </div>
 
                         <div class="game-detail-actions">
@@ -113,6 +110,7 @@ window.GameView = {
                             <button class="btn btn-ghost btn-sm" onclick="API.fetchArtwork(${game.id}).then(r => { H.toast('Artwork updated', 'success'); GameView.render({id:${game.id}}); }).catch(e => H.toast(e.message, 'error'))">
                                 🖼️ Fetch Art
                             </button>
+                            ${game.manual_url ? `<a class="btn btn-ghost btn-sm" href="${H.escHtml(game.manual_url)}" target="_blank" rel="noopener">📖 View Manual</a>` : ''}
                             <button class="btn btn-ghost btn-sm" onclick="GameView.openReportModal(${game.id}, '${H.escHtml(title).replace(/'/g, "\\'")}')">
                                 🚩 Report
                             </button>
@@ -137,28 +135,35 @@ window.GameView = {
                             </div>
                         </div>
 
-                        <!-- Per-player favorite toggles -->
-                        <div class="player-fav-section">
-                            <div class="player-fav-label">Add to favorites:</div>
-                            <div class="player-fav-pills">
-                                ${favChecks.map(p => `
-                                    <button class="player-fav-pill ${p.isFav ? 'active' : ''}"
-                                            style="--pill-color: ${p.color}"
-                                            onclick="GameView.togglePlayerFav(${p.id}, ${game.id}, this)"
-                                            data-player-id="${p.id}">
-                                        <span class="player-fav-emoji">${p.emoji}</span>
-                                        <span class="player-fav-name">${H.escHtml(p.name)}</span>
-                                    </button>
-                                `).join('')}
+                        <!-- Per-player favorite toggles (collapsed) -->
+                        <details class="game-collapse-section">
+                            <summary class="game-collapse-header">
+                                <span>Add to favorites</span>
+                                ${(() => { const c = favChecks.filter(p => p.isFav).length; return c ? `<span class="collapse-badge">${c} favorited</span>` : ''; })()}
+                            </summary>
+                            <div class="game-collapse-body">
+                                <div class="player-fav-pills">
+                                    ${favChecks.map(p => `
+                                        <button class="player-fav-pill ${p.isFav ? 'active' : ''}"
+                                                style="--pill-color: ${p.color}"
+                                                onclick="GameView.togglePlayerFav(${p.id}, ${game.id}, this)"
+                                                data-player-id="${p.id}">
+                                            <span class="player-fav-emoji">${p.emoji}</span>
+                                            <span class="player-fav-name">${H.escHtml(p.name)}</span>
+                                        </button>
+                                    `).join('')}
+                                </div>
                             </div>
-                        </div>
+                        </details>
 
-                        <!-- Star Ratings -->
-                        <div class="star-rating-section">
-                            <div class="star-rating-label">Rate this game:</div>
-                            <div id="ratingRows"></div>
-                            <div class="star-rating-avg" id="ratingAvg"></div>
-                        </div>
+                        <!-- Star Ratings (collapsed) -->
+                        <details class="game-collapse-section">
+                            <summary class="game-collapse-header">
+                                <span>Rate this game</span>
+                                <span class="collapse-badge" id="ratingAvg"></span>
+                            </summary>
+                            <div class="game-collapse-body" id="ratingRows"></div>
+                        </details>
 
                         <dl class="meta-table">
                             <dt>System</dt>
@@ -166,9 +171,11 @@ window.GameView = {
                             ${isNative ? `<dt>Emulator</dt><dd><span class="dm-meta-emu">${deskInfo.emulator}</span> <span class="dm-meta-quality">${deskInfo.quality}</span></dd>` : ''}
                             ${game.region ? `<dt>Region</dt><dd>${H.escHtml(game.region)}</dd>` : ''}
                             ${game.year ? `<dt>Year</dt><dd>${H.escHtml(game.year)}</dd>` : ''}
+                            ${game.developer ? `<dt>Developer</dt><dd>${H.escHtml(game.developer)}</dd>` : ''}
                             ${game.publisher ? `<dt>Publisher</dt><dd>${H.escHtml(game.publisher)}</dd>` : ''}
                             ${game.genre ? `<dt>Genre</dt><dd>${H.escHtml(game.genre)}</dd>` : ''}
                             ${game.players ? `<dt>Players</dt><dd>${H.escHtml(game.players)}</dd>` : ''}
+                            ${game.achievement_count ? `<dt>Achievements</dt><dd><a href="https://retroachievements.org/game/${game.ra_game_id}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">🏆 ${game.achievement_count}</a></dd>` : ''}
                             <dt>File Size</dt><dd>${H.formatBytes(game.size_bytes)}</dd>
                             <dt>Total Play Time</dt><dd>${H.formatDuration(game.total_play_time)}</dd>
                             <dt>Added</dt><dd>${H.timeAgo(game.added_at)}</dd>
@@ -187,6 +194,20 @@ window.GameView = {
                         ` : ''}
                     </div>
                 </div>
+
+                ${(() => {
+                    try {
+                        const screens = game.screenshots ? JSON.parse(game.screenshots) : [];
+                        if (screens.length) return `
+                            <div class="game-screenshots">
+                                <h4 class="screenshots-title">📸 Screenshots</h4>
+                                <div class="screenshots-grid">
+                                    ${screens.map(s => `<img src="${H.escHtml(s)}" alt="Screenshot" class="screenshot-thumb" loading="lazy" onclick="window.open('${H.escHtml(s)}','_blank')">`).join('')}
+                                </div>
+                            </div>`;
+                    } catch {}
+                    return '';
+                })()}
 
                 <!-- Game Intel — Bio & Guide tabs, loaded async -->
                 <div id="game-intel-wrap" class="game-intel-wrap">
@@ -329,52 +350,56 @@ window.GameView = {
         const hasBio   = !!intel.bio;
         const hasGuide = !!intel.guide;
 
-        const genBtn = (type, label, icon) => `
-            <div class="intel-empty-tab">
-                <div class="intel-empty-icon">${icon}</div>
-                <div class="intel-empty-msg">No ${label} generated yet</div>
+        const genBtn = (type, label) => `
+            <div class="intel-empty-state">
+                <div class="intel-empty-glow"></div>
+                <div class="intel-empty-text">
+                    <span class="intel-empty-title">No ${label} yet</span>
+                    <span class="intel-empty-sub">Generate one with AI — takes about 15 seconds</span>
+                </div>
                 <button class="btn btn-yellow intel-gen-btn" onclick="GameView.generateIntel(${romId}, '${type}')">
                     ✨ Generate ${label}
                 </button>
             </div>`;
 
-        const tabContent = (type, icon, label, data) => {
-            if (!data) return genBtn(type, label, icon);
+        const tabContent = (type, label, data) => {
+            if (!data) return genBtn(type, label);
             const ts  = data.generated_at ? new Date(data.generated_at).toLocaleDateString() : '';
-            const mdl = data.model ? `<span class="intel-model">${data.model.split('-').slice(0,3).join('-')}</span>` : '';
+            const mdl = data.model ? data.model.split('-').slice(0,3).join('-') : '';
             return `
                 <div class="intel-content">
                     ${this.mdToHtml(data.content_md)}
                     <div class="intel-footer">
-                        ${mdl}
-                        ${ts ? `<span class="intel-date">Generated ${ts}</span>` : ''}
-                        <button class="btn-ghost-xs" onclick="GameView.regenIntel(${romId}, '${type}')">↺ Regenerate</button>
+                        <div class="intel-footer-meta">
+                            ${mdl ? `<span class="intel-model">${mdl}</span>` : ''}
+                            ${ts ? `<span class="intel-date">${ts}</span>` : ''}
+                        </div>
+                        <button class="intel-regen-btn" onclick="GameView.regenIntel(${romId}, '${type}')">↺ Regenerate</button>
                     </div>
                 </div>`;
         };
 
         wrap.innerHTML = `
             <div class="game-intel-panel">
-                <div class="intel-header">
-                    <span class="intel-header-icon">🎮</span>
-                    <span class="intel-header-title">Game Encyclopedia</span>
-                    <span class="intel-header-sub">${H.escHtml(gameTitle)}</span>
-                </div>
                 <div class="intel-tabs">
                     <button class="intel-tab ${hasBio ? 'has-content' : ''} active" id="itab-bio"
                             onclick="GameView.switchIntelTab('bio')">
-                        📖 Game Bio ${hasBio ? '' : '<span class="intel-tab-new">NEW</span>'}
+                        <span class="intel-tab-icon">📖</span>
+                        <span class="intel-tab-label">Game Bio</span>
+                        ${hasBio ? '<span class="intel-tab-dot"></span>' : ''}
                     </button>
                     <button class="intel-tab ${hasGuide ? 'has-content' : ''}" id="itab-guide"
                             onclick="GameView.switchIntelTab('guide')">
-                        🕹️ Gameplay Guide ${hasGuide ? '' : '<span class="intel-tab-new">NEW</span>'}
+                        <span class="intel-tab-icon">🕹️</span>
+                        <span class="intel-tab-label">Gameplay Guide</span>
+                        ${hasGuide ? '<span class="intel-tab-dot"></span>' : ''}
                     </button>
                 </div>
                 <div class="intel-tab-body" id="intel-body-bio">
-                    ${tabContent('bio',   '📖', 'Game Bio',       intel.bio)}
+                    ${tabContent('bio', 'Game Bio', intel.bio)}
                 </div>
                 <div class="intel-tab-body" id="intel-body-guide" style="display:none">
-                    ${tabContent('guide', '🕹️', 'Gameplay Guide', intel.guide)}
+                    ${tabContent('guide', 'Gameplay Guide', intel.guide)}
                 </div>
             </div>`;
     },
@@ -391,10 +416,37 @@ window.GameView = {
         try {
             const intel = await API.gameIntel(romId);
             this.renderIntelPanel(romId, gameTitle, intel);
+            this.updateHeroSummary(intel, romId);
         } catch {
             const wrap = document.getElementById('game-intel-wrap');
-            if (wrap) wrap.innerHTML = ''; // silently hide on error
+            if (wrap) wrap.innerHTML = '';
+            this.updateHeroSummary(null, romId);
         }
+    },
+
+    /** Pull first 2 sentences from bio into the hero summary next to artwork */
+    updateHeroSummary(intel, romId) {
+        const el = document.getElementById('heroSummary');
+        if (!el) return;
+        const placeholder = el.querySelector('.hero-placeholder');
+        if (!placeholder) return; // already has a real description from metadata
+
+        if (intel?.bio?.content_md) {
+            const lines = intel.bio.content_md.split('\n');
+            const firstPara = lines.find(l => l.trim() && !l.startsWith('#') && !l.startsWith('-'));
+            if (firstPara) {
+                const sentences = firstPara.match(/[^.!?]+[.!?]+/g) || [firstPara];
+                const excerpt = sentences.slice(0, 3).join('').trim();
+                placeholder.classList.remove('hero-placeholder');
+                placeholder.textContent = excerpt;
+                return;
+            }
+        }
+        // No bio — show generate prompt
+        placeholder.classList.remove('hero-placeholder');
+        placeholder.classList.add('hero-generate');
+        placeholder.innerHTML = `<span class="hero-gen-text">No game summary yet</span>
+            <button class="btn btn-yellow btn-sm hero-gen-btn" onclick="GameView.generateIntel(${romId}, 'bio')">✨ Generate Bio</button>`;
     },
 
     async generateIntel(romId, type) {

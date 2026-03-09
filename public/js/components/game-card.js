@@ -15,7 +15,7 @@ window.GameCard = {
             <div class="game-card" onclick="Router.navigate('#/game/${game.id}')">
                 <div class="game-card-art">
                     ${art
-                        ? `<img src="${art}" alt="${title}" loading="lazy" onerror="this.parentNode.innerHTML='<span class=\\'no-art\\'>${H.systemEmoji(game.system_id)}</span>'">`
+                        ? `<img src="${art}" alt="${title}" loading="lazy" decoding="async" onerror="this.parentNode.innerHTML='<span class=\\'no-art\\'>${H.systemEmoji(game.system_id)}</span>'">`
                         : `<span class="no-art">${H.systemEmoji(game.system_id)}</span>`
                     }
                     <div class="game-card-play-overlay" onclick="event.stopPropagation(); window.arcade.playGame(${game.id})">

@@ -66,6 +66,13 @@ router.get('/', (req, res) => {
         where.push('r.clean_name LIKE ?');
         params.push(`%${search}%`);
     }
+    if (req.query.genre) {
+        where.push('m.genre = ?');
+        params.push(req.query.genre);
+    } else {
+        // Hide special genres from default library view — only show via genre room
+        where.push("(m.genre IS NULL OR m.genre NOT IN ('Outside USA Games', 'Weird & Wonderful'))");
+    }
 
     // Tag-based filtering (Neo Geo / Beat-em-ups) — restrict to arcade systems
     if (tag === 'neogeo' || tag === 'beatemup') {
@@ -118,6 +125,7 @@ router.get('/', (req, res) => {
 
     const countRow = db.prepare(`
         SELECT COUNT(*) as total FROM roms r
+        LEFT JOIN metadata m ON m.rom_id = r.id
         LEFT JOIN systems s ON s.id = r.system_id
         ${whereClause}
     `).get(...params);
@@ -149,48 +157,90 @@ router.get('/', (req, res) => {
   }
 });
 
-// ── Genre Rooms — curated genre collections with counts + sample art ──────
+// ── Genre Rooms — real genres from metadata + curated franchise rooms ──────
+
+const GENRE_STYLE = {
+    'Action':          { icon: '⚔️',  color: '#ef4444' },
+    'Action RPG':      { icon: '🗡️',  color: '#dc2626' },
+    'Adventure':       { icon: '🧭',  color: '#8b5cf6' },
+    'Beat em Up':      { icon: '👊',  color: '#f43f5e' },
+    'Boxing':          { icon: '🥊',  color: '#b91c1c' },
+    'Card Game':       { icon: '🃏',  color: '#6366f1' },
+    'Fighting':        { icon: '🥋',  color: '#e11d48' },
+    'FPS':             { icon: '🎯',  color: '#64748b' },
+    'Light Gun':       { icon: '🔫',  color: '#78716c' },
+    'Party':           { icon: '🎉',  color: '#f59e0b' },
+    'Pinball':         { icon: '📍',  color: '#a855f7' },
+    'Platformer':      { icon: '🍄',  color: '#3b82f6' },
+    'Puzzle':          { icon: '🧩',  color: '#06b6d4' },
+    'RPG':             { icon: '📜',  color: '#7c3aed' },
+    'Racing':          { icon: '🏎️',  color: '#84cc16' },
+    'Rhythm':          { icon: '🎵',  color: '#ec4899' },
+    'Shooter':         { icon: '🚀',  color: '#0ea5e9' },
+    'Simulation':      { icon: '🏗️',  color: '#14b8a6' },
+    'Sports':          { icon: '⚽',  color: '#4ade80' },
+    'Stealth':         { icon: '🥷',  color: '#475569' },
+    'Strategy':        { icon: '♟️',  color: '#f97316' },
+    'Strategy RPG':    { icon: '⚔️',  color: '#ea580c' },
+    'Survival Horror': { icon: '🧟',  color: '#991b1b' },
+    'Wrestling':       { icon: '💪',  color: '#be123c' },
+};
+
+// Curated franchise rooms (keyword/tag based, shown after genres)
+const FRANCHISE_ROOMS = [
+    { id: 'neogeo',   label: 'Neo Geo',        icon: '🔥', color: '#fb923c', type: 'tag',     value: 'neogeo' },
+    { id: 'beatemup', label: 'Beat-Em-Ups',     icon: '💥', color: '#f43f5e', type: 'tag',     value: 'beatemup' },
+    { id: 'mario',    label: 'Mario Universe',   icon: '🍄', color: '#f97316', type: 'keyword', value: 'mario' },
+    { id: 'sonic',    label: 'Sonic World',      icon: '💨', color: '#06b6d4', type: 'keyword', value: 'sonic' },
+    { id: 'zelda',    label: 'Zelda',            icon: '🗡️', color: '#eab308', type: 'keyword', value: 'zelda' },
+    { id: 'megaman',  label: 'Mega Man',         icon: '🤖', color: '#38bdf8', type: 'keyword', value: 'mega man' },
+    { id: 'street',   label: 'Street Fighter',   icon: '👊', color: '#ec4899', type: 'keyword', value: 'street fighter' },
+];
+
 router.get('/genres', (req, res) => {
     const db = getDB();
 
-    const ROOMS = [
-        { id: 'arcade',   label: 'Arcade',          icon: '👾', color: '#f59e0b', type: 'system',  value: 'arcade'   },
-        { id: 'fighting', label: 'Fighting',         icon: '🥊', color: '#ef4444', type: 'keyword', value: 'fighter'  },
-        { id: 'snes',     label: 'Super Nintendo',   icon: '🎮', color: '#3b82f6', type: 'system',  value: 'snes'     },
-        { id: 'psx',      label: 'PlayStation',      icon: '💽', color: '#6366f1', type: 'system',  value: 'psx'      },
-        { id: 'genesis',  label: 'Sega Genesis',     icon: '⚡', color: '#10b981', type: 'system',  value: 'genesis'  },
-        { id: 'gba',      label: 'Game Boy',         icon: '🎯', color: '#8b5cf6', type: 'system',  value: 'gba'      },
-        { id: 'nes',      label: 'NES',              icon: '🕹️', color: '#a78bfa', type: 'system',  value: 'nes'      },
-        { id: 'mario',    label: 'Mario Universe',   icon: '🍄', color: '#f97316', type: 'keyword', value: 'mario'    },
-        { id: 'sonic',    label: 'Sonic World',      icon: '💨', color: '#06b6d4', type: 'keyword', value: 'sonic'    },
-        { id: 'racing',   label: 'Racing',           icon: '🏎️', color: '#84cc16', type: 'keyword', value: 'racing'   },
-        { id: 'zelda',    label: 'Zelda',            icon: '🗡️', color: '#eab308', type: 'keyword', value: 'zelda'    },
-        { id: 'street',   label: 'Street Fighter',   icon: '👊', color: '#ec4899', type: 'keyword', value: 'street fighter' },
-        { id: 'beatemup', label: 'Beat-Em-Ups',      icon: '💥', color: '#f43f5e', type: 'tag',     value: 'beatemup' },
-        { id: 'neogeo',   label: 'Neo Geo',          icon: '🔥', color: '#fb923c', type: 'tag',     value: 'neogeo'   },
-        { id: 'megaman',  label: 'Mega Man',         icon: '🤖', color: '#38bdf8', type: 'keyword', value: 'mega man' },
-        { id: 'sports',   label: 'Sports',           icon: '⚽', color: '#4ade80', type: 'keyword', value: 'ball'     },
-    ];
+    // Real genre rooms from metadata
+    const genreRows = db.prepare(`
+        SELECT m.genre, COUNT(*) as cnt
+        FROM metadata m
+        WHERE m.genre IS NOT NULL AND m.genre != ''
+        GROUP BY m.genre
+        HAVING cnt >= 2
+        ORDER BY cnt DESC
+    `).all();
 
-    const rooms = ROOMS.map(room => {
-        let count = 0;
+    const genreRooms = genreRows.map(row => {
+        const style = GENRE_STYLE[row.genre] || { icon: '🎮', color: '#7B2D8E' };
+        // Get sample artwork
         let sample_art = null;
-
         try {
-            if (room.type === 'system') {
-                const r = db.prepare(`SELECT COUNT(*) as cnt FROM roms WHERE system_id = ?`).get(room.value);
-                count = r?.cnt || 0;
-                if (count > 0) {
-                    const a = db.prepare(`
-                        SELECT m.artwork_path FROM roms r
-                        LEFT JOIN metadata m ON m.rom_id = r.id
-                        WHERE r.system_id = ? AND m.artwork_path IS NOT NULL
-                        ORDER BY RANDOM() LIMIT 1
-                    `).get(room.value);
-                    sample_art = a?.artwork_path || null;
-                }
-            } else if (room.type === 'keyword') {
-                const r = db.prepare(`SELECT COUNT(*) as cnt FROM roms WHERE clean_name LIKE ?`).get(`%${room.value}%`);
+            const a = db.prepare(`
+                SELECT m.artwork_path FROM metadata m
+                WHERE m.genre = ? AND m.artwork_path IS NOT NULL
+                ORDER BY RANDOM() LIMIT 1
+            `).get(row.genre);
+            sample_art = a?.artwork_path || null;
+        } catch {}
+
+        return {
+            id: row.genre.toLowerCase().replace(/\s+/g, '-'),
+            label: row.genre,
+            icon: style.icon,
+            color: style.color,
+            type: 'genre',
+            value: row.genre,
+            count: row.cnt,
+            sample_art,
+        };
+    });
+
+    // Franchise rooms with real counts
+    const franchiseRooms = FRANCHISE_ROOMS.map(room => {
+        let count = 0, sample_art = null;
+        try {
+            if (room.type === 'keyword') {
+                const r = db.prepare('SELECT COUNT(*) as cnt FROM roms WHERE clean_name LIKE ?').get(`%${room.value}%`);
                 count = r?.cnt || 0;
                 if (count > 0) {
                     const a = db.prepare(`
@@ -202,23 +252,20 @@ router.get('/genres', (req, res) => {
                     sample_art = a?.artwork_path || null;
                 }
             } else if (room.type === 'tag') {
-                // tags use library route filtering — get rough count from arcade/fbneo
-                const r = db.prepare(`SELECT COUNT(*) as cnt FROM roms WHERE system_id IN ('arcade','fbneo')`).get();
+                const r = db.prepare("SELECT COUNT(*) as cnt FROM roms WHERE system_id IN ('arcade','fbneo')").get();
                 count = Math.max(1, Math.round((r?.cnt || 0) * (room.value === 'neogeo' ? 0.35 : 0.08)));
                 const a = db.prepare(`
-                    SELECT m.artwork_path FROM roms r
-                    LEFT JOIN metadata m ON m.rom_id = r.id
+                    SELECT m.artwork_path FROM roms r LEFT JOIN metadata m ON m.rom_id = r.id
                     WHERE r.system_id IN ('arcade','fbneo') AND m.artwork_path IS NOT NULL
                     ORDER BY RANDOM() LIMIT 1
                 `).get();
                 sample_art = a?.artwork_path || null;
             }
-        } catch { /* skip broken rooms */ }
-
+        } catch {}
         return { ...room, count, sample_art };
     }).filter(r => r.count > 0);
 
-    res.json(rooms);
+    res.json([...genreRooms, ...franchiseRooms]);
 });
 
 // ── New Arrivals — latest added games ─────────────────────────────────────

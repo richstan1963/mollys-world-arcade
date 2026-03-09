@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT      = path.resolve(__dirname, '../..');
-const ROMS_DIR  = path.join(ROOT, 'roms');
+const ROMS_DIR  = process.env.ARCADE_ROMS_DIR || path.join(ROOT, 'roms');
 
 const args     = process.argv.slice(2);
 const DRY_RUN  = args.includes('--dry-run');
