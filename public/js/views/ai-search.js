@@ -193,7 +193,7 @@ window.AISearchView = {
             }
 
             // Finalize
-            this.updateLastAI(aiContent || 'I could not generate a response. Please try again.', false);
+            this.updateLastAI(aiContent || 'I could not get a response. Please try again.', false);
         } catch (err) {
             const isOffline = err.message.includes('not available') || err.message.includes('Failed to fetch');
             const msg = isOffline

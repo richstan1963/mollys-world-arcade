@@ -38,12 +38,12 @@ const IntelHubView = (() => {
             <!-- ── Batch Control Card ────────────────────────────────────────── -->
             <div class="ih-batch-card">
                 <div class="ih-bc-header">
-                    <span class="ih-bc-title">🧠 Intel Generator</span>
+                    <span class="ih-bc-title">🧠 Intel Downloader</span>
                     <span id="ihProvider" class="ih-provider-wrap"></span>
                 </div>
                 <div class="ih-bc-body">
                     <div class="ih-bc-left">
-                        <div id="ihStatus" class="ih-status-text ih-status-idle">Ready to generate</div>
+                        <div id="ihStatus" class="ih-status-text ih-status-idle">Ready to download</div>
                         <div class="ih-progress-row" id="ihProgressRow" style="display:none">
                             <div class="ih-progress-bar">
                                 <div class="ih-progress-fill" id="ihFill" style="width:0%"></div>
@@ -132,7 +132,7 @@ const IntelHubView = (() => {
                         oninput="IntelHubView._onEdit()"></textarea>
                 </div>
                 <div class="ih-drawer-footer">
-                    <button class="ih-btn ih-btn-regen" id="ihBtnRegen" onclick="IntelHubView._regen()">🔄 Regenerate</button>
+                    <button class="ih-btn ih-btn-regen" id="ihBtnRegen" onclick="IntelHubView._regen()">🔄 Re-download</button>
                     <button class="ih-btn ih-btn-del"                   onclick="IntelHubView._del()">🗑 Delete</button>
                     <div style="flex:1"></div>
                     <button class="ih-btn ih-btn-save" id="ihBtnSave"   onclick="IntelHubView._save()" style="display:none">💾 Save</button>
@@ -217,7 +217,7 @@ const IntelHubView = (() => {
         } else if (s.finishedAt && s.done > 0) {
             stEl.textContent = `✓ Last run: ${s.done} docs downloaded, ${s.errors} errors`;
         } else {
-            stEl.textContent = 'Ready to generate';
+            stEl.textContent = 'Ready to download';
         }
     }
 
@@ -351,7 +351,7 @@ const IntelHubView = (() => {
         try {
             const doc = await api.doc(romId, type);
             if (!doc || doc.error) {
-                $('ihDPreview').innerHTML = '<div class="ih-dl-err">Not found. Use Regenerate.</div>';
+                $('ihDPreview').innerHTML = '<div class="ih-dl-err">Not found. Use Re-download.</div>';
             } else {
                 _showDoc(doc);
             }
@@ -389,9 +389,9 @@ const IntelHubView = (() => {
             if (result.error) throw new Error(result.error);
             _showDoc(result);
             _loadGames();  // refresh table row status
-            if (window.H) H.toast(`✓ Generated ${type} for "${name}"`, 'success');
+            if (window.H) H.toast(`✓ Downloaded ${type} for "${name}"`, 'success');
         } catch (e) {
-            $('ihDPreview').innerHTML = `<div class="ih-dl-err">Generation failed: ${esc(e.message)}</div>`;
+            $('ihDPreview').innerHTML = `<div class="ih-dl-err">Download failed: ${esc(e.message)}</div>`;
             if (window.H) H.toast(`Failed: ${e.message}`, 'error');
         } finally {
             if ($('ihBtnRegen')) $('ihBtnRegen').disabled = false;
@@ -494,7 +494,7 @@ const IntelHubView = (() => {
             if (result.error) throw new Error(result.error);
             _showDoc(result);
             _loadGames();
-            if (window.H) H.toast('✓ Regenerated!', 'success');
+            if (window.H) H.toast('✓ Re-downloaded!', 'success');
         } catch (e) {
             $('ihDPreview').innerHTML = `<div class="ih-dl-err">Failed: ${esc(e.message)}</div>`;
             if (window.H) H.toast(`Failed: ${e.message}`, 'error');
@@ -506,12 +506,12 @@ const IntelHubView = (() => {
     async function _del() {
         if (!_drawerRomId || !_drawerType) return;
         const name = _drawerName || 'this game';
-        if (!confirm(`Delete ${_drawerType} for "${name}"? It will need to be regenerated.`)) return;
+        if (!confirm(`Delete ${_drawerType} for "${name}"? It will need to be re-downloaded.`)) return;
         try {
             await api.del(_drawerRomId, _drawerType);
             _close();
             _loadGames();
-            if (window.H) H.toast('🗑 Deleted — will regenerate in next batch', 'info');
+            if (window.H) H.toast('🗑 Deleted — will re-download in next batch', 'info');
         } catch (e) {
             if (window.H) H.toast(`Error: ${e.message}`, 'error');
         }

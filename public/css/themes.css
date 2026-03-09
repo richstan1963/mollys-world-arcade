@@ -1,0 +1,966 @@
+/* ═══════════════════════════════════════════════════════════════
+   YWA THEME ENGINE — 50 Themes
+   Each theme overrides CSS custom properties from :root
+   Categories: Dark, Light, Neon, Retro, Nature, Luxury, Seasonal, Special
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── DARK THEMES ────────────────────────────────────────────── */
+
+/* 1. Midnight Purple (default dark) — already in :root */
+
+/* 2. Cyberpunk */
+html.theme-cyberpunk {
+    --purple: #FF00FF; --purple-dark: #990099; --purple-light: #FF66FF; --purple-neon: #FF99FF;
+    --pink: #FF0066; --pink-dark: #CC0052; --pink-neon: #FF3385;
+    --teal: #00FFFF; --teal-dark: #009999; --teal-neon: #66FFFF;
+    --cyan: #00FFFF;
+    --bg: #0A0012; --bg-card: rgba(20, 0, 40, 0.85); --bg-card-solid: #140028;
+    --bg-card-hover: rgba(30, 0, 60, 0.9); --bg-sidebar: rgba(15, 0, 30, 0.95);
+    --bg-input: rgba(20, 0, 40, 0.8); --bg-glass: rgba(20, 0, 40, 0.6);
+    --text: #F0E0FF; --text-dim: #B080D0; --text-muted: #705090;
+    --border: rgba(255, 0, 255, 0.15); --border-glow: rgba(255, 0, 255, 0.4);
+    --glow-purple: 0 0 30px rgba(255,0,255,0.5), 0 0 60px rgba(255,0,255,0.2);
+    --glow-pink: 0 0 30px rgba(255,0,102,0.5), 0 0 60px rgba(255,0,102,0.2);
+    --glow-teal: 0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(0,255,255,0.2);
+    --glow-cyan: 0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(0,255,255,0.2);
+    --gradient-rainbow: linear-gradient(135deg, #FF00FF, #FF0066, #00FFFF, #FF00FF);
+}
+
+/* 3. Dracula */
+html.theme-dracula {
+    --purple: #BD93F9; --purple-dark: #6272A4; --purple-light: #BD93F9; --purple-neon: #D4B4FF;
+    --pink: #FF79C6; --pink-dark: #CC5FA0; --pink-neon: #FF92D0;
+    --teal: #8BE9FD; --teal-dark: #6BC5D4; --teal-neon: #A4F0FF;
+    --cyan: #8BE9FD;
+    --bg: #282A36; --bg-card: rgba(68, 71, 90, 0.85); --bg-card-solid: #44475A;
+    --bg-card-hover: rgba(80, 83, 100, 0.9); --bg-sidebar: rgba(40, 42, 54, 0.98);
+    --bg-input: rgba(68, 71, 90, 0.8); --bg-glass: rgba(40, 42, 54, 0.7);
+    --text: #F8F8F2; --text-dim: #BFBFB0; --text-muted: #6272A4;
+    --border: rgba(189, 147, 249, 0.15); --border-glow: rgba(189, 147, 249, 0.4);
+    --glow-purple: 0 0 30px rgba(189,147,249,0.4), 0 0 60px rgba(189,147,249,0.15);
+    --glow-pink: 0 0 30px rgba(255,121,198,0.4), 0 0 60px rgba(255,121,198,0.15);
+    --glow-teal: 0 0 30px rgba(139,233,253,0.4), 0 0 60px rgba(139,233,253,0.15);
+    --glow-cyan: 0 0 30px rgba(139,233,253,0.4), 0 0 60px rgba(139,233,253,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #BD93F9, #FF79C6, #8BE9FD, #BD93F9);
+}
+
+/* 4. Midnight Blue */
+html.theme-midnight-blue {
+    --purple: #3B82F6; --purple-dark: #1D4ED8; --purple-light: #60A5FA; --purple-neon: #93C5FD;
+    --pink: #818CF8; --pink-dark: #6366F1; --pink-neon: #A5B4FC;
+    --teal: #38BDF8; --teal-dark: #0284C7; --teal-neon: #7DD3FC;
+    --cyan: #38BDF8;
+    --bg: #0B1120; --bg-card: rgba(15, 23, 42, 0.9); --bg-card-solid: #0F172A;
+    --bg-card-hover: rgba(30, 41, 59, 0.9); --bg-sidebar: rgba(10, 15, 30, 0.98);
+    --bg-input: rgba(15, 23, 42, 0.8); --bg-glass: rgba(15, 23, 42, 0.6);
+    --text: #E2E8F0; --text-dim: #94A3B8; --text-muted: #475569;
+    --border: rgba(59, 130, 246, 0.15); --border-glow: rgba(59, 130, 246, 0.35);
+    --glow-purple: 0 0 30px rgba(59,130,246,0.4), 0 0 60px rgba(59,130,246,0.15);
+    --glow-pink: 0 0 30px rgba(129,140,248,0.4), 0 0 60px rgba(129,140,248,0.15);
+    --glow-teal: 0 0 30px rgba(56,189,248,0.4), 0 0 60px rgba(56,189,248,0.15);
+    --glow-cyan: 0 0 30px rgba(56,189,248,0.4), 0 0 60px rgba(56,189,248,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #3B82F6, #818CF8, #38BDF8, #3B82F6);
+}
+
+/* 5. Noir */
+html.theme-noir {
+    --purple: #A0A0A0; --purple-dark: #606060; --purple-light: #C0C0C0; --purple-neon: #D0D0D0;
+    --pink: #909090; --pink-dark: #606060; --pink-neon: #B0B0B0;
+    --teal: #808080; --teal-dark: #505050; --teal-neon: #A0A0A0;
+    --cyan: #909090;
+    --bg: #0A0A0A; --bg-card: rgba(20, 20, 20, 0.9); --bg-card-solid: #141414;
+    --bg-card-hover: rgba(30, 30, 30, 0.95); --bg-sidebar: rgba(12, 12, 12, 0.98);
+    --bg-input: rgba(25, 25, 25, 0.9); --bg-glass: rgba(15, 15, 15, 0.7);
+    --text: #E8E8E8; --text-dim: #999; --text-muted: #555;
+    --border: rgba(255,255,255,0.06); --border-glow: rgba(255,255,255,0.15);
+    --glow-purple: 0 0 20px rgba(160,160,160,0.2), 0 0 40px rgba(160,160,160,0.08);
+    --glow-pink: 0 0 20px rgba(144,144,144,0.2), 0 0 40px rgba(144,144,144,0.08);
+    --glow-teal: 0 0 20px rgba(128,128,128,0.2), 0 0 40px rgba(128,128,128,0.08);
+    --glow-cyan: 0 0 20px rgba(144,144,144,0.2), 0 0 40px rgba(144,144,144,0.08);
+    --gradient-rainbow: linear-gradient(135deg, #666, #999, #CCC, #666);
+}
+
+/* 6. Emerald Night */
+html.theme-emerald-night {
+    --purple: #10B981; --purple-dark: #047857; --purple-light: #34D399; --purple-neon: #6EE7B7;
+    --pink: #14B8A6; --pink-dark: #0D9488; --pink-neon: #5EEAD4;
+    --teal: #10B981; --teal-dark: #047857; --teal-neon: #34D399;
+    --cyan: #06D6A0;
+    --bg: #021A0F; --bg-card: rgba(5, 35, 22, 0.9); --bg-card-solid: #052316;
+    --bg-card-hover: rgba(10, 50, 30, 0.9); --bg-sidebar: rgba(2, 20, 12, 0.98);
+    --bg-input: rgba(5, 35, 22, 0.8); --bg-glass: rgba(5, 30, 18, 0.6);
+    --text: #ECFDF5; --text-dim: #86EFAC; --text-muted: #22734A;
+    --border: rgba(16, 185, 129, 0.15); --border-glow: rgba(16, 185, 129, 0.35);
+    --glow-purple: 0 0 30px rgba(16,185,129,0.4), 0 0 60px rgba(16,185,129,0.15);
+    --glow-pink: 0 0 30px rgba(20,184,166,0.4), 0 0 60px rgba(20,184,166,0.15);
+    --glow-teal: 0 0 30px rgba(16,185,129,0.4), 0 0 60px rgba(16,185,129,0.15);
+    --glow-cyan: 0 0 30px rgba(6,214,160,0.4), 0 0 60px rgba(6,214,160,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #10B981, #14B8A6, #06D6A0, #10B981);
+}
+
+/* 7. Blood Moon */
+html.theme-blood-moon {
+    --purple: #DC2626; --purple-dark: #7F1D1D; --purple-light: #EF4444; --purple-neon: #FCA5A5;
+    --pink: #E11D48; --pink-dark: #9F1239; --pink-neon: #FB7185;
+    --teal: #F97316; --teal-dark: #C2410C; --teal-neon: #FB923C;
+    --cyan: #EF4444;
+    --bg: #120808; --bg-card: rgba(30, 10, 10, 0.9); --bg-card-solid: #1E0A0A;
+    --bg-card-hover: rgba(45, 15, 15, 0.9); --bg-sidebar: rgba(15, 5, 5, 0.98);
+    --bg-input: rgba(30, 10, 10, 0.8); --bg-glass: rgba(25, 8, 8, 0.7);
+    --text: #FEE2E2; --text-dim: #FCA5A5; --text-muted: #7F3030;
+    --border: rgba(220, 38, 38, 0.15); --border-glow: rgba(220, 38, 38, 0.4);
+    --glow-purple: 0 0 30px rgba(220,38,38,0.5), 0 0 60px rgba(220,38,38,0.2);
+    --glow-pink: 0 0 30px rgba(225,29,72,0.5), 0 0 60px rgba(225,29,72,0.2);
+    --glow-teal: 0 0 30px rgba(249,115,22,0.4), 0 0 60px rgba(249,115,22,0.15);
+    --glow-cyan: 0 0 30px rgba(239,68,68,0.4), 0 0 60px rgba(239,68,68,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #DC2626, #E11D48, #F97316, #DC2626);
+}
+
+/* 8. Deep Space */
+html.theme-deep-space {
+    --purple: #8B5CF6; --purple-dark: #5B21B6; --purple-light: #A78BFA; --purple-neon: #C4B5FD;
+    --pink: #EC4899; --pink-dark: #BE185D; --pink-neon: #F472B6;
+    --teal: #2DD4BF; --teal-dark: #0D9488; --teal-neon: #5EEAD4;
+    --cyan: #22D3EE;
+    --bg: #020010; --bg-card: rgba(10, 5, 30, 0.9); --bg-card-solid: #0A051E;
+    --bg-card-hover: rgba(20, 10, 50, 0.9); --bg-sidebar: rgba(5, 2, 18, 0.98);
+    --bg-input: rgba(10, 5, 30, 0.8); --bg-glass: rgba(8, 3, 25, 0.6);
+    --text: #EDE9FE; --text-dim: #A78BFA; --text-muted: #4C3785;
+    --border: rgba(139, 92, 246, 0.15); --border-glow: rgba(139, 92, 246, 0.35);
+    --glow-purple: 0 0 30px rgba(139,92,246,0.5), 0 0 60px rgba(139,92,246,0.2);
+    --glow-pink: 0 0 30px rgba(236,72,153,0.4), 0 0 60px rgba(236,72,153,0.15);
+    --glow-teal: 0 0 30px rgba(45,212,191,0.4), 0 0 60px rgba(45,212,191,0.15);
+    --glow-cyan: 0 0 30px rgba(34,211,238,0.4), 0 0 60px rgba(34,211,238,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #8B5CF6, #EC4899, #2DD4BF, #8B5CF6);
+}
+
+/* 9. Hacker Green */
+html.theme-hacker {
+    --purple: #00FF41; --purple-dark: #008F11; --purple-light: #33FF66; --purple-neon: #80FF99;
+    --pink: #00FF41; --pink-dark: #008F11; --pink-neon: #33FF66;
+    --teal: #00FF41; --teal-dark: #008F11; --teal-neon: #33FF66;
+    --cyan: #00FF41;
+    --bg: #000800; --bg-card: rgba(0, 15, 0, 0.9); --bg-card-solid: #000F00;
+    --bg-card-hover: rgba(0, 25, 0, 0.95); --bg-sidebar: rgba(0, 10, 0, 0.98);
+    --bg-input: rgba(0, 15, 0, 0.8); --bg-glass: rgba(0, 12, 0, 0.7);
+    --text: #00FF41; --text-dim: #00AA2A; --text-muted: #005515;
+    --border: rgba(0, 255, 65, 0.1); --border-glow: rgba(0, 255, 65, 0.3);
+    --glow-purple: 0 0 30px rgba(0,255,65,0.3), 0 0 60px rgba(0,255,65,0.1);
+    --glow-pink: 0 0 30px rgba(0,255,65,0.3), 0 0 60px rgba(0,255,65,0.1);
+    --glow-teal: 0 0 30px rgba(0,255,65,0.3), 0 0 60px rgba(0,255,65,0.1);
+    --glow-cyan: 0 0 30px rgba(0,255,65,0.3), 0 0 60px rgba(0,255,65,0.1);
+    --gradient-rainbow: linear-gradient(135deg, #00FF41, #00CC33, #00FF41, #33FF66);
+}
+
+/* 10. Sunset */
+html.theme-sunset {
+    --purple: #F59E0B; --purple-dark: #B45309; --purple-light: #FBBF24; --purple-neon: #FCD34D;
+    --pink: #F97316; --pink-dark: #C2410C; --pink-neon: #FB923C;
+    --teal: #EF4444; --teal-dark: #B91C1C; --teal-neon: #F87171;
+    --cyan: #F59E0B;
+    --bg: #1A0A02; --bg-card: rgba(35, 15, 5, 0.9); --bg-card-solid: #230F05;
+    --bg-card-hover: rgba(50, 20, 8, 0.9); --bg-sidebar: rgba(20, 8, 2, 0.98);
+    --bg-input: rgba(35, 15, 5, 0.8); --bg-glass: rgba(30, 12, 4, 0.7);
+    --text: #FEF3C7; --text-dim: #FBBF24; --text-muted: #92600A;
+    --border: rgba(245, 158, 11, 0.15); --border-glow: rgba(245, 158, 11, 0.35);
+    --glow-purple: 0 0 30px rgba(245,158,11,0.5), 0 0 60px rgba(245,158,11,0.2);
+    --glow-pink: 0 0 30px rgba(249,115,22,0.5), 0 0 60px rgba(249,115,22,0.2);
+    --glow-teal: 0 0 30px rgba(239,68,68,0.4), 0 0 60px rgba(239,68,68,0.15);
+    --glow-cyan: 0 0 30px rgba(245,158,11,0.4), 0 0 60px rgba(245,158,11,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #F59E0B, #F97316, #EF4444, #F59E0B);
+}
+
+/* 11. Ocean Abyss */
+html.theme-ocean {
+    --purple: #0891B2; --purple-dark: #155E75; --purple-light: #06B6D4; --purple-neon: #22D3EE;
+    --pink: #0EA5E9; --pink-dark: #0369A1; --pink-neon: #38BDF8;
+    --teal: #14B8A6; --teal-dark: #0D9488; --teal-neon: #2DD4BF;
+    --cyan: #06B6D4;
+    --bg: #021019; --bg-card: rgba(3, 22, 35, 0.9); --bg-card-solid: #031623;
+    --bg-card-hover: rgba(5, 35, 55, 0.9); --bg-sidebar: rgba(2, 14, 22, 0.98);
+    --bg-input: rgba(3, 22, 35, 0.8); --bg-glass: rgba(3, 18, 28, 0.7);
+    --text: #ECFEFF; --text-dim: #67E8F9; --text-muted: #155E75;
+    --border: rgba(8, 145, 178, 0.15); --border-glow: rgba(8, 145, 178, 0.35);
+    --glow-purple: 0 0 30px rgba(8,145,178,0.4), 0 0 60px rgba(8,145,178,0.15);
+    --glow-pink: 0 0 30px rgba(14,165,233,0.4), 0 0 60px rgba(14,165,233,0.15);
+    --glow-teal: 0 0 30px rgba(20,184,166,0.4), 0 0 60px rgba(20,184,166,0.15);
+    --glow-cyan: 0 0 30px rgba(6,182,212,0.4), 0 0 60px rgba(6,182,212,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #0891B2, #0EA5E9, #14B8A6, #0891B2);
+}
+
+/* 12. Sakura Night */
+html.theme-sakura-night {
+    --purple: #F472B6; --purple-dark: #BE185D; --purple-light: #F9A8D4; --purple-neon: #FBCFE8;
+    --pink: #EC4899; --pink-dark: #DB2777; --pink-neon: #F472B6;
+    --teal: #FDA4AF; --teal-dark: #E11D48; --teal-neon: #FECDD3;
+    --cyan: #F472B6;
+    --bg: #1A0A14; --bg-card: rgba(35, 12, 25, 0.9); --bg-card-solid: #230C19;
+    --bg-card-hover: rgba(50, 18, 35, 0.9); --bg-sidebar: rgba(20, 6, 14, 0.98);
+    --bg-input: rgba(35, 12, 25, 0.8); --bg-glass: rgba(28, 10, 20, 0.7);
+    --text: #FDF2F8; --text-dim: #F9A8D4; --text-muted: #9D174D;
+    --border: rgba(244, 114, 182, 0.15); --border-glow: rgba(244, 114, 182, 0.35);
+    --glow-purple: 0 0 30px rgba(244,114,182,0.4), 0 0 60px rgba(244,114,182,0.15);
+    --glow-pink: 0 0 30px rgba(236,72,153,0.4), 0 0 60px rgba(236,72,153,0.15);
+    --glow-teal: 0 0 30px rgba(253,164,175,0.4), 0 0 60px rgba(253,164,175,0.15);
+    --glow-cyan: 0 0 30px rgba(244,114,182,0.4), 0 0 60px rgba(244,114,182,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #F472B6, #EC4899, #FDA4AF, #F472B6);
+}
+
+/* ─── NEON THEMES ────────────────────────────────────────────── */
+
+/* 13. Neon Arcade */
+html.theme-neon-arcade {
+    --purple: #E040FB; --purple-dark: #AB00D9; --purple-light: #EA80FC; --purple-neon: #F0B0FF;
+    --pink: #FF4081; --pink-dark: #F50057; --pink-neon: #FF80AB;
+    --teal: #64FFDA; --teal-dark: #1DE9B6; --teal-neon: #A7FFEB;
+    --cyan: #40C4FF;
+    --bg: #080010; --bg-card: rgba(15, 0, 30, 0.9); --bg-card-solid: #0F001E;
+    --bg-card-hover: rgba(25, 0, 50, 0.9); --bg-sidebar: rgba(8, 0, 16, 0.98);
+    --bg-input: rgba(15, 0, 30, 0.8); --bg-glass: rgba(12, 0, 24, 0.7);
+    --text: #F3E5F5; --text-dim: #CE93D8; --text-muted: #6A1B9A;
+    --border: rgba(224, 64, 251, 0.15); --border-glow: rgba(224, 64, 251, 0.4);
+    --glow-purple: 0 0 30px rgba(224,64,251,0.5), 0 0 60px rgba(224,64,251,0.2);
+    --glow-pink: 0 0 30px rgba(255,64,129,0.5), 0 0 60px rgba(255,64,129,0.2);
+    --glow-teal: 0 0 30px rgba(100,255,218,0.4), 0 0 60px rgba(100,255,218,0.15);
+    --glow-cyan: 0 0 30px rgba(64,196,255,0.4), 0 0 60px rgba(64,196,255,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #E040FB, #FF4081, #64FFDA, #40C4FF, #E040FB);
+}
+
+/* 14. Synthwave */
+html.theme-synthwave {
+    --purple: #E94EC0; --purple-dark: #9B2D7A; --purple-light: #F080D0; --purple-neon: #F5A0E0;
+    --pink: #FF6AC1; --pink-dark: #D14FA0; --pink-neon: #FF90D0;
+    --teal: #72F1B8; --teal-dark: #42CC8A; --teal-neon: #A0FFD0;
+    --cyan: #36F9F6;
+    --bg: #241B2F; --bg-card: rgba(42, 33, 55, 0.9); --bg-card-solid: #2A2137;
+    --bg-card-hover: rgba(55, 42, 70, 0.9); --bg-sidebar: rgba(30, 22, 40, 0.98);
+    --bg-input: rgba(42, 33, 55, 0.8); --bg-glass: rgba(36, 27, 47, 0.7);
+    --text: #F0E6FF; --text-dim: #B8A0D0; --text-muted: #6B5080;
+    --border: rgba(233, 78, 192, 0.15); --border-glow: rgba(233, 78, 192, 0.35);
+    --glow-purple: 0 0 30px rgba(233,78,192,0.5), 0 0 60px rgba(233,78,192,0.2);
+    --glow-pink: 0 0 30px rgba(255,106,193,0.5), 0 0 60px rgba(255,106,193,0.2);
+    --glow-teal: 0 0 30px rgba(114,241,184,0.4), 0 0 60px rgba(114,241,184,0.15);
+    --glow-cyan: 0 0 30px rgba(54,249,246,0.4), 0 0 60px rgba(54,249,246,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #E94EC0, #FF6AC1, #72F1B8, #36F9F6, #E94EC0);
+}
+
+/* 15. Electric Blue */
+html.theme-electric-blue {
+    --purple: #2979FF; --purple-dark: #0D47A1; --purple-light: #448AFF; --purple-neon: #82B1FF;
+    --pink: #536DFE; --pink-dark: #304FFE; --pink-neon: #8C9EFF;
+    --teal: #00E5FF; --teal-dark: #00B8D4; --teal-neon: #84FFFF;
+    --cyan: #00B0FF;
+    --bg: #000A1A; --bg-card: rgba(0, 15, 35, 0.9); --bg-card-solid: #000F23;
+    --bg-card-hover: rgba(0, 25, 55, 0.9); --bg-sidebar: rgba(0, 8, 18, 0.98);
+    --bg-input: rgba(0, 15, 35, 0.8); --bg-glass: rgba(0, 12, 28, 0.7);
+    --text: #E3F2FD; --text-dim: #64B5F6; --text-muted: #1565C0;
+    --border: rgba(41, 121, 255, 0.15); --border-glow: rgba(41, 121, 255, 0.4);
+    --glow-purple: 0 0 30px rgba(41,121,255,0.5), 0 0 60px rgba(41,121,255,0.2);
+    --glow-pink: 0 0 30px rgba(83,109,254,0.5), 0 0 60px rgba(83,109,254,0.2);
+    --glow-teal: 0 0 30px rgba(0,229,255,0.4), 0 0 60px rgba(0,229,255,0.15);
+    --glow-cyan: 0 0 30px rgba(0,176,255,0.4), 0 0 60px rgba(0,176,255,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #2979FF, #536DFE, #00E5FF, #2979FF);
+}
+
+/* 16. Toxic */
+html.theme-toxic {
+    --purple: #76FF03; --purple-dark: #558B2F; --purple-light: #B2FF59; --purple-neon: #CCFF90;
+    --pink: #EEFF41; --pink-dark: #C6FF00; --pink-neon: #F4FF81;
+    --teal: #00E676; --teal-dark: #00C853; --teal-neon: #69F0AE;
+    --cyan: #76FF03;
+    --bg: #050A00; --bg-card: rgba(10, 18, 0, 0.9); --bg-card-solid: #0A1200;
+    --bg-card-hover: rgba(15, 28, 0, 0.9); --bg-sidebar: rgba(5, 10, 0, 0.98);
+    --bg-input: rgba(10, 18, 0, 0.8); --bg-glass: rgba(8, 14, 0, 0.7);
+    --text: #F1F8E9; --text-dim: #AED581; --text-muted: #558B2F;
+    --border: rgba(118, 255, 3, 0.12); --border-glow: rgba(118, 255, 3, 0.3);
+    --glow-purple: 0 0 30px rgba(118,255,3,0.4), 0 0 60px rgba(118,255,3,0.15);
+    --glow-pink: 0 0 30px rgba(238,255,65,0.4), 0 0 60px rgba(238,255,65,0.15);
+    --glow-teal: 0 0 30px rgba(0,230,118,0.4), 0 0 60px rgba(0,230,118,0.15);
+    --glow-cyan: 0 0 30px rgba(118,255,3,0.4), 0 0 60px rgba(118,255,3,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #76FF03, #EEFF41, #00E676, #76FF03);
+}
+
+/* ─── RETRO THEMES ───────────────────────────────────────────── */
+
+/* 17. Gameboy */
+html.theme-gameboy {
+    --purple: #306230; --purple-dark: #1A3A1A; --purple-light: #4A8A4A; --purple-neon: #5AA55A;
+    --pink: #306230; --pink-dark: #1A3A1A; --pink-neon: #4A8A4A;
+    --teal: #306230; --teal-dark: #1A3A1A; --teal-neon: #4A8A4A;
+    --cyan: #306230;
+    --bg: #9BBC0F; --bg-card: rgba(139, 172, 15, 0.9); --bg-card-solid: #8BAC0F;
+    --bg-card-hover: rgba(155, 188, 15, 0.95); --bg-sidebar: rgba(130, 160, 10, 0.98);
+    --bg-input: rgba(120, 150, 5, 0.8); --bg-glass: rgba(139, 172, 15, 0.7);
+    --text: #0F380F; --text-dim: #1E5A1E; --text-muted: #306230;
+    --border: rgba(15, 56, 15, 0.2); --border-glow: rgba(15, 56, 15, 0.3);
+    --glow-purple: none; --glow-pink: none; --glow-teal: none; --glow-cyan: none;
+    --gradient-rainbow: linear-gradient(135deg, #0F380F, #306230, #8BAC0F, #9BBC0F);
+}
+
+/* 18. NES Classic */
+html.theme-nes {
+    --purple: #CC0000; --purple-dark: #880000; --purple-light: #EE0000; --purple-neon: #FF4444;
+    --pink: #CC0000; --pink-dark: #880000; --pink-neon: #FF4444;
+    --teal: #0058CC; --teal-dark: #003388; --teal-neon: #4488FF;
+    --cyan: #CC0000;
+    --bg: #E8E8E8; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(255, 255, 255, 1); --bg-sidebar: rgba(200, 200, 200, 0.98);
+    --bg-input: rgba(220, 220, 220, 0.9); --bg-glass: rgba(240, 240, 240, 0.8);
+    --text: #1A1A1A; --text-dim: #4A4A4A; --text-muted: #8A8A8A;
+    --border: rgba(0, 0, 0, 0.1); --border-glow: rgba(204, 0, 0, 0.3);
+    --glow-purple: none; --glow-pink: none; --glow-teal: none; --glow-cyan: none;
+    --gradient-rainbow: linear-gradient(135deg, #CC0000, #0058CC, #CC0000);
+}
+
+/* 19. SNES */
+html.theme-snes {
+    --purple: #5C2D91; --purple-dark: #3B1B5C; --purple-light: #7B4DB5; --purple-neon: #9B6DD5;
+    --pink: #6B38A8; --pink-dark: #4A2580; --pink-neon: #8B58C8;
+    --teal: #007EC6; --teal-dark: #005A90; --teal-neon: #40A0E0;
+    --cyan: #5C2D91;
+    --bg: #EAEAEA; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(250, 248, 255, 1); --bg-sidebar: rgba(235, 230, 245, 0.98);
+    --bg-input: rgba(230, 225, 240, 0.9); --bg-glass: rgba(245, 242, 250, 0.8);
+    --text: #1A1028; --text-dim: #4A3A5A; --text-muted: #8A7A9A;
+    --border: rgba(92, 45, 145, 0.12); --border-glow: rgba(92, 45, 145, 0.25);
+    --glow-purple: 0 0 15px rgba(92,45,145,0.2), 0 0 30px rgba(92,45,145,0.08);
+    --glow-pink: 0 0 15px rgba(107,56,168,0.2), 0 0 30px rgba(107,56,168,0.08);
+    --glow-teal: 0 0 15px rgba(0,126,198,0.2), 0 0 30px rgba(0,126,198,0.08);
+    --glow-cyan: 0 0 15px rgba(92,45,145,0.2), 0 0 30px rgba(92,45,145,0.08);
+    --gradient-rainbow: linear-gradient(135deg, #5C2D91, #007EC6, #6B38A8, #5C2D91);
+}
+
+/* 20. Sega Genesis */
+html.theme-genesis {
+    --purple: #0066CC; --purple-dark: #003D7A; --purple-light: #3388DD; --purple-neon: #66AAEE;
+    --pink: #0066CC; --pink-dark: #003D7A; --pink-neon: #3388DD;
+    --teal: #0066CC; --teal-dark: #003D7A; --teal-neon: #3388DD;
+    --cyan: #0066CC;
+    --bg: #000000; --bg-card: rgba(0, 20, 50, 0.9); --bg-card-solid: #001432;
+    --bg-card-hover: rgba(0, 30, 70, 0.9); --bg-sidebar: rgba(0, 10, 25, 0.98);
+    --bg-input: rgba(0, 20, 50, 0.8); --bg-glass: rgba(0, 15, 40, 0.7);
+    --text: #E0E8F0; --text-dim: #7DAADD; --text-muted: #2D5A8A;
+    --border: rgba(0, 102, 204, 0.15); --border-glow: rgba(0, 102, 204, 0.35);
+    --glow-purple: 0 0 25px rgba(0,102,204,0.4), 0 0 50px rgba(0,102,204,0.15);
+    --glow-pink: 0 0 25px rgba(0,102,204,0.4), 0 0 50px rgba(0,102,204,0.15);
+    --glow-teal: 0 0 25px rgba(0,102,204,0.4), 0 0 50px rgba(0,102,204,0.15);
+    --glow-cyan: 0 0 25px rgba(0,102,204,0.4), 0 0 50px rgba(0,102,204,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #0066CC, #003D7A, #3388DD, #0066CC);
+}
+
+/* 21. PS1 */
+html.theme-ps1 {
+    --purple: #0070D1; --purple-dark: #004A8C; --purple-light: #3090E0; --purple-neon: #60B0F0;
+    --pink: #E01040; --pink-dark: #A00830; --pink-neon: #FF4070;
+    --teal: #00A090; --teal-dark: #007060; --teal-neon: #30D0C0;
+    --cyan: #0070D1;
+    --bg: #101020; --bg-card: rgba(20, 20, 45, 0.9); --bg-card-solid: #14142D;
+    --bg-card-hover: rgba(30, 30, 60, 0.9); --bg-sidebar: rgba(12, 12, 28, 0.98);
+    --bg-input: rgba(20, 20, 45, 0.8); --bg-glass: rgba(16, 16, 35, 0.7);
+    --text: #E0E0F0; --text-dim: #9090B0; --text-muted: #505070;
+    --border: rgba(0, 112, 209, 0.15); --border-glow: rgba(0, 112, 209, 0.3);
+    --glow-purple: 0 0 25px rgba(0,112,209,0.4), 0 0 50px rgba(0,112,209,0.15);
+    --glow-pink: 0 0 25px rgba(224,16,64,0.4), 0 0 50px rgba(224,16,64,0.15);
+    --glow-teal: 0 0 25px rgba(0,160,144,0.4), 0 0 50px rgba(0,160,144,0.15);
+    --glow-cyan: 0 0 25px rgba(0,112,209,0.4), 0 0 50px rgba(0,112,209,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #0070D1, #E01040, #00A090, #0070D1);
+}
+
+/* 22. Commodore 64 */
+html.theme-c64 {
+    --purple: #6C5EB5; --purple-dark: #4A3A8A; --purple-light: #8878D0; --purple-neon: #A498E0;
+    --pink: #6C5EB5; --pink-dark: #4A3A8A; --pink-neon: #8878D0;
+    --teal: #6C5EB5; --teal-dark: #4A3A8A; --teal-neon: #8878D0;
+    --cyan: #6C5EB5;
+    --bg: #40318D; --bg-card: rgba(80, 58, 160, 0.9); --bg-card-solid: #503AA0;
+    --bg-card-hover: rgba(95, 70, 180, 0.9); --bg-sidebar: rgba(55, 40, 120, 0.98);
+    --bg-input: rgba(80, 58, 160, 0.8); --bg-glass: rgba(64, 49, 141, 0.7);
+    --text: #A0A0FF; --text-dim: #7878CC; --text-muted: #5050AA;
+    --border: rgba(108, 94, 181, 0.2); --border-glow: rgba(108, 94, 181, 0.4);
+    --glow-purple: 0 0 20px rgba(108,94,181,0.3), 0 0 40px rgba(108,94,181,0.1);
+    --glow-pink: 0 0 20px rgba(108,94,181,0.3), 0 0 40px rgba(108,94,181,0.1);
+    --glow-teal: 0 0 20px rgba(108,94,181,0.3), 0 0 40px rgba(108,94,181,0.1);
+    --glow-cyan: 0 0 20px rgba(108,94,181,0.3), 0 0 40px rgba(108,94,181,0.1);
+    --gradient-rainbow: linear-gradient(135deg, #6C5EB5, #40318D, #8878D0, #6C5EB5);
+}
+
+/* 23. Atari */
+html.theme-atari {
+    --purple: #E87000; --purple-dark: #B85500; --purple-light: #FF9030; --purple-neon: #FFB060;
+    --pink: #E87000; --pink-dark: #B85500; --pink-neon: #FF9030;
+    --teal: #E87000; --teal-dark: #B85500; --teal-neon: #FF9030;
+    --cyan: #E87000;
+    --bg: #1A1000; --bg-card: rgba(35, 25, 0, 0.9); --bg-card-solid: #231900;
+    --bg-card-hover: rgba(50, 35, 0, 0.9); --bg-sidebar: rgba(20, 14, 0, 0.98);
+    --bg-input: rgba(35, 25, 0, 0.8); --bg-glass: rgba(28, 20, 0, 0.7);
+    --text: #FFE0B0; --text-dim: #CC9A50; --text-muted: #8A6530;
+    --border: rgba(232, 112, 0, 0.15); --border-glow: rgba(232, 112, 0, 0.35);
+    --glow-purple: 0 0 25px rgba(232,112,0,0.4), 0 0 50px rgba(232,112,0,0.15);
+    --glow-pink: 0 0 25px rgba(232,112,0,0.4), 0 0 50px rgba(232,112,0,0.15);
+    --glow-teal: 0 0 25px rgba(232,112,0,0.4), 0 0 50px rgba(232,112,0,0.15);
+    --glow-cyan: 0 0 25px rgba(232,112,0,0.4), 0 0 50px rgba(232,112,0,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #E87000, #B85500, #FF9030, #E87000);
+}
+
+/* ─── LIGHT THEMES ───────────────────────────────────────────── */
+
+/* 24. Paper (already "light" in arcade.css) */
+
+/* 25. Rose Gold */
+html.theme-rose-gold {
+    --purple: #B76E79; --purple-dark: #8C4A56; --purple-light: #D4919C; --purple-neon: #E8B4BC;
+    --pink: #C77B85; --pink-dark: #A0555F; --pink-neon: #E0A0AA;
+    --teal: #B76E79; --teal-dark: #8C4A56; --teal-neon: #D4919C;
+    --cyan: #B76E79;
+    --bg: #FFF5F5; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(255, 248, 248, 1); --bg-sidebar: rgba(255, 250, 250, 0.98);
+    --bg-input: rgba(255, 240, 240, 0.9); --bg-glass: rgba(255, 250, 250, 0.8);
+    --text: #2D1A1E; --text-dim: #5A3A40; --text-muted: #A08088;
+    --border: rgba(183, 110, 121, 0.12); --border-glow: rgba(183, 110, 121, 0.25);
+    --glow-purple: 0 0 20px rgba(183,110,121,0.15), 0 0 40px rgba(183,110,121,0.05);
+    --glow-pink: 0 0 20px rgba(199,123,133,0.15), 0 0 40px rgba(199,123,133,0.05);
+    --glow-teal: 0 0 20px rgba(183,110,121,0.15), 0 0 40px rgba(183,110,121,0.05);
+    --glow-cyan: 0 0 20px rgba(183,110,121,0.15), 0 0 40px rgba(183,110,121,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #B76E79, #D4919C, #E8B4BC, #B76E79);
+}
+
+/* 26. Mint */
+html.theme-mint {
+    --purple: #059669; --purple-dark: #047857; --purple-light: #10B981; --purple-neon: #34D399;
+    --pink: #14B8A6; --pink-dark: #0D9488; --pink-neon: #2DD4BF;
+    --teal: #059669; --teal-dark: #047857; --teal-neon: #10B981;
+    --cyan: #059669;
+    --bg: #F0FDF4; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(245, 255, 248, 1); --bg-sidebar: rgba(248, 255, 250, 0.98);
+    --bg-input: rgba(236, 253, 245, 0.9); --bg-glass: rgba(248, 255, 250, 0.8);
+    --text: #064E3B; --text-dim: #065F46; --text-muted: #6EE7B7;
+    --border: rgba(5, 150, 105, 0.12); --border-glow: rgba(5, 150, 105, 0.25);
+    --glow-purple: 0 0 20px rgba(5,150,105,0.15), 0 0 40px rgba(5,150,105,0.05);
+    --glow-pink: 0 0 20px rgba(20,184,166,0.15), 0 0 40px rgba(20,184,166,0.05);
+    --glow-teal: 0 0 20px rgba(5,150,105,0.15), 0 0 40px rgba(5,150,105,0.05);
+    --glow-cyan: 0 0 20px rgba(5,150,105,0.15), 0 0 40px rgba(5,150,105,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #059669, #14B8A6, #10B981, #059669);
+}
+
+/* 27. Lavender */
+html.theme-lavender {
+    --purple: #7C3AED; --purple-dark: #5B21B6; --purple-light: #8B5CF6; --purple-neon: #A78BFA;
+    --pink: #8B5CF6; --pink-dark: #6D28D9; --pink-neon: #A78BFA;
+    --teal: #7C3AED; --teal-dark: #5B21B6; --teal-neon: #8B5CF6;
+    --cyan: #7C3AED;
+    --bg: #FAF5FF; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(250, 245, 255, 1); --bg-sidebar: rgba(252, 250, 255, 0.98);
+    --bg-input: rgba(245, 238, 255, 0.9); --bg-glass: rgba(252, 250, 255, 0.8);
+    --text: #2E1065; --text-dim: #4C1D95; --text-muted: #C4B5FD;
+    --border: rgba(124, 58, 237, 0.12); --border-glow: rgba(124, 58, 237, 0.25);
+    --glow-purple: 0 0 20px rgba(124,58,237,0.15), 0 0 40px rgba(124,58,237,0.05);
+    --glow-pink: 0 0 20px rgba(139,92,246,0.15), 0 0 40px rgba(139,92,246,0.05);
+    --glow-teal: 0 0 20px rgba(124,58,237,0.15), 0 0 40px rgba(124,58,237,0.05);
+    --glow-cyan: 0 0 20px rgba(124,58,237,0.15), 0 0 40px rgba(124,58,237,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #7C3AED, #8B5CF6, #A78BFA, #7C3AED);
+}
+
+/* 28. Coral */
+html.theme-coral {
+    --purple: #F97316; --purple-dark: #C2410C; --purple-light: #FB923C; --purple-neon: #FDBA74;
+    --pink: #EF4444; --pink-dark: #B91C1C; --pink-neon: #F87171;
+    --teal: #F97316; --teal-dark: #C2410C; --teal-neon: #FB923C;
+    --cyan: #F97316;
+    --bg: #FFFAF0; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(255, 252, 245, 1); --bg-sidebar: rgba(255, 253, 248, 0.98);
+    --bg-input: rgba(255, 247, 237, 0.9); --bg-glass: rgba(255, 253, 248, 0.8);
+    --text: #431407; --text-dim: #7C2D12; --text-muted: #FDBA74;
+    --border: rgba(249, 115, 22, 0.12); --border-glow: rgba(249, 115, 22, 0.25);
+    --glow-purple: 0 0 20px rgba(249,115,22,0.15), 0 0 40px rgba(249,115,22,0.05);
+    --glow-pink: 0 0 20px rgba(239,68,68,0.15), 0 0 40px rgba(239,68,68,0.05);
+    --glow-teal: 0 0 20px rgba(249,115,22,0.15), 0 0 40px rgba(249,115,22,0.05);
+    --glow-cyan: 0 0 20px rgba(249,115,22,0.15), 0 0 40px rgba(249,115,22,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #F97316, #EF4444, #FB923C, #F97316);
+}
+
+/* 29. Sky */
+html.theme-sky {
+    --purple: #0284C7; --purple-dark: #075985; --purple-light: #0EA5E9; --purple-neon: #38BDF8;
+    --pink: #0EA5E9; --pink-dark: #0284C7; --pink-neon: #38BDF8;
+    --teal: #0284C7; --teal-dark: #075985; --teal-neon: #0EA5E9;
+    --cyan: #0284C7;
+    --bg: #F0F9FF; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(245, 252, 255, 1); --bg-sidebar: rgba(248, 253, 255, 0.98);
+    --bg-input: rgba(240, 249, 255, 0.9); --bg-glass: rgba(248, 253, 255, 0.8);
+    --text: #0C4A6E; --text-dim: #075985; --text-muted: #7DD3FC;
+    --border: rgba(2, 132, 199, 0.12); --border-glow: rgba(2, 132, 199, 0.25);
+    --glow-purple: 0 0 20px rgba(2,132,199,0.15), 0 0 40px rgba(2,132,199,0.05);
+    --glow-pink: 0 0 20px rgba(14,165,233,0.15), 0 0 40px rgba(14,165,233,0.05);
+    --glow-teal: 0 0 20px rgba(2,132,199,0.15), 0 0 40px rgba(2,132,199,0.05);
+    --glow-cyan: 0 0 20px rgba(2,132,199,0.15), 0 0 40px rgba(2,132,199,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #0284C7, #0EA5E9, #38BDF8, #0284C7);
+}
+
+/* 30. Warm Sand */
+html.theme-sand {
+    --purple: #92400E; --purple-dark: #78350F; --purple-light: #B45309; --purple-neon: #D97706;
+    --pink: #A16207; --pink-dark: #854D0E; --pink-neon: #CA8A04;
+    --teal: #92400E; --teal-dark: #78350F; --teal-neon: #B45309;
+    --cyan: #92400E;
+    --bg: #FEFCE8; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(255, 253, 240, 1); --bg-sidebar: rgba(255, 254, 248, 0.98);
+    --bg-input: rgba(254, 252, 232, 0.9); --bg-glass: rgba(255, 254, 248, 0.8);
+    --text: #422006; --text-dim: #78350F; --text-muted: #FDE68A;
+    --border: rgba(146, 64, 14, 0.12); --border-glow: rgba(146, 64, 14, 0.25);
+    --glow-purple: 0 0 20px rgba(146,64,14,0.15), 0 0 40px rgba(146,64,14,0.05);
+    --glow-pink: 0 0 20px rgba(161,98,7,0.15), 0 0 40px rgba(161,98,7,0.05);
+    --glow-teal: 0 0 20px rgba(146,64,14,0.15), 0 0 40px rgba(146,64,14,0.05);
+    --glow-cyan: 0 0 20px rgba(146,64,14,0.15), 0 0 40px rgba(146,64,14,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #92400E, #A16207, #B45309, #92400E);
+}
+
+/* 31. Slate */
+html.theme-slate {
+    --purple: #475569; --purple-dark: #334155; --purple-light: #64748B; --purple-neon: #94A3B8;
+    --pink: #475569; --pink-dark: #334155; --pink-neon: #64748B;
+    --teal: #475569; --teal-dark: #334155; --teal-neon: #64748B;
+    --cyan: #475569;
+    --bg: #F8FAFC; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(248, 250, 252, 1); --bg-sidebar: rgba(248, 250, 252, 0.98);
+    --bg-input: rgba(241, 245, 249, 0.9); --bg-glass: rgba(248, 250, 252, 0.8);
+    --text: #0F172A; --text-dim: #334155; --text-muted: #CBD5E1;
+    --border: rgba(71, 85, 105, 0.1); --border-glow: rgba(71, 85, 105, 0.2);
+    --glow-purple: 0 0 15px rgba(71,85,105,0.1), 0 0 30px rgba(71,85,105,0.04);
+    --glow-pink: 0 0 15px rgba(71,85,105,0.1), 0 0 30px rgba(71,85,105,0.04);
+    --glow-teal: 0 0 15px rgba(71,85,105,0.1), 0 0 30px rgba(71,85,105,0.04);
+    --glow-cyan: 0 0 15px rgba(71,85,105,0.1), 0 0 30px rgba(71,85,105,0.04);
+    --gradient-rainbow: linear-gradient(135deg, #475569, #64748B, #94A3B8, #475569);
+}
+
+/* ─── LUXURY / PREMIUM THEMES ────────────────────────────────── */
+
+/* 32. Gold */
+html.theme-gold {
+    --purple: #B8860B; --purple-dark: #8B6508; --purple-light: #DAA520; --purple-neon: #FFD700;
+    --pink: #CD853F; --pink-dark: #A0682C; --pink-neon: #DEB887;
+    --teal: #B8860B; --teal-dark: #8B6508; --teal-neon: #DAA520;
+    --cyan: #B8860B;
+    --bg: #0A0800; --bg-card: rgba(20, 16, 5, 0.9); --bg-card-solid: #141005;
+    --bg-card-hover: rgba(30, 25, 8, 0.9); --bg-sidebar: rgba(12, 10, 2, 0.98);
+    --bg-input: rgba(20, 16, 5, 0.8); --bg-glass: rgba(16, 13, 4, 0.7);
+    --text: #FFF8DC; --text-dim: #DAA520; --text-muted: #6B5000;
+    --border: rgba(184, 134, 11, 0.15); --border-glow: rgba(184, 134, 11, 0.35);
+    --glow-purple: 0 0 30px rgba(184,134,11,0.4), 0 0 60px rgba(184,134,11,0.15);
+    --glow-pink: 0 0 30px rgba(205,133,63,0.4), 0 0 60px rgba(205,133,63,0.15);
+    --glow-teal: 0 0 30px rgba(184,134,11,0.4), 0 0 60px rgba(184,134,11,0.15);
+    --glow-cyan: 0 0 30px rgba(184,134,11,0.4), 0 0 60px rgba(184,134,11,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #B8860B, #DAA520, #FFD700, #B8860B);
+}
+
+/* 33. Carbon */
+html.theme-carbon {
+    --purple: #525252; --purple-dark: #333; --purple-light: #737373; --purple-neon: #A3A3A3;
+    --pink: #525252; --pink-dark: #333; --pink-neon: #737373;
+    --teal: #525252; --teal-dark: #333; --teal-neon: #737373;
+    --cyan: #525252;
+    --bg: #171717; --bg-card: rgba(38, 38, 38, 0.9); --bg-card-solid: #262626;
+    --bg-card-hover: rgba(50, 50, 50, 0.9); --bg-sidebar: rgba(23, 23, 23, 0.98);
+    --bg-input: rgba(38, 38, 38, 0.8); --bg-glass: rgba(30, 30, 30, 0.7);
+    --text: #E5E5E5; --text-dim: #A3A3A3; --text-muted: #525252;
+    --border: rgba(255,255,255,0.05); --border-glow: rgba(255,255,255,0.1);
+    --glow-purple: 0 0 15px rgba(100,100,100,0.15), 0 0 30px rgba(100,100,100,0.05);
+    --glow-pink: 0 0 15px rgba(100,100,100,0.15), 0 0 30px rgba(100,100,100,0.05);
+    --glow-teal: 0 0 15px rgba(100,100,100,0.15), 0 0 30px rgba(100,100,100,0.05);
+    --glow-cyan: 0 0 15px rgba(100,100,100,0.15), 0 0 30px rgba(100,100,100,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #525252, #737373, #A3A3A3, #525252);
+}
+
+/* 34. Royal Purple */
+html.theme-royal {
+    --purple: #6D28D9; --purple-dark: #4C1D95; --purple-light: #7C3AED; --purple-neon: #8B5CF6;
+    --pink: #9333EA; --pink-dark: #7E22CE; --pink-neon: #A855F7;
+    --teal: #6D28D9; --teal-dark: #4C1D95; --teal-neon: #7C3AED;
+    --cyan: #6D28D9;
+    --bg: #0C0020; --bg-card: rgba(18, 0, 45, 0.9); --bg-card-solid: #12002D;
+    --bg-card-hover: rgba(28, 0, 65, 0.9); --bg-sidebar: rgba(10, 0, 25, 0.98);
+    --bg-input: rgba(18, 0, 45, 0.8); --bg-glass: rgba(14, 0, 35, 0.7);
+    --text: #EDE9FE; --text-dim: #A78BFA; --text-muted: #4C1D95;
+    --border: rgba(109, 40, 217, 0.15); --border-glow: rgba(109, 40, 217, 0.4);
+    --glow-purple: 0 0 30px rgba(109,40,217,0.5), 0 0 60px rgba(109,40,217,0.2);
+    --glow-pink: 0 0 30px rgba(147,51,234,0.5), 0 0 60px rgba(147,51,234,0.2);
+    --glow-teal: 0 0 30px rgba(109,40,217,0.5), 0 0 60px rgba(109,40,217,0.2);
+    --glow-cyan: 0 0 30px rgba(109,40,217,0.5), 0 0 60px rgba(109,40,217,0.2);
+    --gradient-rainbow: linear-gradient(135deg, #6D28D9, #9333EA, #7C3AED, #6D28D9);
+}
+
+/* 35. Copper */
+html.theme-copper {
+    --purple: #B87333; --purple-dark: #8B5A2B; --purple-light: #D4944A; --purple-neon: #E8B06A;
+    --pink: #C48746; --pink-dark: #9A6830; --pink-neon: #DCA060;
+    --teal: #B87333; --teal-dark: #8B5A2B; --teal-neon: #D4944A;
+    --cyan: #B87333;
+    --bg: #F5EDE3; --bg-card: rgba(255, 255, 255, 0.92); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(255, 252, 248, 1); --bg-sidebar: rgba(252, 248, 240, 0.98);
+    --bg-input: rgba(245, 237, 227, 0.9); --bg-glass: rgba(252, 248, 240, 0.8);
+    --text: #3D2B1F; --text-dim: #6B4C38; --text-muted: #C8AD94;
+    --border: rgba(184, 115, 51, 0.12); --border-glow: rgba(184, 115, 51, 0.25);
+    --glow-purple: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
+    --glow-pink: 0 0 20px rgba(196,135,70,0.15), 0 0 40px rgba(196,135,70,0.05);
+    --glow-teal: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
+    --glow-cyan: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #B87333, #D4944A, #E8B06A, #B87333);
+}
+
+/* ─── NATURE THEMES ──────────────────────────────────────────── */
+
+/* 36. Forest */
+html.theme-forest {
+    --purple: #15803D; --purple-dark: #166534; --purple-light: #22C55E; --purple-neon: #4ADE80;
+    --pink: #16A34A; --pink-dark: #15803D; --pink-neon: #22C55E;
+    --teal: #059669; --teal-dark: #047857; --teal-neon: #10B981;
+    --cyan: #15803D;
+    --bg: #052E16; --bg-card: rgba(10, 55, 28, 0.9); --bg-card-solid: #0A371C;
+    --bg-card-hover: rgba(15, 70, 35, 0.9); --bg-sidebar: rgba(5, 35, 18, 0.98);
+    --bg-input: rgba(10, 55, 28, 0.8); --bg-glass: rgba(8, 45, 22, 0.7);
+    --text: #DCFCE7; --text-dim: #86EFAC; --text-muted: #166534;
+    --border: rgba(21, 128, 61, 0.15); --border-glow: rgba(21, 128, 61, 0.3);
+    --glow-purple: 0 0 25px rgba(21,128,61,0.3), 0 0 50px rgba(21,128,61,0.12);
+    --glow-pink: 0 0 25px rgba(22,163,74,0.3), 0 0 50px rgba(22,163,74,0.12);
+    --glow-teal: 0 0 25px rgba(5,150,105,0.3), 0 0 50px rgba(5,150,105,0.12);
+    --glow-cyan: 0 0 25px rgba(21,128,61,0.3), 0 0 50px rgba(21,128,61,0.12);
+    --gradient-rainbow: linear-gradient(135deg, #15803D, #059669, #22C55E, #15803D);
+}
+
+/* 37. Aurora */
+html.theme-aurora {
+    --purple: #8B5CF6; --purple-dark: #6D28D9; --purple-light: #A78BFA; --purple-neon: #C4B5FD;
+    --pink: #06B6D4; --pink-dark: #0891B2; --pink-neon: #22D3EE;
+    --teal: #10B981; --teal-dark: #059669; --teal-neon: #34D399;
+    --cyan: #06B6D4;
+    --bg: #050818; --bg-card: rgba(10, 14, 35, 0.9); --bg-card-solid: #0A0E23;
+    --bg-card-hover: rgba(18, 22, 50, 0.9); --bg-sidebar: rgba(5, 8, 20, 0.98);
+    --bg-input: rgba(10, 14, 35, 0.8); --bg-glass: rgba(8, 11, 28, 0.7);
+    --text: #E8E0FF; --text-dim: #A78BFA; --text-muted: #4338CA;
+    --border: rgba(139, 92, 246, 0.12); --border-glow: rgba(139, 92, 246, 0.3);
+    --glow-purple: 0 0 30px rgba(139,92,246,0.4), 0 0 60px rgba(139,92,246,0.15);
+    --glow-pink: 0 0 30px rgba(6,182,212,0.4), 0 0 60px rgba(6,182,212,0.15);
+    --glow-teal: 0 0 30px rgba(16,185,129,0.4), 0 0 60px rgba(16,185,129,0.15);
+    --glow-cyan: 0 0 30px rgba(6,182,212,0.4), 0 0 60px rgba(6,182,212,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #8B5CF6, #06B6D4, #10B981, #8B5CF6);
+}
+
+/* 38. Volcanic */
+html.theme-volcanic {
+    --purple: #DC2626; --purple-dark: #991B1B; --purple-light: #EF4444; --purple-neon: #FCA5A5;
+    --pink: #F97316; --pink-dark: #C2410C; --pink-neon: #FB923C;
+    --teal: #EAB308; --teal-dark: #A16207; --teal-neon: #FACC15;
+    --cyan: #EF4444;
+    --bg: #1C1917; --bg-card: rgba(41, 37, 36, 0.9); --bg-card-solid: #292524;
+    --bg-card-hover: rgba(57, 52, 50, 0.9); --bg-sidebar: rgba(28, 25, 23, 0.98);
+    --bg-input: rgba(41, 37, 36, 0.8); --bg-glass: rgba(35, 32, 30, 0.7);
+    --text: #FAFAF9; --text-dim: #D6D3D1; --text-muted: #78716C;
+    --border: rgba(220, 38, 38, 0.12); --border-glow: rgba(220, 38, 38, 0.3);
+    --glow-purple: 0 0 30px rgba(220,38,38,0.4), 0 0 60px rgba(220,38,38,0.15);
+    --glow-pink: 0 0 30px rgba(249,115,22,0.4), 0 0 60px rgba(249,115,22,0.15);
+    --glow-teal: 0 0 30px rgba(234,179,8,0.4), 0 0 60px rgba(234,179,8,0.15);
+    --glow-cyan: 0 0 30px rgba(239,68,68,0.4), 0 0 60px rgba(239,68,68,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #DC2626, #F97316, #EAB308, #DC2626);
+}
+
+/* 39. Arctic */
+html.theme-arctic {
+    --purple: #0EA5E9; --purple-dark: #0369A1; --purple-light: #38BDF8; --purple-neon: #7DD3FC;
+    --pink: #06B6D4; --pink-dark: #0891B2; --pink-neon: #22D3EE;
+    --teal: #0EA5E9; --teal-dark: #0369A1; --teal-neon: #38BDF8;
+    --cyan: #0EA5E9;
+    --bg: #F0F9FF; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(248, 253, 255, 1); --bg-sidebar: rgba(240, 249, 255, 0.98);
+    --bg-input: rgba(224, 242, 254, 0.9); --bg-glass: rgba(240, 249, 255, 0.8);
+    --text: #0C4A6E; --text-dim: #075985; --text-muted: #BAE6FD;
+    --border: rgba(14, 165, 233, 0.1); --border-glow: rgba(14, 165, 233, 0.2);
+    --glow-purple: 0 0 20px rgba(14,165,233,0.15), 0 0 40px rgba(14,165,233,0.05);
+    --glow-pink: 0 0 20px rgba(6,182,212,0.15), 0 0 40px rgba(6,182,212,0.05);
+    --glow-teal: 0 0 20px rgba(14,165,233,0.15), 0 0 40px rgba(14,165,233,0.05);
+    --glow-cyan: 0 0 20px rgba(14,165,233,0.15), 0 0 40px rgba(14,165,233,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #0EA5E9, #06B6D4, #38BDF8, #0EA5E9);
+}
+
+/* 40. Desert */
+html.theme-desert {
+    --purple: #D97706; --purple-dark: #92400E; --purple-light: #F59E0B; --purple-neon: #FBBF24;
+    --pink: #B45309; --pink-dark: #92400E; --pink-neon: #D97706;
+    --teal: #D97706; --teal-dark: #92400E; --teal-neon: #F59E0B;
+    --cyan: #D97706;
+    --bg: #1C1408; --bg-card: rgba(35, 28, 15, 0.9); --bg-card-solid: #231C0F;
+    --bg-card-hover: rgba(50, 40, 20, 0.9); --bg-sidebar: rgba(22, 18, 8, 0.98);
+    --bg-input: rgba(35, 28, 15, 0.8); --bg-glass: rgba(28, 22, 12, 0.7);
+    --text: #FEF3C7; --text-dim: #FBBF24; --text-muted: #6B4C08;
+    --border: rgba(217, 119, 6, 0.15); --border-glow: rgba(217, 119, 6, 0.3);
+    --glow-purple: 0 0 25px rgba(217,119,6,0.4), 0 0 50px rgba(217,119,6,0.15);
+    --glow-pink: 0 0 25px rgba(180,83,9,0.4), 0 0 50px rgba(180,83,9,0.15);
+    --glow-teal: 0 0 25px rgba(217,119,6,0.4), 0 0 50px rgba(217,119,6,0.15);
+    --glow-cyan: 0 0 25px rgba(217,119,6,0.4), 0 0 50px rgba(217,119,6,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #D97706, #B45309, #F59E0B, #D97706);
+}
+
+/* ─── SPECIAL THEMES ─────────────────────────────────────────── */
+
+/* 41. Vaporwave */
+html.theme-vaporwave {
+    --purple: #FF71CE; --purple-dark: #CC50A0; --purple-light: #FF99DD; --purple-neon: #FFBBEE;
+    --pink: #FF71CE; --pink-dark: #CC50A0; --pink-neon: #FF99DD;
+    --teal: #01CDFE; --teal-dark: #009BC4; --teal-neon: #66E0FF;
+    --cyan: #01CDFE;
+    --bg: #1A0030; --bg-card: rgba(35, 0, 60, 0.9); --bg-card-solid: #23003C;
+    --bg-card-hover: rgba(50, 0, 85, 0.9); --bg-sidebar: rgba(20, 0, 40, 0.98);
+    --bg-input: rgba(35, 0, 60, 0.8); --bg-glass: rgba(28, 0, 50, 0.7);
+    --text: #F0D0FF; --text-dim: #C090E0; --text-muted: #6030A0;
+    --border: rgba(255, 113, 206, 0.15); --border-glow: rgba(255, 113, 206, 0.35);
+    --glow-purple: 0 0 30px rgba(255,113,206,0.4), 0 0 60px rgba(255,113,206,0.15);
+    --glow-pink: 0 0 30px rgba(255,113,206,0.4), 0 0 60px rgba(255,113,206,0.15);
+    --glow-teal: 0 0 30px rgba(1,205,254,0.4), 0 0 60px rgba(1,205,254,0.15);
+    --glow-cyan: 0 0 30px rgba(1,205,254,0.4), 0 0 60px rgba(1,205,254,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #FF71CE, #01CDFE, #B967FF, #FF71CE);
+}
+
+/* 42. Outrun */
+html.theme-outrun {
+    --purple: #FF2975; --purple-dark: #CC1050; --purple-light: #FF5090; --purple-neon: #FF80B0;
+    --pink: #FF2975; --pink-dark: #CC1050; --pink-neon: #FF5090;
+    --teal: #F222FF; --teal-dark: #B010CC; --teal-neon: #F555FF;
+    --cyan: #FF6600;
+    --bg: #0D0221; --bg-card: rgba(20, 5, 45, 0.9); --bg-card-solid: #14052D;
+    --bg-card-hover: rgba(30, 8, 65, 0.9); --bg-sidebar: rgba(10, 2, 25, 0.98);
+    --bg-input: rgba(20, 5, 45, 0.8); --bg-glass: rgba(16, 3, 35, 0.7);
+    --text: #FFD4E8; --text-dim: #FF80B0; --text-muted: #6B1040;
+    --border: rgba(255, 41, 117, 0.15); --border-glow: rgba(255, 41, 117, 0.4);
+    --glow-purple: 0 0 30px rgba(255,41,117,0.5), 0 0 60px rgba(255,41,117,0.2);
+    --glow-pink: 0 0 30px rgba(255,41,117,0.5), 0 0 60px rgba(255,41,117,0.2);
+    --glow-teal: 0 0 30px rgba(242,34,255,0.4), 0 0 60px rgba(242,34,255,0.15);
+    --glow-cyan: 0 0 30px rgba(255,102,0,0.4), 0 0 60px rgba(255,102,0,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #FF2975, #F222FF, #FF6600, #FF2975);
+}
+
+/* 43. Bubblegum */
+html.theme-bubblegum {
+    --purple: #E91E90; --purple-dark: #BA1870; --purple-light: #F050A8; --purple-neon: #F580C0;
+    --pink: #E91E90; --pink-dark: #BA1870; --pink-neon: #F050A8;
+    --teal: #E91E90; --teal-dark: #BA1870; --teal-neon: #F050A8;
+    --cyan: #E91E90;
+    --bg: #FFF0F8; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(255, 248, 252, 1); --bg-sidebar: rgba(255, 245, 250, 0.98);
+    --bg-input: rgba(255, 235, 245, 0.9); --bg-glass: rgba(255, 245, 250, 0.8);
+    --text: #4A0030; --text-dim: #7A1858; --text-muted: #F0A0D0;
+    --border: rgba(233, 30, 144, 0.1); --border-glow: rgba(233, 30, 144, 0.25);
+    --glow-purple: 0 0 20px rgba(233,30,144,0.15), 0 0 40px rgba(233,30,144,0.05);
+    --glow-pink: 0 0 20px rgba(233,30,144,0.15), 0 0 40px rgba(233,30,144,0.05);
+    --glow-teal: 0 0 20px rgba(233,30,144,0.15), 0 0 40px rgba(233,30,144,0.05);
+    --glow-cyan: 0 0 20px rgba(233,30,144,0.15), 0 0 40px rgba(233,30,144,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #E91E90, #F050A8, #F580C0, #E91E90);
+}
+
+/* 44. Monochrome */
+html.theme-monochrome {
+    --purple: #000000; --purple-dark: #000000; --purple-light: #333333; --purple-neon: #666666;
+    --pink: #000000; --pink-dark: #000000; --pink-neon: #333333;
+    --teal: #000000; --teal-dark: #000000; --teal-neon: #333333;
+    --cyan: #000000;
+    --bg: #FFFFFF; --bg-card: rgba(250, 250, 250, 0.95); --bg-card-solid: #FAFAFA;
+    --bg-card-hover: rgba(245, 245, 245, 1); --bg-sidebar: rgba(250, 250, 250, 0.98);
+    --bg-input: rgba(240, 240, 240, 0.9); --bg-glass: rgba(250, 250, 250, 0.8);
+    --text: #000000; --text-dim: #444444; --text-muted: #AAAAAA;
+    --border: rgba(0, 0, 0, 0.1); --border-glow: rgba(0, 0, 0, 0.15);
+    --glow-purple: none; --glow-pink: none; --glow-teal: none; --glow-cyan: none;
+    --gradient-rainbow: linear-gradient(135deg, #000, #333, #666, #000);
+}
+
+/* 45. Neon Miami */
+html.theme-miami {
+    --purple: #F72585; --purple-dark: #B5179E; --purple-light: #FF4DA6; --purple-neon: #FF80C0;
+    --pink: #F72585; --pink-dark: #B5179E; --pink-neon: #FF4DA6;
+    --teal: #4CC9F0; --teal-dark: #3A9BC0; --teal-neon: #7DD8F5;
+    --cyan: #4361EE;
+    --bg: #10002B; --bg-card: rgba(22, 0, 55, 0.9); --bg-card-solid: #160037;
+    --bg-card-hover: rgba(35, 0, 80, 0.9); --bg-sidebar: rgba(16, 0, 43, 0.98);
+    --bg-input: rgba(22, 0, 55, 0.8); --bg-glass: rgba(18, 0, 48, 0.7);
+    --text: #FFD6EC; --text-dim: #FF80C0; --text-muted: #7B2D8E;
+    --border: rgba(247, 37, 133, 0.15); --border-glow: rgba(247, 37, 133, 0.4);
+    --glow-purple: 0 0 30px rgba(247,37,133,0.5), 0 0 60px rgba(247,37,133,0.2);
+    --glow-pink: 0 0 30px rgba(247,37,133,0.5), 0 0 60px rgba(247,37,133,0.2);
+    --glow-teal: 0 0 30px rgba(76,201,240,0.4), 0 0 60px rgba(76,201,240,0.15);
+    --glow-cyan: 0 0 30px rgba(67,97,238,0.4), 0 0 60px rgba(67,97,238,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #F72585, #B5179E, #4361EE, #4CC9F0, #F72585);
+}
+
+/* 46. Pastel Dream */
+html.theme-pastel {
+    --purple: #A78BFA; --purple-dark: #7C3AED; --purple-light: #C4B5FD; --purple-neon: #DDD6FE;
+    --pink: #F9A8D4; --pink-dark: #EC4899; --pink-neon: #FBCFE8;
+    --teal: #6EE7B7; --teal-dark: #34D399; --teal-neon: #A7F3D0;
+    --cyan: #67E8F9;
+    --bg: #FDF4FF; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(253, 244, 255, 1); --bg-sidebar: rgba(255, 250, 255, 0.98);
+    --bg-input: rgba(248, 240, 252, 0.9); --bg-glass: rgba(255, 250, 255, 0.8);
+    --text: #3B0764; --text-dim: #6B21A8; --text-muted: #D8B4FE;
+    --border: rgba(167, 139, 250, 0.12); --border-glow: rgba(167, 139, 250, 0.2);
+    --glow-purple: 0 0 20px rgba(167,139,250,0.15), 0 0 40px rgba(167,139,250,0.05);
+    --glow-pink: 0 0 20px rgba(249,168,212,0.15), 0 0 40px rgba(249,168,212,0.05);
+    --glow-teal: 0 0 20px rgba(110,231,183,0.15), 0 0 40px rgba(110,231,183,0.05);
+    --glow-cyan: 0 0 20px rgba(103,232,249,0.15), 0 0 40px rgba(103,232,249,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #A78BFA, #F9A8D4, #6EE7B7, #67E8F9, #A78BFA);
+}
+
+/* 47. Steampunk */
+html.theme-steampunk {
+    --purple: #A0522D; --purple-dark: #6B3420; --purple-light: #CD853F; --purple-neon: #DEB887;
+    --pink: #B8860B; --pink-dark: #8B6508; --pink-neon: #DAA520;
+    --teal: #8B4513; --teal-dark: #654321; --teal-neon: #A0522D;
+    --cyan: #A0522D;
+    --bg: #1A1008; --bg-card: rgba(35, 25, 12, 0.9); --bg-card-solid: #23190C;
+    --bg-card-hover: rgba(50, 35, 18, 0.9); --bg-sidebar: rgba(22, 15, 6, 0.98);
+    --bg-input: rgba(35, 25, 12, 0.8); --bg-glass: rgba(28, 20, 10, 0.7);
+    --text: #DEB887; --text-dim: #CD853F; --text-muted: #6B4226;
+    --border: rgba(160, 82, 45, 0.15); --border-glow: rgba(160, 82, 45, 0.3);
+    --glow-purple: 0 0 25px rgba(160,82,45,0.3), 0 0 50px rgba(160,82,45,0.12);
+    --glow-pink: 0 0 25px rgba(184,134,11,0.3), 0 0 50px rgba(184,134,11,0.12);
+    --glow-teal: 0 0 25px rgba(139,69,19,0.3), 0 0 50px rgba(139,69,19,0.12);
+    --glow-cyan: 0 0 25px rgba(160,82,45,0.3), 0 0 50px rgba(160,82,45,0.12);
+    --gradient-rainbow: linear-gradient(135deg, #A0522D, #B8860B, #CD853F, #A0522D);
+}
+
+/* 48. Midnight Rose */
+html.theme-midnight-rose {
+    --purple: #BE185D; --purple-dark: #9D174D; --purple-light: #DB2777; --purple-neon: #EC4899;
+    --pink: #E11D48; --pink-dark: #BE123C; --pink-neon: #F43F5E;
+    --teal: #BE185D; --teal-dark: #9D174D; --teal-neon: #DB2777;
+    --cyan: #BE185D;
+    --bg: #18000C; --bg-card: rgba(30, 0, 18, 0.9); --bg-card-solid: #1E0012;
+    --bg-card-hover: rgba(45, 0, 28, 0.9); --bg-sidebar: rgba(20, 0, 10, 0.98);
+    --bg-input: rgba(30, 0, 18, 0.8); --bg-glass: rgba(24, 0, 14, 0.7);
+    --text: #FFF1F2; --text-dim: #FDA4AF; --text-muted: #881337;
+    --border: rgba(190, 24, 93, 0.15); --border-glow: rgba(190, 24, 93, 0.35);
+    --glow-purple: 0 0 30px rgba(190,24,93,0.4), 0 0 60px rgba(190,24,93,0.15);
+    --glow-pink: 0 0 30px rgba(225,29,72,0.4), 0 0 60px rgba(225,29,72,0.15);
+    --glow-teal: 0 0 30px rgba(190,24,93,0.4), 0 0 60px rgba(190,24,93,0.15);
+    --glow-cyan: 0 0 30px rgba(190,24,93,0.4), 0 0 60px rgba(190,24,93,0.15);
+    --gradient-rainbow: linear-gradient(135deg, #BE185D, #E11D48, #DB2777, #BE185D);
+}
+
+/* 49. Ice */
+html.theme-ice {
+    --purple: #60A5FA; --purple-dark: #2563EB; --purple-light: #93C5FD; --purple-neon: #BFDBFE;
+    --pink: #818CF8; --pink-dark: #6366F1; --pink-neon: #A5B4FC;
+    --teal: #60A5FA; --teal-dark: #2563EB; --teal-neon: #93C5FD;
+    --cyan: #60A5FA;
+    --bg: #EFF6FF; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(240, 248, 255, 1); --bg-sidebar: rgba(245, 250, 255, 0.98);
+    --bg-input: rgba(219, 234, 254, 0.6); --bg-glass: rgba(245, 250, 255, 0.8);
+    --text: #1E3A5F; --text-dim: #1E40AF; --text-muted: #93C5FD;
+    --border: rgba(96, 165, 250, 0.12); --border-glow: rgba(96, 165, 250, 0.2);
+    --glow-purple: 0 0 20px rgba(96,165,250,0.15), 0 0 40px rgba(96,165,250,0.05);
+    --glow-pink: 0 0 20px rgba(129,140,248,0.15), 0 0 40px rgba(129,140,248,0.05);
+    --glow-teal: 0 0 20px rgba(96,165,250,0.15), 0 0 40px rgba(96,165,250,0.05);
+    --glow-cyan: 0 0 20px rgba(96,165,250,0.15), 0 0 40px rgba(96,165,250,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #60A5FA, #818CF8, #93C5FD, #60A5FA);
+}
+
+/* 50. Amber */
+html.theme-amber {
+    --purple: #D97706; --purple-dark: #B45309; --purple-light: #F59E0B; --purple-neon: #FBBF24;
+    --pink: #D97706; --pink-dark: #B45309; --pink-neon: #F59E0B;
+    --teal: #D97706; --teal-dark: #B45309; --teal-neon: #F59E0B;
+    --cyan: #D97706;
+    --bg: #FFFBEB; --bg-card: rgba(255, 255, 255, 0.95); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(255, 252, 240, 1); --bg-sidebar: rgba(255, 253, 245, 0.98);
+    --bg-input: rgba(254, 243, 199, 0.5); --bg-glass: rgba(255, 253, 245, 0.8);
+    --text: #451A03; --text-dim: #78350F; --text-muted: #FCD34D;
+    --border: rgba(217, 119, 6, 0.12); --border-glow: rgba(217, 119, 6, 0.2);
+    --glow-purple: 0 0 20px rgba(217,119,6,0.15), 0 0 40px rgba(217,119,6,0.05);
+    --glow-pink: 0 0 20px rgba(217,119,6,0.15), 0 0 40px rgba(217,119,6,0.05);
+    --glow-teal: 0 0 20px rgba(217,119,6,0.15), 0 0 40px rgba(217,119,6,0.05);
+    --glow-cyan: 0 0 20px rgba(217,119,6,0.15), 0 0 40px rgba(217,119,6,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #D97706, #F59E0B, #FBBF24, #D97706);
+}
+
+/* ─── GENERIC OVERRIDES FOR ALL LIGHT-BG THEMES ──────────────── */
+/* Any theme with a light --bg needs these selector overrides */
+html.theme-nes, html.theme-snes, html.theme-gameboy,
+html.theme-rose-gold, html.theme-mint, html.theme-lavender,
+html.theme-coral, html.theme-sky, html.theme-sand, html.theme-slate,
+html.theme-copper, html.theme-arctic, html.theme-bubblegum,
+html.theme-monochrome, html.theme-pastel, html.theme-ice, html.theme-amber {
+    color-scheme: light;
+}
+html.theme-nes body, html.theme-snes body, html.theme-gameboy body,
+html.theme-rose-gold body, html.theme-mint body, html.theme-lavender body,
+html.theme-coral body, html.theme-sky body, html.theme-sand body, html.theme-slate body,
+html.theme-copper body, html.theme-arctic body, html.theme-bubblegum body,
+html.theme-monochrome body, html.theme-pastel body, html.theme-ice body, html.theme-amber body {
+    color: var(--text);
+}
+html.theme-nes .sidebar, html.theme-snes .sidebar, html.theme-gameboy .sidebar,
+html.theme-rose-gold .sidebar, html.theme-mint .sidebar, html.theme-lavender .sidebar,
+html.theme-coral .sidebar, html.theme-sky .sidebar, html.theme-sand .sidebar, html.theme-slate .sidebar,
+html.theme-copper .sidebar, html.theme-arctic .sidebar, html.theme-bubblegum .sidebar,
+html.theme-monochrome .sidebar, html.theme-pastel .sidebar, html.theme-ice .sidebar, html.theme-amber .sidebar {
+    background: var(--bg-sidebar); border-right: 1px solid var(--border); box-shadow: 2px 0 12px rgba(0,0,0,0.04);
+}
+html.theme-nes .game-card, html.theme-snes .game-card, html.theme-gameboy .game-card,
+html.theme-rose-gold .game-card, html.theme-mint .game-card, html.theme-lavender .game-card,
+html.theme-coral .game-card, html.theme-sky .game-card, html.theme-sand .game-card, html.theme-slate .game-card,
+html.theme-copper .game-card, html.theme-arctic .game-card, html.theme-bubblegum .game-card,
+html.theme-monochrome .game-card, html.theme-pastel .game-card, html.theme-ice .game-card, html.theme-amber .game-card {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+html.theme-nes .game-card:hover, html.theme-snes .game-card:hover, html.theme-gameboy .game-card:hover,
+html.theme-rose-gold .game-card:hover, html.theme-mint .game-card:hover, html.theme-lavender .game-card:hover,
+html.theme-coral .game-card:hover, html.theme-sky .game-card:hover, html.theme-sand .game-card:hover, html.theme-slate .game-card:hover,
+html.theme-copper .game-card:hover, html.theme-arctic .game-card:hover, html.theme-bubblegum .game-card:hover,
+html.theme-monochrome .game-card:hover, html.theme-pastel .game-card:hover, html.theme-ice .game-card:hover, html.theme-amber .game-card:hover {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+/* Light theme switcher overrides */
+html.theme-nes .theme-switcher, html.theme-snes .theme-switcher, html.theme-gameboy .theme-switcher,
+html.theme-rose-gold .theme-switcher, html.theme-mint .theme-switcher, html.theme-lavender .theme-switcher,
+html.theme-coral .theme-switcher, html.theme-sky .theme-switcher, html.theme-sand .theme-switcher, html.theme-slate .theme-switcher,
+html.theme-copper .theme-switcher, html.theme-arctic .theme-switcher, html.theme-bubblegum .theme-switcher,
+html.theme-monochrome .theme-switcher, html.theme-pastel .theme-switcher, html.theme-ice .theme-switcher, html.theme-amber .theme-switcher {
+    background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.06);
+}
+html.theme-nes .theme-btn, html.theme-snes .theme-btn, html.theme-gameboy .theme-btn,
+html.theme-rose-gold .theme-btn, html.theme-mint .theme-btn, html.theme-lavender .theme-btn,
+html.theme-coral .theme-btn, html.theme-sky .theme-btn, html.theme-sand .theme-btn, html.theme-slate .theme-btn,
+html.theme-copper .theme-btn, html.theme-arctic .theme-btn, html.theme-bubblegum .theme-btn,
+html.theme-monochrome .theme-btn, html.theme-pastel .theme-btn, html.theme-ice .theme-btn, html.theme-amber .theme-btn {
+    color: rgba(0,0,0,0.35);
+}
+html.theme-nes .theme-btn:hover, html.theme-snes .theme-btn:hover, html.theme-gameboy .theme-btn:hover,
+html.theme-rose-gold .theme-btn:hover, html.theme-mint .theme-btn:hover, html.theme-lavender .theme-btn:hover,
+html.theme-coral .theme-btn:hover, html.theme-sky .theme-btn:hover, html.theme-sand .theme-btn:hover, html.theme-slate .theme-btn:hover,
+html.theme-copper .theme-btn:hover, html.theme-arctic .theme-btn:hover, html.theme-bubblegum .theme-btn:hover,
+html.theme-monochrome .theme-btn:hover, html.theme-pastel .theme-btn:hover, html.theme-ice .theme-btn:hover, html.theme-amber .theme-btn:hover {
+    color: rgba(0,0,0,0.7); background: rgba(0,0,0,0.04);
+}
+html.theme-nes .theme-btn.active, html.theme-snes .theme-btn.active, html.theme-gameboy .theme-btn.active,
+html.theme-rose-gold .theme-btn.active, html.theme-mint .theme-btn.active, html.theme-lavender .theme-btn.active,
+html.theme-coral .theme-btn.active, html.theme-sky .theme-btn.active, html.theme-sand .theme-btn.active, html.theme-slate .theme-btn.active,
+html.theme-copper .theme-btn.active, html.theme-arctic .theme-btn.active, html.theme-bubblegum .theme-btn.active,
+html.theme-monochrome .theme-btn.active, html.theme-pastel .theme-btn.active, html.theme-ice .theme-btn.active, html.theme-amber .theme-btn.active {
+    border-color: var(--purple); color: var(--purple); background: rgba(0,0,0,0.04); box-shadow: none;
+}
+html.theme-nes .sidebar-rainbow, html.theme-snes .sidebar-rainbow, html.theme-gameboy .sidebar-rainbow,
+html.theme-rose-gold .sidebar-rainbow, html.theme-mint .sidebar-rainbow, html.theme-lavender .sidebar-rainbow,
+html.theme-coral .sidebar-rainbow, html.theme-sky .sidebar-rainbow, html.theme-sand .sidebar-rainbow, html.theme-slate .sidebar-rainbow,
+html.theme-copper .sidebar-rainbow, html.theme-arctic .sidebar-rainbow, html.theme-bubblegum .sidebar-rainbow,
+html.theme-monochrome .sidebar-rainbow, html.theme-pastel .sidebar-rainbow, html.theme-ice .sidebar-rainbow, html.theme-amber .sidebar-rainbow {
+    background: var(--gradient-rainbow);
+}
+html.theme-nes .nav-link.active, html.theme-snes .nav-link.active, html.theme-gameboy .nav-link.active,
+html.theme-rose-gold .nav-link.active, html.theme-mint .nav-link.active, html.theme-lavender .nav-link.active,
+html.theme-coral .nav-link.active, html.theme-sky .nav-link.active, html.theme-sand .nav-link.active, html.theme-slate .nav-link.active,
+html.theme-copper .nav-link.active, html.theme-arctic .nav-link.active, html.theme-bubblegum .nav-link.active,
+html.theme-monochrome .nav-link.active, html.theme-pastel .nav-link.active, html.theme-ice .nav-link.active, html.theme-amber .nav-link.active {
+    background: rgba(0,0,0,0.06); color: var(--purple);
+}
+html.theme-nes .btn-purple, html.theme-snes .btn-purple, html.theme-gameboy .btn-purple,
+html.theme-rose-gold .btn-purple, html.theme-mint .btn-purple, html.theme-lavender .btn-purple,
+html.theme-coral .btn-purple, html.theme-sky .btn-purple, html.theme-sand .btn-purple, html.theme-slate .btn-purple,
+html.theme-copper .btn-purple, html.theme-arctic .btn-purple, html.theme-bubblegum .btn-purple,
+html.theme-monochrome .btn-purple, html.theme-pastel .btn-purple, html.theme-ice .btn-purple, html.theme-amber .btn-purple {
+    background: linear-gradient(135deg, var(--purple-dark), var(--purple));
+}

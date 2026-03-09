@@ -10,16 +10,36 @@
     <title>Your World Arcade</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Literata:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/arcade.css?v=11">
-    <link rel="stylesheet" href="/css/command-center.css?v=11">
-    <link rel="stylesheet" href="/css/originals.css?v=11">
-    <link rel="stylesheet" href="/css/clan-battles.css?v=11">
-    <link rel="stylesheet" href="/css/pro-features.css?v=11">
-    <link rel="stylesheet" href="/css/intel-hub.css?v=11">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/arcade.css?v=14">
+    <link rel="stylesheet" href="/css/themes.css?v=14">
+    <link rel="stylesheet" href="/css/command-center.css?v=14">
+    <link rel="stylesheet" href="/css/originals.css?v=14">
+    <link rel="stylesheet" href="/css/clan-battles.css?v=14">
+    <link rel="stylesheet" href="/css/pro-features.css?v=14">
+    <link rel="stylesheet" href="/css/intel-hub.css?v=14">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+    <script>
+    /* Theme switcher — runs early to prevent flash */
+    function setTheme(t) {
+        var cl = document.documentElement.classList;
+        Array.from(cl).forEach(function(c){ if(c.indexOf('theme-')===0) cl.remove(c); });
+        if (t !== 'dark') cl.add('theme-' + t);
+        localStorage.setItem('ywa_theme', t);
+        document.querySelectorAll('.theme-btn').forEach(function(d){ d.classList.toggle('active', d.dataset.theme === t); });
+        var label = document.getElementById('themeCurrentLabel');
+        if (label) label.textContent = (t.charAt(0).toUpperCase() + t.slice(1)).replace(/-/g, ' ');
+        var picker = document.getElementById('themePicker');
+        if (picker) picker.classList.remove('open');
+    }
+    (function() { var t = localStorage.getItem('ywa_theme') || 'light'; setTheme(t); })();
+    document.addEventListener('click', function(e) {
+        var picker = document.getElementById('themePicker');
+        if (picker && !picker.contains(e.target)) picker.classList.remove('open');
+    });
+    </script>
 </head>
 <body>
     <!-- ══ Startup Splash Screen (personalized per player) ══ -->
@@ -245,6 +265,74 @@
         <div id="sidebarXP" class="sidebar-xp-container"></div>
 
         <div class="sidebar-footer">
+            <!-- Theme switcher -->
+            <div class="theme-picker" id="themePicker">
+                <div class="theme-picker-toggle" onclick="document.getElementById('themePicker').classList.toggle('open')">
+                    <span class="theme-picker-icon">🎨</span>
+                    <span class="theme-picker-label" id="themeCurrentLabel">Light</span>
+                    <span class="theme-picker-arrow">▾</span>
+                </div>
+                <div class="theme-picker-dropdown" id="themeDropdown">
+                    <div class="theme-picker-section">DARK</div>
+                    <div class="theme-btn" data-theme="dark" onclick="setTheme('dark')"><span class="tps" style="background:#7B2D8E"></span>Midnight Purple</div>
+                    <div class="theme-btn" data-theme="cyberpunk" onclick="setTheme('cyberpunk')"><span class="tps" style="background:#FF00FF"></span>Cyberpunk</div>
+                    <div class="theme-btn" data-theme="dracula" onclick="setTheme('dracula')"><span class="tps" style="background:#BD93F9"></span>Dracula</div>
+                    <div class="theme-btn" data-theme="midnight-blue" onclick="setTheme('midnight-blue')"><span class="tps" style="background:#3B82F6"></span>Midnight Blue</div>
+                    <div class="theme-btn" data-theme="noir" onclick="setTheme('noir')"><span class="tps" style="background:#A0A0A0"></span>Noir</div>
+                    <div class="theme-btn" data-theme="emerald-night" onclick="setTheme('emerald-night')"><span class="tps" style="background:#10B981"></span>Emerald Night</div>
+                    <div class="theme-btn" data-theme="blood-moon" onclick="setTheme('blood-moon')"><span class="tps" style="background:#DC2626"></span>Blood Moon</div>
+                    <div class="theme-btn" data-theme="deep-space" onclick="setTheme('deep-space')"><span class="tps" style="background:#8B5CF6"></span>Deep Space</div>
+                    <div class="theme-btn" data-theme="hacker" onclick="setTheme('hacker')"><span class="tps" style="background:#00FF41"></span>Hacker</div>
+                    <div class="theme-btn" data-theme="sunset" onclick="setTheme('sunset')"><span class="tps" style="background:#F59E0B"></span>Sunset</div>
+                    <div class="theme-btn" data-theme="ocean" onclick="setTheme('ocean')"><span class="tps" style="background:#0891B2"></span>Ocean Abyss</div>
+                    <div class="theme-btn" data-theme="sakura-night" onclick="setTheme('sakura-night')"><span class="tps" style="background:#F472B6"></span>Sakura Night</div>
+                    <div class="theme-picker-section">NEON</div>
+                    <div class="theme-btn" data-theme="neon-arcade" onclick="setTheme('neon-arcade')"><span class="tps" style="background:#E040FB"></span>Neon Arcade</div>
+                    <div class="theme-btn" data-theme="synthwave" onclick="setTheme('synthwave')"><span class="tps" style="background:#E94EC0"></span>Synthwave</div>
+                    <div class="theme-btn" data-theme="electric-blue" onclick="setTheme('electric-blue')"><span class="tps" style="background:#2979FF"></span>Electric Blue</div>
+                    <div class="theme-btn" data-theme="toxic" onclick="setTheme('toxic')"><span class="tps" style="background:#76FF03"></span>Toxic</div>
+                    <div class="theme-picker-section">RETRO</div>
+                    <div class="theme-btn" data-theme="gameboy" onclick="setTheme('gameboy')"><span class="tps" style="background:#9BBC0F"></span>Gameboy</div>
+                    <div class="theme-btn" data-theme="nes" onclick="setTheme('nes')"><span class="tps" style="background:#CC0000"></span>NES Classic</div>
+                    <div class="theme-btn" data-theme="snes" onclick="setTheme('snes')"><span class="tps" style="background:#5C2D91"></span>SNES</div>
+                    <div class="theme-btn" data-theme="genesis" onclick="setTheme('genesis')"><span class="tps" style="background:#0066CC"></span>Genesis</div>
+                    <div class="theme-btn" data-theme="ps1" onclick="setTheme('ps1')"><span class="tps" style="background:#0070D1"></span>PS1</div>
+                    <div class="theme-btn" data-theme="c64" onclick="setTheme('c64')"><span class="tps" style="background:#6C5EB5"></span>Commodore 64</div>
+                    <div class="theme-btn" data-theme="atari" onclick="setTheme('atari')"><span class="tps" style="background:#E87000"></span>Atari</div>
+                    <div class="theme-picker-section">LIGHT</div>
+                    <div class="theme-btn" data-theme="light" onclick="setTheme('light')"><span class="tps" style="background:#1B3A5C"></span>Paper</div>
+                    <div class="theme-btn" data-theme="zen" onclick="setTheme('zen')"><span class="tps" style="background:#DC2626"></span>Zen</div>
+                    <div class="theme-btn" data-theme="rose-gold" onclick="setTheme('rose-gold')"><span class="tps" style="background:#B76E79"></span>Rose Gold</div>
+                    <div class="theme-btn" data-theme="mint" onclick="setTheme('mint')"><span class="tps" style="background:#059669"></span>Mint</div>
+                    <div class="theme-btn" data-theme="lavender" onclick="setTheme('lavender')"><span class="tps" style="background:#7C3AED"></span>Lavender</div>
+                    <div class="theme-btn" data-theme="coral" onclick="setTheme('coral')"><span class="tps" style="background:#F97316"></span>Coral</div>
+                    <div class="theme-btn" data-theme="sky" onclick="setTheme('sky')"><span class="tps" style="background:#0284C7"></span>Sky</div>
+                    <div class="theme-btn" data-theme="sand" onclick="setTheme('sand')"><span class="tps" style="background:#92400E"></span>Warm Sand</div>
+                    <div class="theme-btn" data-theme="slate" onclick="setTheme('slate')"><span class="tps" style="background:#475569"></span>Slate</div>
+                    <div class="theme-btn" data-theme="bubblegum" onclick="setTheme('bubblegum')"><span class="tps" style="background:#E91E90"></span>Bubblegum</div>
+                    <div class="theme-btn" data-theme="monochrome" onclick="setTheme('monochrome')"><span class="tps" style="background:#000000"></span>Monochrome</div>
+                    <div class="theme-btn" data-theme="pastel" onclick="setTheme('pastel')"><span class="tps" style="background:#A78BFA"></span>Pastel Dream</div>
+                    <div class="theme-btn" data-theme="ice" onclick="setTheme('ice')"><span class="tps" style="background:#60A5FA"></span>Ice</div>
+                    <div class="theme-btn" data-theme="amber" onclick="setTheme('amber')"><span class="tps" style="background:#D97706"></span>Amber</div>
+                    <div class="theme-btn" data-theme="arctic" onclick="setTheme('arctic')"><span class="tps" style="background:#0EA5E9"></span>Arctic</div>
+                    <div class="theme-btn" data-theme="copper" onclick="setTheme('copper')"><span class="tps" style="background:#B87333"></span>Copper</div>
+                    <div class="theme-picker-section">LUXURY</div>
+                    <div class="theme-btn" data-theme="gold" onclick="setTheme('gold')"><span class="tps" style="background:#DAA520"></span>Gold</div>
+                    <div class="theme-btn" data-theme="carbon" onclick="setTheme('carbon')"><span class="tps" style="background:#525252"></span>Carbon</div>
+                    <div class="theme-btn" data-theme="royal" onclick="setTheme('royal')"><span class="tps" style="background:#6D28D9"></span>Royal Purple</div>
+                    <div class="theme-picker-section">NATURE</div>
+                    <div class="theme-btn" data-theme="forest" onclick="setTheme('forest')"><span class="tps" style="background:#15803D"></span>Forest</div>
+                    <div class="theme-btn" data-theme="aurora" onclick="setTheme('aurora')"><span class="tps" style="background:#8B5CF6"></span>Aurora</div>
+                    <div class="theme-btn" data-theme="volcanic" onclick="setTheme('volcanic')"><span class="tps" style="background:#DC2626"></span>Volcanic</div>
+                    <div class="theme-btn" data-theme="desert" onclick="setTheme('desert')"><span class="tps" style="background:#D97706"></span>Desert</div>
+                    <div class="theme-picker-section">SPECIAL</div>
+                    <div class="theme-btn" data-theme="vaporwave" onclick="setTheme('vaporwave')"><span class="tps" style="background:#FF71CE"></span>Vaporwave</div>
+                    <div class="theme-btn" data-theme="outrun" onclick="setTheme('outrun')"><span class="tps" style="background:#FF2975"></span>Outrun</div>
+                    <div class="theme-btn" data-theme="miami" onclick="setTheme('miami')"><span class="tps" style="background:#F72585"></span>Neon Miami</div>
+                    <div class="theme-btn" data-theme="steampunk" onclick="setTheme('steampunk')"><span class="tps" style="background:#A0522D"></span>Steampunk</div>
+                    <div class="theme-btn" data-theme="midnight-rose" onclick="setTheme('midnight-rose')"><span class="tps" style="background:#BE185D"></span>Midnight Rose</div>
+                </div>
+            </div>
             <div class="scan-btn" id="scanBtn" onclick="window.arcade.startScan()">
                 <span class="nav-icon">🔍</span><span class="nav-label">Scan ROMs</span>
             </div>
@@ -326,72 +414,72 @@
         </div>
     </div>
 
-    <script src="/js/utils/api.js?v=11"></script>
-    <script src="/js/utils/router.js?v=11"></script>
-    <script src="/js/utils/helpers.js?v=11"></script>
-    <script src="/js/utils/sound.js?v=11"></script>
-    <script src="/js/utils/confetti.js?v=11"></script>
-    <script src="/js/utils/arcade-engine.js?v=11"></script>
-    <script src="/js/utils/themes.js?v=11"></script>
-    <script src="/js/components/game-card.js?v=11"></script>
-    <script src="/js/components/search-bar.js?v=11"></script>
-    <script src="/js/components/pagination.js?v=11"></script>
-    <script src="/js/views/home.js?v=11"></script>
-    <script src="/js/views/library.js?v=11"></script>
-    <script src="/js/views/systems.js?v=11"></script>
-    <script src="/js/views/game.js?v=11"></script>
-    <script src="/js/views/archive.js?v=11"></script>
-    <script src="/js/views/mamedev.js?v=11"></script>
-    <script src="/js/views/downloads.js?v=11"></script>
-    <script src="/js/views/settings.js?v=11"></script>
-    <script src="/js/views/favorites.js?v=11"></script>
-    <script src="/js/views/challenge.js?v=11"></script>
-    <script src="/js/views/scores.js?v=11"></script>
-    <script src="/js/views/quiz.js?v=11"></script>
-    <script src="/js/views/customize.js?v=11"></script>
-    <script src="/js/views/command-center.js?v=11"></script>
-    <script src="/js/views/originals.js?v=11"></script>
-    <script src="/js/views/clans.js?v=11"></script>
-    <script src="/js/views/clan-battles.js?v=11"></script>
+    <script src="/js/utils/api.js?v=14"></script>
+    <script src="/js/utils/router.js?v=14"></script>
+    <script src="/js/utils/helpers.js?v=14"></script>
+    <script src="/js/utils/sound.js?v=14"></script>
+    <script src="/js/utils/confetti.js?v=14"></script>
+    <script src="/js/utils/arcade-engine.js?v=14"></script>
+    <script src="/js/utils/themes.js?v=14"></script>
+    <script src="/js/components/game-card.js?v=14"></script>
+    <script src="/js/components/search-bar.js?v=14"></script>
+    <script src="/js/components/pagination.js?v=14"></script>
+    <script src="/js/views/home.js?v=14"></script>
+    <script src="/js/views/library.js?v=14"></script>
+    <script src="/js/views/systems.js?v=14"></script>
+    <script src="/js/views/game.js?v=14"></script>
+    <script src="/js/views/archive.js?v=14"></script>
+    <script src="/js/views/mamedev.js?v=14"></script>
+    <script src="/js/views/downloads.js?v=14"></script>
+    <script src="/js/views/settings.js?v=14"></script>
+    <script src="/js/views/favorites.js?v=14"></script>
+    <script src="/js/views/challenge.js?v=14"></script>
+    <script src="/js/views/scores.js?v=14"></script>
+    <script src="/js/views/quiz.js?v=14"></script>
+    <script src="/js/views/customize.js?v=14"></script>
+    <script src="/js/views/command-center.js?v=14"></script>
+    <script src="/js/views/originals.js?v=14"></script>
+    <script src="/js/views/clans.js?v=14"></script>
+    <script src="/js/views/clan-battles.js?v=14"></script>
     <!-- V5 New Views -->
-    <script src="/js/views/hall-of-fame.js?v=11"></script>
-    <script src="/js/views/stats.js?v=11"></script>
-    <script src="/js/views/trophies.js?v=11"></script>
-    <script src="/js/views/completion.js?v=11"></script>
-    <script src="/js/views/recommendations.js?v=11"></script>
-    <script src="/js/views/weekly.js?v=11"></script>
-    <script src="/js/views/daily.js?v=11"></script>
-    <script src="/js/views/tournaments.js?v=11"></script>
-    <script src="/js/views/collections.js?v=11"></script>
-    <script src="/js/views/friends.js?v=11"></script>
-    <script src="/js/views/speedrun.js?v=11"></script>
-    <script src="/js/views/player-card.js?v=11"></script>
-    <script src="/js/utils/notifications.js?v=11"></script>
-    <script src="/js/utils/sound-mixer.js?v=11"></script>
+    <script src="/js/views/hall-of-fame.js?v=14"></script>
+    <script src="/js/views/stats.js?v=14"></script>
+    <script src="/js/views/trophies.js?v=14"></script>
+    <script src="/js/views/completion.js?v=14"></script>
+    <script src="/js/views/recommendations.js?v=14"></script>
+    <script src="/js/views/weekly.js?v=14"></script>
+    <script src="/js/views/daily.js?v=14"></script>
+    <script src="/js/views/tournaments.js?v=14"></script>
+    <script src="/js/views/collections.js?v=14"></script>
+    <script src="/js/views/friends.js?v=14"></script>
+    <script src="/js/views/speedrun.js?v=14"></script>
+    <script src="/js/views/player-card.js?v=14"></script>
+    <script src="/js/utils/notifications.js?v=14"></script>
+    <script src="/js/utils/sound-mixer.js?v=14"></script>
     <!-- Games -->
-    <script src="/js/games/mollypop.js?v=11"></script>
-    <script src="/js/games/tictacmae.js?v=11"></script>
-    <script src="/js/games/maetris.js?v=11"></script>
-    <script src="/js/games/maeteoroids.js?v=11"></script>
-    <script src="/js/games/maekout.js?v=11"></script>
-    <script src="/js/games/flappymae.js?v=11"></script>
-    <script src="/js/games/pacmae.js?v=11"></script>
-    <script src="/js/games/mollypong.js?v=11"></script>
-    <script src="/js/games/molliped.js?v=11"></script>
-    <script src="/js/games/mollycontrol.js?v=11"></script>
-    <script src="/js/utils/mollypops-reward.js?v=11"></script>
-    <script src="/js/utils/postgame.js?v=11"></script>
+    <script src="/js/games/mollypop.js?v=14"></script>
+    <script src="/js/games/tictacmae.js?v=14"></script>
+    <script src="/js/games/maetris.js?v=14"></script>
+    <script src="/js/games/maeteoroids.js?v=14"></script>
+    <script src="/js/games/maekout.js?v=14"></script>
+    <script src="/js/games/flappymae.js?v=14"></script>
+    <script src="/js/games/pacmae.js?v=14"></script>
+    <script src="/js/games/mollypong.js?v=14"></script>
+    <script src="/js/games/molliped.js?v=14"></script>
+    <script src="/js/games/mollycontrol.js?v=14"></script>
+    <script src="/js/utils/mollypops-reward.js?v=14"></script>
+    <script src="/js/utils/postgame.js?v=14"></script>
     <!-- V6: Social Arcade -->
-    <script src="/js/views/chat.js?v=11"></script>
-    <script src="/js/views/messages.js?v=11"></script>
-    <script src="/js/views/game-requests.js?v=11"></script>
-    <script src="/js/views/ai-search.js?v=11"></script>
-    <script src="/js/views/social-hub.js?v=11"></script>
+    <script src="/js/views/chat.js?v=14"></script>
+    <script src="/js/views/messages.js?v=14"></script>
+    <script src="/js/views/game-requests.js?v=14"></script>
+    <script src="/js/views/ai-search.js?v=14"></script>
+    <script src="/js/views/social-hub.js?v=14"></script>
     <!-- Intel Hub -->
-    <script src="/js/views/intel-hub.js?v=11"></script>
+    <script src="/js/views/intel-hub.js?v=14"></script>
     <!-- V8: Arcade OS -->
-    <script src="/js/utils/cabinet.js?v=11"></script>
-    <script src="/js/app.js?v=11"></script>
+    <script src="/js/utils/cabinet.js?v=14"></script>
+    <script src="/js/app.js?v=14"></script>
     <script>
     /* Mobile Nav Toggle */
     function toggleMobileNav() {

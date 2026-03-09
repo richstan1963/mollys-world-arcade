@@ -360,10 +360,10 @@ window.GameView = {
                 <div class="intel-empty-glow"></div>
                 <div class="intel-empty-text">
                     <span class="intel-empty-title">No ${label} yet</span>
-                    <span class="intel-empty-sub">Generate one — takes about 15 seconds</span>
+                    <span class="intel-empty-sub">Download one — takes about 15 seconds</span>
                 </div>
                 <button class="btn btn-yellow intel-gen-btn" onclick="GameView.generateIntel(${romId}, '${type}')">
-                    ✨ Generate ${label}
+                    ✨ Download ${label}
                 </button>
             </div>`;
 
@@ -379,7 +379,7 @@ window.GameView = {
                             ${mdl ? `<span class="intel-model">${mdl}</span>` : ''}
                             ${ts ? `<span class="intel-date">${ts}</span>` : ''}
                         </div>
-                        <button class="intel-regen-btn" onclick="GameView.regenIntel(${romId}, '${type}')">↺ Regenerate</button>
+                        <button class="intel-regen-btn" onclick="GameView.regenIntel(${romId}, '${type}')">↺ Re-download</button>
                     </div>
                 </div>`;
         };
@@ -451,7 +451,7 @@ window.GameView = {
         placeholder.classList.remove('hero-placeholder');
         placeholder.classList.add('hero-generate');
         placeholder.innerHTML = `<span class="hero-gen-text">No game summary yet</span>
-            <button class="btn btn-yellow btn-sm hero-gen-btn" onclick="GameView.generateIntel(${romId}, 'bio')">✨ Generate Bio</button>`;
+            <button class="btn btn-yellow btn-sm hero-gen-btn" onclick="GameView.generateIntel(${romId}, 'bio')">✨ Download Bio</button>`;
     },
 
     async generateIntel(romId, type) {
@@ -470,13 +470,13 @@ window.GameView = {
         try {
             await API.generateGameIntel(romId, type);
             SFX?.coin?.();
-            H.toast(`${type === 'bio' ? '📖 Bio' : '🕹️ Guide'} generated!`, 'success');
+            H.toast(`${type === 'bio' ? '📖 Bio' : '🕹️ Guide'} downloaded!`, 'success');
             // Reload intel panel with new content
             const intel = await API.gameIntel(romId);
             this.renderIntelPanel(romId, this._lastGameTitle || '', intel);
             this.switchIntelTab(type);
         } catch (err) {
-            H.toast(err.message || 'Generation failed', 'error');
+            H.toast(err.message || 'Download failed', 'error');
             if (bodyEl) bodyEl.innerHTML = `
                 <div class="intel-empty-tab">
                     <div class="intel-empty-icon">⚠️</div>
