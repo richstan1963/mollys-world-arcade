@@ -212,10 +212,10 @@ const IntelHubView = (() => {
             const curr = s.current;
             const rt   = s.startedAt ? _fmtTime(s.startedAt) : '';
             stEl.innerHTML = curr
-                ? `<span class="ih-pulse">●</span> Generating <strong>${esc(curr.type)}</strong> for "${esc(curr.title)}" <span class="ih-runtime">${rt}</span>`
+                ? `<span class="ih-pulse">●</span> Downloading <strong>${esc(curr.type)}</strong> for "${esc(curr.title)}" <span class="ih-runtime">${rt}</span>`
                 : `<span class="ih-pulse">●</span> Starting…`;
         } else if (s.finishedAt && s.done > 0) {
-            stEl.textContent = `✓ Last run: ${s.done} docs generated, ${s.errors} errors`;
+            stEl.textContent = `✓ Last run: ${s.done} docs downloaded, ${s.errors} errors`;
         } else {
             stEl.textContent = 'Ready to generate';
         }
@@ -368,11 +368,11 @@ const IntelHubView = (() => {
 
         _drawerRomId = romId; _drawerType = type; _drawerName = name;
         _setDrawerHead(name, type);
-        $('ihDMeta').textContent = 'Generating with AI…';
+        $('ihDMeta').textContent = 'Downloading…';
         $('ihDPreview').innerHTML = `
             <div class="ih-gen-status">
                 <div class="ih-gen-spinner">⟳</div>
-                <div class="ih-gen-msg">Generating ${esc(type)} for <em>${name}</em></div>
+                <div class="ih-gen-msg">Downloading ${esc(type)} for <em>${name}</em></div>
                 <div class="ih-gen-note">Takes 30–120 seconds depending on provider</div>
             </div>`;
         $('ihDEditor').style.display = 'none';
@@ -479,11 +479,11 @@ const IntelHubView = (() => {
     async function _regen() {
         if (!_drawerRomId || !_drawerType) return;
         if ($('ihBtnRegen')) $('ihBtnRegen').disabled = true;
-        $('ihDMeta').textContent = 'Regenerating…';
+        $('ihDMeta').textContent = 'Re-downloading…';
         $('ihDPreview').innerHTML = `
             <div class="ih-gen-status">
                 <div class="ih-gen-spinner">⟳</div>
-                <div class="ih-gen-msg">Regenerating ${esc(_drawerType)} for <em>${esc(_drawerName || '')}</em></div>
+                <div class="ih-gen-msg">Re-downloading ${esc(_drawerType)} for <em>${esc(_drawerName || '')}</em></div>
             </div>`;
         $('ihDEditor').style.display = 'none';
         $('ihDPreview').style.display = '';

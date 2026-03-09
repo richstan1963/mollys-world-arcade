@@ -12,14 +12,17 @@ window.GameCard = {
             : '';
 
         return `
-            <div class="game-card" onclick="Router.navigate('#/game/${game.id}')">
+            <div class="game-card">
                 <div class="game-card-art">
                     ${art
                         ? `<img src="${art}" alt="${title}" loading="lazy" decoding="async" onerror="this.parentNode.innerHTML='<span class=\\'no-art\\'>${H.systemEmoji(game.system_id)}</span>'">`
                         : `<span class="no-art">${H.systemEmoji(game.system_id)}</span>`
                     }
-                    <div class="game-card-play-overlay" onclick="event.stopPropagation(); window.arcade.playGame(${game.id})">
-                        <div class="game-card-play-btn">▶</div>
+                    <div class="game-card-play-overlay">
+                        <div class="game-card-actions">
+                            <button class="game-card-action-btn game-card-action-play" onclick="event.stopPropagation(); window.arcade.playGame(${game.id})" title="Play Game">▶ Play</button>
+                            <button class="game-card-action-btn game-card-action-info" onclick="event.stopPropagation(); Router.navigate('#/game/${game.id}')" title="Get Info">ℹ Info</button>
+                        </div>
                     </div>
                     <span class="game-card-system" style="background:${sysColor}CC">${H.escHtml(sysName)}</span>
                     ${fav}
@@ -30,6 +33,7 @@ window.GameCard = {
                     <div class="game-card-meta">
                         <span>${H.formatBytes(game.size_bytes)}</span>
                         ${game.region ? `<span>· ${H.escHtml(game.region)}</span>` : ''}
+                        ${game.genre ? `<span>· ${H.escHtml(game.genre)}</span>` : ''}
                     </div>
                 </div>
             </div>

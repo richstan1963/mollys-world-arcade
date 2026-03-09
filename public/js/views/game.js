@@ -183,14 +183,19 @@ window.GameView = {
 
 
                         ${game.history && game.history.length > 0 ? `
-                            <div class="play-history">
-                                <h4>Play History</h4>
+                        <details class="game-collapse-section">
+                            <summary class="game-collapse-header">
+                                <span>Play History</span>
+                                <span class="collapse-badge">${game.history.length} session${game.history.length !== 1 ? 's' : ''}</span>
+                            </summary>
+                            <div class="game-collapse-body">
                                 <ul class="play-history-list">
                                     ${game.history.map(h => `
                                         <li>${H.timeAgo(h.started_at)} — ${H.formatDuration(h.duration_seconds)}</li>
                                     `).join('')}
                                 </ul>
                             </div>
+                        </details>
                         ` : ''}
                     </div>
                 </div>
@@ -355,7 +360,7 @@ window.GameView = {
                 <div class="intel-empty-glow"></div>
                 <div class="intel-empty-text">
                     <span class="intel-empty-title">No ${label} yet</span>
-                    <span class="intel-empty-sub">Generate one with AI — takes about 15 seconds</span>
+                    <span class="intel-empty-sub">Generate one — takes about 15 seconds</span>
                 </div>
                 <button class="btn btn-yellow intel-gen-btn" onclick="GameView.generateIntel(${romId}, '${type}')">
                     ✨ Generate ${label}
@@ -458,8 +463,8 @@ window.GameView = {
         if (bodyEl) bodyEl.innerHTML = `
             <div class="intel-generating">
                 <div class="intel-gen-spinner"></div>
-                <div class="intel-gen-msg">✨ Generating ${type === 'bio' ? 'Game Bio' : 'Gameplay Guide'} with AI…<br>
-                    <small>This takes ~15–30 seconds</small></div>
+                <div class="intel-gen-msg">✨ Downloading ${type === 'bio' ? 'Game Bio' : 'Gameplay Guide'}…<br>
+                    <small>This may take ~15–30 seconds</small></div>
             </div>`;
 
         try {
