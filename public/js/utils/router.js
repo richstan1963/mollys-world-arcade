@@ -28,8 +28,8 @@ window.Router = {
                 );
             });
 
-            // Find matching route
-            let handler = this.routes[routePath];
+            // Find matching route — only use exact match if no extra path segments
+            let handler = (rest.length === 0) ? this.routes[routePath] : null;
             if (!handler) {
                 // Try wildcard routes like /game/:id
                 for (const [route, h] of Object.entries(this.routes)) {

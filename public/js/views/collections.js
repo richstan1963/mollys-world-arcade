@@ -1,6 +1,6 @@
-/* Collections View — Game Collections / Playlists */
+/* Collections View — Themed Genre Collections (Pinball Parlor, Pool Hall, etc.) */
 window.CollectionsView = {
-    currentCollection: null,
+    currentSort: 'name',
 
     async render() {
         const app = document.getElementById('app');
@@ -8,138 +8,129 @@ window.CollectionsView = {
 
         try {
             const data = await API.get('/api/collections');
-            const collections = data.collections || data || [];
-            const systemCollections = collections.filter(c => c.is_system);
-            const userCollections = collections.filter(c => !c.is_system);
+            const collections = Array.isArray(data) ? data : (data.collections || []);
+            const themed = collections.filter(c => c.is_system && c.theme);
+            const custom = collections.filter(c => !c.is_system);
 
-            let html = `
-                <div class="section-header" style="margin-bottom:24px;">
-                    <span class="section-title">\u{1F4DA} Game Collections</span>
-                    <button class="btn btn-purple btn-sm" onclick="CollectionsView.toggleCreate()">+ New Collection</button>
+            let html = `<div class="collections-hero">
+                <div class="collections-hero-text">
+                    <h1 class="collections-title">🎰 The Arcade</h1>
+                    <p class="collections-subtitle">Step inside — every corner has its own vibe</p>
                 </div>
+            </div>
+            <div class="collections-grid">`;
 
-                <div class="coll-create-form" id="collCreateForm" style="display:none;">
-                    <h3>Create Collection</h3>
-                    <div class="coll-form-row">
-                        <input type="text" id="collName" class="form-input" placeholder="Collection name">
-                        <input type="text" id="collIcon" class="form-input" placeholder="Icon emoji" style="width:80px;" value="\u{1F3AE}">
-                        <input type="color" id="collColor" class="form-input" value="#A855F7" style="width:60px;padding:4px;">
-                        <button class="btn btn-yellow" onclick="CollectionsView.createCollection()">Create</button>
-                    </div>
-                </div>
-            `;
-
-            // System collections
-            if (systemCollections.length > 0) {
-                html += `<div class="section-header"><span class="section-title">\u{1F3AE} System Collections</span></div>`;
-                html += '<div class="coll-grid">';
-                for (const c of systemCollections) {
-                    html += this.renderCollectionCard(c);
-                }
-                html += '</div>';
-            }
-
-            // User collections
-            if (userCollections.length > 0) {
-                html += `<div class="section-header" style="margin-top:24px;"><span class="section-title">\u{1F4C1} My Collections</span></div>`;
-                html += '<div class="coll-grid">';
-                for (const c of userCollections) {
-                    html += this.renderCollectionCard(c);
-                }
-                html += '</div>';
-            }
-
-            if (collections.length === 0) {
+            for (const c of themed) {
+                const theme = c.theme || 'default';
+                const count = c.game_count || 0;
                 html += `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">\u{1F4DA}</div>
-                        <h3>No Collections Yet</h3>
-                        <p>Create a collection to organize your favorite games!</p>
-                    </div>
-                `;
+                    <div class="collection-card collection-theme-${theme}" onclick="Router.navigate('/collections/${c.id}')">
+                        <div class="collection-card-glow"></div>
+                        <div class="collection-card-icon">${c.icon || '🎮'}</div>
+                        <div class="collection-card-body">
+                            <h3 class="collection-card-name">${H.escHtml(c.name)}</h3>
+                            <p class="collection-card-desc">${H.escHtml(c.description || '')}</p>
+                            <div class="collection-card-count">${count} game${count !== 1 ? 's' : ''}</div>
+                        </div>
+                    </div>`;
+            }
+            html += '</div>';
+
+            // Custom user collections (if any)
+            if (custom.length > 0) {
+                html += `<div class="section-header" style="margin-top:32px;">
+                    <span class="section-title">📁 My Collections</span>
+                </div><div class="collections-grid collections-grid-sm">`;
+                for (const c of custom) {
+                    html += `
+                        <div class="collection-card collection-theme-default" onclick="CollectionsView.renderDetail(${c.id})" style="--coll-accent:${c.color || '#A855F7'}">
+                            <div class="collection-card-icon">${c.icon || '🎮'}</div>
+                            <div class="collection-card-body">
+                                <h3 class="collection-card-name">${H.escHtml(c.name)}</h3>
+                                <div class="collection-card-count">${c.game_count || 0} games</div>
+                            </div>
+                        </div>`;
+                }
+                html += '</div>';
             }
 
             app.innerHTML = html;
         } catch (err) {
-            app.innerHTML = `<div class="empty-state"><div class="empty-state-icon">\u{1F4A5}</div><h3>Error</h3><p>${H.escHtml(err.message)}</p></div>`;
+            app.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💥</div><h3>Error</h3><p>${H.escHtml(err.message)}</p></div>`;
         }
-    },
-
-    renderCollectionCard(c) {
-        const color = c.color || '#A855F7';
-        return `
-            <div class="coll-card" onclick="CollectionsView.renderDetail(${c.id})" style="--coll-color:${color}">
-                <div class="coll-card-icon">${c.icon || '\u{1F3AE}'}</div>
-                <div class="coll-card-info">
-                    <div class="coll-card-name">${H.escHtml(c.name)}</div>
-                    <div class="coll-card-count">${(c.game_count || 0)} games</div>
-                </div>
-            </div>
-        `;
     },
 
     async renderDetail(id) {
         const app = document.getElementById('app');
         app.innerHTML = '<div class="loading">Loading collection...</div>';
-        this.currentCollection = id;
+        this.currentSort = 'name';
 
         try {
-            const [detail, gamesData] = await Promise.all([
-                API.get(`/api/collections/${id}`),
-                API.library({ limit: 300, sort: 'name' }).catch(() => ({ games: [] })),
-            ]);
-
-            const collection = detail.collection || detail;
-            const games = detail.games || [];
-            const allGames = gamesData.games || [];
-
-            let html = `
-                <div class="section-header" style="margin-bottom:24px;">
-                    <button class="btn btn-ghost btn-sm" onclick="CollectionsView.render()" style="margin-right:12px;">\u2190 Back</button>
-                    <span class="section-title">${collection.icon || '\u{1F3AE}'} ${H.escHtml(collection.name)}</span>
-                    <span class="coll-detail-count">${games.length} games</span>
-                </div>
-            `;
-
-            // Add game form
-            if (!collection.is_system) {
-                html += `
-                    <div class="coll-add-game-row">
-                        <select id="collAddGame" class="form-select" style="max-width:300px;">
-                            <option value="">-- Add a Game --</option>
-                            ${allGames.filter(g => !games.find(gg => gg.id === g.id)).map(g =>
-                                `<option value="${g.id}">${H.escHtml(g.title || g.clean_name)}</option>`
-                            ).join('')}
-                        </select>
-                        <button class="btn btn-purple btn-sm" onclick="CollectionsView.addGame(${id})">Add</button>
-                    </div>
-                `;
-            }
-
-            // Game grid
-            if (games.length > 0) {
-                html += '<div class="game-grid">';
-                for (const g of games) {
-                    html += GameCard.render(g);
-                    if (!collection.is_system) {
-                        // Inject a small remove button that overlays the card
-                        html += `<button class="coll-remove-btn" onclick="event.stopPropagation(); CollectionsView.removeGame(${id}, ${g.id})" title="Remove">\u2716</button>`;
-                    }
-                }
-                html += '</div>';
-            } else {
-                html += `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">\u{1F4ED}</div>
-                        <h3>Empty Collection</h3>
-                        <p>Add some games to this collection!</p>
-                    </div>
-                `;
-            }
-
-            app.innerHTML = html;
+            const data = await API.get(`/api/collections/${id}?sort=name`);
+            this._renderDetailHTML(app, data);
         } catch (err) {
-            app.innerHTML = `<div class="empty-state"><div class="empty-state-icon">\u{1F4A5}</div><h3>Error</h3><p>${H.escHtml(err.message)}</p></div>`;
+            app.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💥</div><h3>Error</h3><p>${H.escHtml(err.message)}</p></div>`;
+        }
+    },
+
+    _renderDetailHTML(app, data) {
+        const theme = data.theme || 'default';
+        const games = data.games || [];
+        const sort = this.currentSort;
+
+        let html = `<div class="collection-detail collection-theme-${theme}">
+            <div class="collection-detail-hero">
+                <button class="btn btn-ghost collection-back" onclick="Router.navigate('/collections')">← Back</button>
+                <div class="collection-detail-icon">${data.icon || '🎮'}</div>
+                <h1 class="collection-detail-name">${H.escHtml(data.name)}</h1>
+                <p class="collection-detail-desc">${H.escHtml(data.description || '')}</p>
+                <div class="collection-detail-stats">${games.length} game${games.length !== 1 ? 's' : ''}</div>
+            </div>
+
+            <div class="collection-sort-bar">
+                <span class="collection-sort-label">Sort:</span>
+                ${['name', 'system', 'most_played', 'favorites', 'newest'].map(s =>
+                    `<button class="collection-sort-btn ${sort === s ? 'active' : ''}" onclick="CollectionsView._changeSort(${data.id}, '${s}')">${
+                        {name:'A-Z', system:'System', most_played:'Most Played', favorites:'Favorites', newest:'Newest'}[s]
+                    }</button>`
+                ).join('')}
+            </div>`;
+
+        if (games.length > 0) {
+            html += '<div class="game-grid collection-game-grid">';
+            for (const g of games) {
+                // Adapt fields for GameCard
+                const cardData = { ...g, id: g.id || g.rom_id };
+                html += typeof GameCard !== 'undefined' ? GameCard.render(cardData) : `
+                    <div class="game-card" onclick="Router.navigate('/game/${cardData.id}')">
+                        <div class="game-card-art">${cardData.artwork_path
+                            ? `<img src="${cardData.artwork_path}" alt="${H.escHtml(cardData.title)}" loading="lazy">`
+                            : `<div class="game-card-placeholder">${(cardData.title||'?')[0]}</div>`
+                        }</div>
+                        <div class="game-card-info">
+                            <div class="game-card-title">${H.escHtml(cardData.title || cardData.clean_name)}</div>
+                            <div class="game-card-meta">${cardData.system_name || ''}</div>
+                        </div>
+                    </div>`;
+            }
+            html += '</div>';
+        } else {
+            html += `<div class="empty-state"><div class="empty-state-icon">📭</div>
+                <h3>No Games Yet</h3><p>Games matching this collection will appear once they're in your library.</p></div>`;
+        }
+
+        html += '</div>';
+        app.innerHTML = html;
+    },
+
+    async _changeSort(id, sort) {
+        this.currentSort = sort;
+        const app = document.getElementById('app');
+        try {
+            const data = await API.get(`/api/collections/${id}?sort=${sort}`);
+            this._renderDetailHTML(app, data);
+        } catch (err) {
+            H.toast('Sort failed: ' + err.message, 'error');
         }
     },
 
@@ -150,33 +141,13 @@ window.CollectionsView = {
 
     async createCollection() {
         const name = document.getElementById('collName')?.value;
-        const icon = document.getElementById('collIcon')?.value || '\u{1F3AE}';
+        const icon = document.getElementById('collIcon')?.value || '🎮';
         const color = document.getElementById('collColor')?.value || '#A855F7';
         if (!name) { H.toast('Enter a collection name', 'error'); return; }
-
         try {
             await API.post('/api/collections', { name, icon, color });
             H.toast('Collection created!', 'success');
-            SFX?.click?.();
             this.render();
-        } catch (err) { H.toast(err.message, 'error'); }
-    },
-
-    async addGame(collectionId) {
-        const gameId = document.getElementById('collAddGame')?.value;
-        if (!gameId) { H.toast('Select a game', 'error'); return; }
-        try {
-            await API.post(`/api/collections/${collectionId}/games`, { game_id: parseInt(gameId) });
-            H.toast('Game added!', 'success');
-            this.renderDetail(collectionId);
-        } catch (err) { H.toast(err.message, 'error'); }
-    },
-
-    async removeGame(collectionId, gameId) {
-        try {
-            await API.del(`/api/collections/${collectionId}/games/${gameId}`);
-            H.toast('Game removed', 'info');
-            this.renderDetail(collectionId);
         } catch (err) { H.toast(err.message, 'error'); }
     },
 };

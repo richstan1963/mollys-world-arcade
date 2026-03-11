@@ -55,27 +55,47 @@ router.post('/', (req, res) => {
     }
 });
 
-// GET /:id — collection detail with games
+// GET /:id — collection detail with games (supports sort + favorites)
 router.get('/:id', (req, res) => {
     try {
         const db = getDB();
         const collection = db.prepare('SELECT * FROM game_collections WHERE id = ?').get(req.params.id);
         if (!collection) return res.status(404).json({ error: 'Collection not found' });
 
+        const { sort = 'name', order = 'asc' } = req.query;
+
+        const sortMap = {
+            name: 'COALESCE(m.title, r.clean_name)',
+            system: 's.sort_order',
+            newest: 'cg.added_at DESC',
+            most_played: 'play_count DESC',
+            favorites: 'is_favorite DESC, COALESCE(m.title, r.clean_name)',
+        };
+        const sortExpr = sortMap[sort] || 'COALESCE(m.title, r.clean_name)';
+        const sortDir = sort === 'newest' || sort === 'most_played' || sort === 'favorites' ? '' : (order === 'desc' ? 'DESC' : 'ASC');
+
         const games = db.prepare(`
-            SELECT cg.sort_order, cg.added_at,
-                   r.id as rom_id, r.clean_name, r.system_id, r.filename,
-                   m.title, m.genre, m.artwork_path, m.artwork_url, m.rating,
-                   s.short_name as system_name, s.color as system_color
+            SELECT r.id, r.clean_name, r.system_id, r.filename,
+                   COALESCE(m.title, r.clean_name) as title,
+                   m.genre, m.artwork_path, m.artwork_url, m.rating, m.year,
+                   m.metacritic_score, m.rawg_rating,
+                   s.short_name as system_name, s.color as system_color,
+                   CASE WHEN f.rom_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite,
+                   (SELECT COUNT(*) FROM play_history ph WHERE ph.rom_id = r.id) as play_count,
+                   (SELECT MAX(started_at) FROM play_history ph WHERE ph.rom_id = r.id) as last_played
             FROM collection_games cg
             JOIN roms r ON r.id = cg.rom_id
             LEFT JOIN metadata m ON m.rom_id = r.id
             LEFT JOIN systems s ON s.id = r.system_id
+            LEFT JOIN favorites f ON f.rom_id = r.id
             WHERE cg.collection_id = ?
-            ORDER BY cg.sort_order ASC, cg.added_at ASC
+            ORDER BY ${sortExpr} ${sortDir}
         `).all(req.params.id);
 
-        res.json({ ...collection, games });
+        // Get sample artwork for hero banner
+        const sampleArt = games.filter(g => g.artwork_path).slice(0, 4).map(g => g.artwork_path);
+
+        res.json({ ...collection, games, total: games.length, sample_art: sampleArt });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -562,11 +562,14 @@ export function initDB() {
         description TEXT,
         icon TEXT DEFAULT '📁',
         color TEXT DEFAULT '#A855F7',
+        theme TEXT,
         player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
         is_system INTEGER DEFAULT 0,
         sort_order INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now'))
     )`);
+    // Migration: add theme column if missing
+    try { db.exec('ALTER TABLE game_collections ADD COLUMN theme TEXT'); } catch {}
 
     db.exec(`CREATE TABLE IF NOT EXISTS collection_games (
         collection_id INTEGER NOT NULL REFERENCES game_collections(id) ON DELETE CASCADE,
@@ -997,16 +1000,149 @@ function seedOriginalGames(database) {
 }
 
 function seedCollections(database) {
-    const insert = database.prepare('INSERT OR IGNORE INTO game_collections (id, name, description, icon, color, is_system, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)');
+    // Clear old generic collections and re-seed with themed ones
+    const existing = database.prepare('SELECT COUNT(*) as c FROM game_collections WHERE theme IS NOT NULL').get();
+    if (!existing || existing.c === 0) {
+        database.exec('DELETE FROM collection_games WHERE collection_id IN (SELECT id FROM game_collections WHERE is_system = 1)');
+        database.exec('DELETE FROM game_collections WHERE is_system = 1');
+    }
+
+    const insert = database.prepare('INSERT OR IGNORE INTO game_collections (id, name, description, icon, color, theme, is_system, sort_order) VALUES (?, ?, ?, ?, ?, ?, 1, ?)');
     const collections = [
-        [1, 'Best of Arcade', 'Classic arcade greatest hits', '👾', '#EF4444', 1],
-        [2, 'Fighting Legends', 'The best fighting games ever made', '🥊', '#F59E0B', 2],
-        [3, 'Family Friendly', 'Games the whole family can enjoy', '👨‍👩‍👧‍👦', '#22C55E', 3],
-        [4, 'Hidden Gems', 'Underrated classics you need to try', '💎', '#8B5CF6', 4],
-        [5, 'Speedrun Favorites', 'Great games for speed running', '⏱️', '#06B6D4', 5],
-        [6, 'Couch Co-op', 'Best multiplayer experiences', '🎮', '#EC4899', 6],
+        [1, 'Pinball Parlor',    'Step into the neon-lit parlor — every bumper, every flipper, every high score', '🎯', '#ffba00', 'pinball',  1],
+        [2, 'Pool Hall',         'Rack \'em up — billiards, pool, and cue sports under warm lights',             '🎱', '#1a4d2e', 'pool',     2],
+        [3, 'Bowling Alley',     'Lace up those shoes — strikes, spares, and gutter balls await',                '🎳', '#d4a857', 'bowling',  3],
+        [4, 'Arcade Oddities',   'The weird, the wild, and the wonderful — games that defy genre',               '🎪', '#ff6b9d', 'oddities', 4],
+        [5, 'Puzzle Arcade',     'Block by block, piece by piece — the greatest puzzle games ever made',          '🧩', '#06b6d4', 'puzzle',   5],
+        [6, 'Racing Pit',        'Engines roar, tires screech — from F-Zero to OutRun and beyond',               '🏎️', '#84cc16', 'racing',   6],
+        [7, 'Sports Bar',        'Pull up a stool — boxing, wrestling, golf, baseball, and more',                '🏟️', '#f97316', 'sports',   7],
     ];
     const tx = database.transaction(() => { for (const c of collections) insert.run(...c); });
+    tx();
+
+    // Re-run auto-categorization on every boot (clears old auto-assigned games first)
+    database.exec('DELETE FROM collection_games WHERE collection_id IN (SELECT id FROM game_collections WHERE is_system = 1)');
+    autoCategorizeCollections(database);
+}
+
+function autoCategorizeCollections(db) {
+    const insertGame = db.prepare('INSERT OR IGNORE INTO collection_games (collection_id, rom_id) VALUES (?, ?)');
+
+    // Pattern lists: { collectionId, patterns[] } — matched against clean_name (case-insensitive)
+    const PINBALL_PATTERNS = [
+        'pinball', 'crush roller', 'alien crush', 'devil\'s crush', 'devil crash',
+        'sonic spinball', 'galactic pinball', 'video pinball', 'pinball fantasies',
+        'ruiner pinball', 'pinball jam', 'kirby\'s pinball', 'pokemon pinball',
+        'mario pinball', 'super pinball', 'jaki crush', 'dragon\'s fury',
+        'dragon\'s revenge', 'dino land', 'pinball quest', 'pin bot', 'pin*bot',
+        'high speed', 'rock \'n\' ball', 'rollerball', 'pinball action',
+    ];
+
+    const POOL_PATTERNS = [
+        'side pocket', '~billiard', 'minnesota fats', 'pocket gal',
+        '~snooker', '~8 ball', '~8ball', '~nine ball', 'pool hustler',
+        'lunch box', 'virtual pool',
+    ];
+
+    const BOWLING_PATTERNS = [
+        'bowling', 'brunswick', 'big strike', 'strata bowl',
+        'league bowling', 'nester\'s funky',
+    ];
+
+    const ODDITIES_PATTERNS = [
+        'tapper', 'burgertime', 'burger time', 'marble madness', 'rampart',
+        'paperboy', 'snow bros', 'pang', 'carnival', 'warlords', 'rampage',
+        'pengo', 'quiz', 'point blank', 'lucky & wild', 'devilish',
+        'bust-a-move', 'bubble bobble', 'buster bros', 'klax',
+        'q*bert', 'qbert', 'dig dug', 'centipede', 'millipede',
+        'frogger', 'joust', 'food fight', 'crystal castles',
+        'elevator action', 'ice climber', 'balloon fight', 'lode runner',
+        'mappy', 'mr. do', 'mr do', 'robotron', 'sinistar', 'berzerk',
+        'spy hunter', 'defender', 'tempest', 'asteroids', 'missile command',
+    ];
+
+    const PUZZLE_PATTERNS = [
+        'tetris', 'puzzle', 'puyo', 'columns', 'dr. mario', 'dr mario',
+        'puzzle bobble', 'magical drop', 'arkanoid', 'breakout',
+        'super puzzle fighter', 'panel de pon', 'wario\'s woods',
+        'yoshi\'s cookie', 'money puzzle', 'puzzle league', 'lumines',
+        'meteos', 'mr. driller', 'mr driller', 'chu chu rocket',
+        'mean bean', 'hatris', 'wetrix', 'denki blocks',
+    ];
+
+    const RACING_PATTERNS = [
+        'racing', 'racer', 'race', 'kart', 'f-zero', 'outrun', 'out run',
+        'road rash', 'top gear', 'ridge racer', 'cruisin', 'daytona',
+        'mario kart', 'need for speed', 'gran turismo', 'micro machines',
+        'wipeout', 'excitebike', 'rad racer', 'rc pro-am', 'rc pro am',
+        'super off road', 'rock n roll racing', 'road runner', 'turbo',
+        'pole position', 'sprint', 'hang-on', 'hang on', 'enduro racer',
+        'chase hq', 'stunt race', 'super sprint', 'motor',
+        'rally', 'drift', 'grand prix', 'indy', 'nascar',
+    ];
+
+    const SPORTS_PATTERNS = [
+        'punch-out', 'punch out', 'windjammers', 'wind jammers',
+        'neo turf masters', 'super dodge ball', 'dodgeball',
+        'baseball stars', 'baseball', 'basketball', 'hockey',
+        'soccer', 'football', 'tennis', 'golf', 'boxing',
+        'wrestling', 'wwf', 'wwe', 'wcw', 'nba', 'nfl', 'mlb', 'nhl',
+        'fifa', 'madden', 'tecmo bowl', 'blades of steel',
+        'ice hockey', 'super tennis', 'world cup', 'olympics',
+        'track & field', 'track and field', 'decathlon', 'volleyball',
+        'pro wrestling', 'fire pro', 'slam masters', 'ring king',
+        'super spike', 'kings of the beach', 'arch rival',
+    ];
+
+    // Fetch all ROMs once
+    const allRoms = db.prepare('SELECT id, clean_name, filename FROM roms').all();
+
+    const matchAndInsert = (collectionId, patterns) => {
+        // Build regexes with word boundaries to avoid partial matches
+        // Prefix pattern with ~ for substring match (no word boundary)
+        const matchers = patterns.map(pat => {
+            if (pat.startsWith('~')) return { substring: pat.slice(1) };
+            const escaped = pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return { re: new RegExp(`(^|[\\s_\\-.(&])${escaped}([\\s_\\-.!)&]|$)`, 'i') };
+        });
+        for (const rom of allRoms) {
+            const name = ' ' + (rom.clean_name || '').toLowerCase() + ' ';
+            const fn = ' ' + (rom.filename || '').toLowerCase() + ' ';
+            for (const m of matchers) {
+                const match = m.re
+                    ? (m.re.test(name) || m.re.test(fn))
+                    : (name.includes(m.substring) || fn.includes(m.substring));
+                if (match) {
+                    insertGame.run(collectionId, rom.id);
+                    break;
+                }
+            }
+        }
+    };
+
+    // Also match by metadata genre
+    const matchByGenre = (collectionId, genres) => {
+        for (const genre of genres) {
+            const rows = db.prepare(`
+                SELECT r.id FROM roms r JOIN metadata m ON m.rom_id = r.id
+                WHERE LOWER(m.genre) = LOWER(?)
+            `).all(genre);
+            for (const r of rows) insertGame.run(collectionId, r.id);
+        }
+    };
+
+    const tx = db.transaction(() => {
+        matchAndInsert(1, PINBALL_PATTERNS);
+        matchAndInsert(2, POOL_PATTERNS);
+        matchAndInsert(3, BOWLING_PATTERNS);
+        matchAndInsert(4, ODDITIES_PATTERNS);
+        matchAndInsert(5, PUZZLE_PATTERNS);
+        matchByGenre(5, ['Puzzle']);
+        matchAndInsert(6, RACING_PATTERNS);
+        matchByGenre(6, ['Racing']);
+        matchAndInsert(7, SPORTS_PATTERNS);
+        matchByGenre(7, ['Sports', 'Boxing', 'Wrestling']);
+    });
     tx();
 }
 

@@ -46,6 +46,7 @@ window.arcade = {
         Router.register('/daily', () => DailyView.render());
         Router.register('/tournaments', () => TournamentsView.render());
         Router.register('/collections', () => CollectionsView.render());
+        Router.register('/collections/:id', (params) => CollectionsView.renderDetail(params.id));
         Router.register('/friends', () => FriendsView.render());
         Router.register('/speedrun', () => SpeedrunView.render());
         Router.register('/card/:id', (params) => PlayerCardView.render(params));
