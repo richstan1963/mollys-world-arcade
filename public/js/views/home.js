@@ -73,18 +73,6 @@ window.HomeView = {
                             <span class="quick-action-icon" style="color:#f59e0b"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>
                             <span class="quick-action-label">Favorites</span>
                         </button>
-                        <button class="quick-action-card" onclick="Router.navigate('#/library?tag=neogeo')">
-                            <span class="quick-action-icon" style="color:#ef4444"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg></span>
-                            <span class="quick-action-label">Neo Geo</span>
-                        </button>
-                        <button class="quick-action-card" onclick="Router.navigate('#/library?tag=beatemup')">
-                            <span class="quick-action-icon" style="color:#f97316"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M16.5 4.5c1.61 0 3.09.59 4.23 1.57L12 14.8 3.27 6.07A5.98 5.98 0 017.5 4.5c1.61 0 3.09.59 4.23 1.57L12 6.35l.27-.28A5.98 5.98 0 0116.5 4.5M16.5 3A7.49 7.49 0 0012 5.09 7.49 7.49 0 007.5 3 7.49 7.49 0 001.5 5.57L12 16.07l10.5-10.5A7.49 7.49 0 0016.5 3z"/><path d="M12 16l-2 5h4l-2-5z"/></svg></span>
-                            <span class="quick-action-label">Beat-Em-Ups</span>
-                        </button>
-                        <button class="quick-action-card" onclick="Router.navigate('#/mamedev')">
-                            <span class="quick-action-icon" style="color:#8b5cf6"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 8h2m2 0h2"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg></span>
-                            <span class="quick-action-label">Free ROMs</span>
-                        </button>
                         <button class="quick-action-card" onclick="Router.navigate('#/completion')">
                             <span class="quick-action-icon" style="color:#22d3ee"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></span>
                             <span class="quick-action-label">Progress</span>
