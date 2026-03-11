@@ -133,6 +133,7 @@ router.get('/', (req, res) => {
     const rows = db.prepare(`
         SELECT r.*, COALESCE(m.title, r.clean_name) as title,
                m.artwork_path, m.region, m.year, m.genre,
+               m.metacritic_score, m.rawg_rating,
                s.short_name as system_name, s.color as system_color,
                CASE WHEN f.rom_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite,
                (SELECT MAX(started_at) FROM play_history ph WHERE ph.rom_id = r.id) as last_played
@@ -210,9 +211,17 @@ router.get('/genres', (req, res) => {
         ORDER BY cnt DESC
     `).all();
 
+    // Pre-fetch a pool of random fallback artwork for genres missing their own
+    const fallbackArt = db.prepare(`
+        SELECT m.artwork_path FROM metadata m
+        WHERE m.artwork_path IS NOT NULL
+        ORDER BY RANDOM() LIMIT 40
+    `).all().map(r => r.artwork_path);
+    let fallbackIdx = 0;
+
     const genreRooms = genreRows.map(row => {
         const style = GENRE_STYLE[row.genre] || { icon: '🎮', color: '#7B2D8E' };
-        // Get sample artwork
+        // Get sample artwork — prefer genre-specific, fall back to any game
         let sample_art = null;
         try {
             const a = db.prepare(`
@@ -222,6 +231,9 @@ router.get('/genres', (req, res) => {
             `).get(row.genre);
             sample_art = a?.artwork_path || null;
         } catch {}
+        if (!sample_art && fallbackArt.length > 0) {
+            sample_art = fallbackArt[fallbackIdx++ % fallbackArt.length];
+        }
 
         return {
             id: row.genre.toLowerCase().replace(/\s+/g, '-'),
@@ -262,6 +274,10 @@ router.get('/genres', (req, res) => {
                 sample_art = a?.artwork_path || null;
             }
         } catch {}
+        // Fallback to any random artwork if franchise-specific art is missing
+        if (!sample_art && fallbackArt.length > 0) {
+            sample_art = fallbackArt[fallbackIdx++ % fallbackArt.length];
+        }
         return { ...room, count, sample_art };
     }).filter(r => r.count > 0);
 
@@ -300,6 +316,7 @@ router.get('/favorites', (req, res) => {
 
         const rows = db.prepare(`
             SELECT r.*, m.title, m.artwork_path, m.region, m.year, m.genre,
+                   m.metacritic_score, m.rawg_rating,
                    s.short_name as system_name, s.color as system_color,
                    1 as is_favorite,
                    (SELECT MAX(started_at) FROM play_history ph WHERE ph.rom_id = r.id) as last_played
@@ -365,6 +382,91 @@ router.get('/random', (req, res) => {
         res.json(row);
     } catch (err) {
         res.status(500).json({ error: 'Failed to load random game' });
+    }
+});
+
+// ── Arcade Gallery — Cabinet art, marquees, flyers, screenshots ──
+router.get('/arcade-gallery', (req, res) => {
+    try {
+        const db = getDB();
+        const games = db.prepare(`
+            SELECT r.id, r.clean_name, r.filename, r.system_id,
+                   m.title, m.artwork_path, m.cabinet_path, m.marquee_path,
+                   m.flyer_path, m.snap_path
+            FROM roms r
+            LEFT JOIN metadata m ON m.rom_id = r.id
+            WHERE r.system_id IN ('arcade', 'fbneo', 'neogeo')
+              AND (m.cabinet_path IS NOT NULL OR m.marquee_path IS NOT NULL
+                   OR m.flyer_path IS NOT NULL OR m.snap_path IS NOT NULL
+                   OR m.artwork_path IS NOT NULL)
+            ORDER BY COALESCE(m.title, r.clean_name)
+        `).all();
+        res.json({ games, total: games.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Retro Stars — Game character encyclopedia ──
+router.get('/retro-stars', (req, res) => {
+    try {
+        const db = getDB();
+        const { category } = req.query;
+
+        let where = '';
+        const params = [];
+        if (category) { where = 'WHERE gc.category = ?'; params.push(category); }
+
+        const characters = db.prepare(`
+            SELECT gc.*,
+                   (SELECT COUNT(*) FROM character_appearances ca
+                    JOIN roms r ON r.id = ca.rom_id
+                    WHERE ca.character_id = gc.id) as game_count
+            FROM game_characters gc
+            ${where}
+            ORDER BY gc.rank_order
+        `).all(...params);
+
+        // Get gameography for each character
+        const getGames = db.prepare(`
+            SELECT ca.appearance_order, ca.note, ca.role,
+                   r.id as rom_id, r.clean_name, r.system_id, r.filename,
+                   COALESCE(m.title, r.clean_name) as display_title,
+                   CAST(COALESCE(m.year, '') AS INTEGER) as year, m.artwork_path, m.genre,
+                   s.short_name as system_name, s.color as system_color
+            FROM character_appearances ca
+            JOIN roms r ON r.id = ca.rom_id
+            LEFT JOIN metadata m ON m.rom_id = r.id
+            LEFT JOIN systems s ON s.id = r.system_id
+            WHERE ca.character_id = ?
+            ORDER BY CAST(COALESCE(m.year, '9999') AS INTEGER), r.clean_name
+            LIMIT 20
+        `);
+
+        const result = characters.map(ch => ({
+            ...ch,
+            gameography: getGames.all(ch.id),
+        }));
+
+        // Get unique categories
+        const categories = db.prepare(
+            'SELECT DISTINCT category FROM game_characters ORDER BY category'
+        ).all().map(r => r.category);
+
+        res.json({ characters: result, categories, total: result.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Retro Stars — Re-download images on demand ──
+router.post('/retro-stars/download-images', async (req, res) => {
+    try {
+        const { downloadCharacterImages } = await import('../services/retro-stars-seeder.js');
+        downloadCharacterImages().catch(() => {});
+        res.json({ ok: true, message: 'Image download started in background' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

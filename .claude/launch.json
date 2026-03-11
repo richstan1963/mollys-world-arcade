@@ -6,7 +6,7 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["--env-file=.env", "server/index.js"],
       "port": 3000,
-      "autoPort": false
+      "autoPort": true
     }
   ]
 }

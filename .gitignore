@@ -15,5 +15,9 @@ logs/
 originals-src/
 data/cores/
 *.png
+!public/**/*.png
+!public/**/*.jpg
+!public/**/*.webp
 *.sh
 *.py
+groq/

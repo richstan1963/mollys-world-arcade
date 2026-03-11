@@ -1,0 +1,231 @@
+/* ══════════════════════════════════════════════════════════
+   RETRO STARS — Game Character Encyclopedia
+   Dark cinematic card layout inspired by entertainment profiles
+   ══════════════════════════════════════════════════════════ */
+
+.rs-page { padding: 0 0 60px; max-width: 1400px; margin: 0 auto; }
+
+/* ── Header ────────────────────────────────────────────── */
+.rs-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 24px 32px; border-bottom: 1px solid #1e1e3a;
+    background: linear-gradient(135deg, #0d0d1a 0%, #141428 100%);
+}
+.rs-header-badge {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+}
+.rs-header-text { flex: 1; }
+.rs-title {
+    font-family: 'Inter', sans-serif; font-weight: 800; font-size: 20px;
+    color: #fff; letter-spacing: 2px; margin: 0;
+}
+.rs-subtitle {
+    font-size: 11px; color: #888; letter-spacing: 3px;
+    text-transform: uppercase; margin: 2px 0 0;
+}
+.rs-header-nav {
+    display: flex; gap: 24px; font-size: 13px; color: #aaa;
+}
+.rs-header-nav span { cursor: pointer; transition: color .2s; }
+.rs-header-nav span:hover { color: #fff; }
+
+/* ── Intro / Filters ──────────────────────────────────── */
+.rs-intro { padding: 40px 32px 24px; }
+.rs-intro-title {
+    font-family: 'Inter', sans-serif; font-weight: 800; font-size: 36px;
+    color: #fff; margin: 0 0 12px;
+}
+.rs-intro-desc { color: #999; font-size: 15px; max-width: 600px; line-height: 1.6; margin: 0 0 28px; }
+
+.rs-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.rs-filter-btn {
+    padding: 8px 18px; border-radius: 20px; border: 1px solid #2a2a45;
+    background: #13132a; color: #ccc; font-size: 13px; cursor: pointer;
+    transition: all .2s;
+}
+.rs-filter-btn:hover { border-color: #a855f7; color: #fff; }
+.rs-filter-btn.active {
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    border-color: transparent; color: #fff; font-weight: 600;
+}
+
+.rs-search-row { margin-top: 8px; }
+.rs-search {
+    width: 100%; max-width: 400px; padding: 10px 16px;
+    background: #13132a; border: 1px solid #2a2a45; border-radius: 8px;
+    color: #fff; font-size: 14px; outline: none;
+}
+.rs-search:focus { border-color: #a855f7; }
+.rs-search::placeholder { color: #555; }
+
+/* ── Card Grid ────────────────────────────────────────── */
+.rs-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 24px; padding: 0 32px;
+}
+
+/* ── Individual Card ──────────────────────────────────── */
+.rs-card {
+    background: #12122a; border: 1px solid #1e1e3a; border-radius: 16px;
+    overflow: hidden; transition: transform .25s, box-shadow .25s;
+}
+.rs-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(168, 85, 247, .15);
+}
+
+/* Hero area (image or gradient) */
+.rs-card-hero {
+    position: relative; height: 200px;
+    background: linear-gradient(135deg, #1a1a3e 0%, #0d0d2a 50%, #1a0a2e 100%);
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 16px; overflow: hidden;
+}
+.rs-card-hero.has-image {
+    background-size: cover; background-position: center top;
+}
+.rs-card-hero.has-image::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to bottom,
+        rgba(18, 18, 42, 0.3) 0%,
+        rgba(18, 18, 42, 0.6) 50%,
+        rgba(18, 18, 42, 0.95) 100%
+    );
+}
+
+.rs-rank {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    color: #fff; font-weight: 800; font-size: 16px;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 4px 15px rgba(168, 85, 247, .4);
+}
+.rs-genre-tag {
+    position: relative; z-index: 2;
+    padding: 6px 14px; border-radius: 16px;
+    background: rgba(255,255,255,.08); backdrop-filter: blur(4px);
+    color: #ddd; font-size: 11px; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,.1);
+    align-self: flex-start;
+}
+
+/* Card Body */
+.rs-card-body { padding: 20px 24px 24px; }
+
+.rs-card-title-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 4px;
+    background: linear-gradient(90deg, #ec4899, #a855f7);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.rs-card-name {
+    font-family: 'Inter', sans-serif; font-weight: 800; font-size: 28px;
+    color: #fff; margin: 0 0 12px; line-height: 1.1;
+}
+.rs-card-bio {
+    color: #999; font-size: 14px; line-height: 1.65; margin: 0 0 20px;
+}
+
+/* Stats Row */
+.rs-stats-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    margin-bottom: 20px;
+}
+.rs-stat-box {
+    padding: 10px 12px; border: 1px solid #1e1e3a; border-radius: 8px;
+    background: #0d0d1f;
+}
+.rs-stat-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+    color: #666; text-transform: uppercase; margin-bottom: 4px;
+}
+.rs-stat-value {
+    font-size: 12px; font-weight: 600; color: #ddd; line-height: 1.3;
+}
+
+/* Gameography */
+.rs-gameography { border-top: 1px solid #1e1e3a; }
+.rs-gameography-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px 8px; font-size: 14px; font-weight: 700; color: #fff;
+}
+.rs-gameography-count {
+    font-size: 11px; font-weight: 500; color: #888;
+}
+
+.rs-game-entry {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 8px 16px; transition: background .15s;
+}
+.rs-game-entry:hover { background: rgba(168, 85, 247, .05); }
+
+.rs-game-num {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #a855f740, #ec489940);
+    color: #c084fc; font-weight: 700; font-size: 12px;
+    margin-top: 2px;
+}
+.rs-game-info { flex: 1; min-width: 0; }
+.rs-game-title {
+    display: block; font-size: 13px; font-weight: 600; color: #ddd;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rs-game-note {
+    display: block; font-size: 11px; color: #777; margin-top: 1px;
+}
+
+.rs-no-games { opacity: 0.5; }
+
+/* Download button */
+.rs-download-row { text-align: center; padding: 40px 32px 0; }
+.rs-download-btn {
+    padding: 12px 28px; border-radius: 10px; border: 1px solid #2a2a45;
+    background: #13132a; color: #ccc; font-size: 14px; cursor: pointer;
+    transition: all .2s;
+}
+.rs-download-btn:hover {
+    background: linear-gradient(135deg, #a855f720, #ec489920);
+    border-color: #a855f7; color: #fff;
+}
+
+.rs-empty { grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #666; }
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 900px) {
+    .rs-grid { grid-template-columns: 1fr; padding: 0 16px; }
+    .rs-intro { padding: 24px 16px 16px; }
+    .rs-intro-title { font-size: 28px; }
+    .rs-header { padding: 16px; flex-wrap: wrap; }
+    .rs-header-nav { display: none; }
+}
+@media (max-width: 480px) {
+    .rs-card-name { font-size: 22px; }
+    .rs-card-hero { height: 160px; }
+    .rs-stats-row { grid-template-columns: 1fr; }
+    .rs-intro-title { font-size: 22px; }
+}
+
+/* ── Theme: Light mode adjustments ───────────────────── */
+.theme-light .rs-page { background: #f5f5f8; }
+.theme-light .rs-header { background: linear-gradient(135deg, #f8f8fc, #ededf5); border-color: #e0e0e8; }
+.theme-light .rs-title { color: #1a1a2e; }
+.theme-light .rs-card { background: #fff; border-color: #e0e0e8; }
+.theme-light .rs-card:hover { box-shadow: 0 12px 40px rgba(168, 85, 247, .1); }
+.theme-light .rs-card-hero { background: linear-gradient(135deg, #e8e8f0, #d8d8e8, #e0d0f0); }
+.theme-light .rs-card-name { color: #1a1a2e; }
+.theme-light .rs-card-bio { color: #666; }
+.theme-light .rs-stat-box { background: #f8f8fc; border-color: #e0e0e8; }
+.theme-light .rs-stat-value { color: #333; }
+.theme-light .rs-gameography { border-color: #e8e8f0; }
+.theme-light .rs-game-title { color: #333; }
+.theme-light .rs-search { background: #fff; border-color: #ddd; color: #333; }
+.theme-light .rs-filter-btn { background: #fff; border-color: #ddd; color: #555; }
+.theme-light .rs-intro-desc { color: #666; }

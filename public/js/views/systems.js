@@ -2,7 +2,7 @@
 window.SystemsView = {
     async render() {
         const app = document.getElementById('app');
-        app.innerHTML = '<div class="loading">Loading...</div>';
+        app.innerHTML = `<div class="page-header" style="opacity:0.2"><h1 class="page-title">Systems</h1></div>${GameCard.renderSystemSkeleton(8)}`;
 
         try {
             const systems = await API.systems();
@@ -39,9 +39,12 @@ window.SystemsView = {
     renderCard(s) {
         const color = s.color || '#7B2D8E';
         return `
-            <a class="system-card" href="#/library?system=${s.id}">
-                <div class="system-icon" style="background:${color}22;color:${color}">
-                    ${H.systemEmoji(s.id)}
+            <div class="system-card">
+                <div class="system-icon" style="background:${color}15;color:${color}">
+                    <img src="${H.systemImg(s.id)}" alt="${H.escHtml(s.name)}" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display=''"
+                         class="system-photo">
+                    <span class="system-emoji-fallback" style="display:none">${H.systemEmoji(s.id)}</span>
                 </div>
                 <div class="system-info">
                     <h3>${H.escHtml(s.name)}</h3>
@@ -52,7 +55,11 @@ window.SystemsView = {
                         }
                     </div>
                 </div>
-            </a>
+                <div class="system-card-actions">
+                    <a href="#/library?system=${s.id}" class="sys-btn sys-btn-play"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5,3 19,12 5,21"/></svg> Play</a>
+                    <a href="#/system/${s.id}" class="sys-btn sys-btn-info"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Info</a>
+                </div>
+            </div>
         `;
     },
 };

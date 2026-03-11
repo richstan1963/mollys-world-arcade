@@ -77,7 +77,7 @@ router.patch('/:id', (req, res) => {
     const player = db.prepare('SELECT * FROM players WHERE id = ?').get(playerId);
     if (!player) return res.status(404).json({ error: 'Player not found' });
 
-    const { name, emoji, color, theme, preferences } = req.body;
+    const { name, emoji, color, theme, character_theme, preferences } = req.body;
     const updates = [];
     const values = [];
 
@@ -88,6 +88,7 @@ router.patch('/:id', (req, res) => {
     if (emoji !== undefined) { updates.push('emoji = ?'); values.push(emoji); }
     if (color !== undefined) { updates.push('color = ?'); values.push(color); }
     if (theme !== undefined) { updates.push('theme = ?'); values.push(theme); }
+    if (character_theme !== undefined) { updates.push('character_theme = ?'); values.push(character_theme); }
     if (preferences !== undefined) { updates.push('preferences = ?'); values.push(JSON.stringify(preferences)); }
 
     if (updates.length === 0) return res.json(player);

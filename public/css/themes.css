@@ -1,15 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════
-   YWA THEME ENGINE — 50 Themes
+   YWA THEME ENGINE — 50 Video Game Character Themes
    Each theme overrides CSS custom properties from :root
-   Categories: Dark, Light, Neon, Retro, Nature, Luxury, Seasonal, Special
+   Categories: Dark, Light, Neon, Retro, Nature, Luxury, Special
    ═══════════════════════════════════════════════════════════════ */
 
-/* ─── DARK THEMES ────────────────────────────────────────────── */
+/* ─── DARK WORLDS ────────────────────────────────────────────── */
 
 /* 1. Midnight Purple (default dark) — already in :root */
 
-/* 2. Cyberpunk */
-html.theme-cyberpunk {
+/* 2. Deus Ex */
+html.theme-deus-ex {
     --purple: #FF00FF; --purple-dark: #990099; --purple-light: #FF66FF; --purple-neon: #FF99FF;
     --pink: #FF0066; --pink-dark: #CC0052; --pink-neon: #FF3385;
     --teal: #00FFFF; --teal-dark: #009999; --teal-neon: #66FFFF;
@@ -24,10 +24,11 @@ html.theme-cyberpunk {
     --glow-teal: 0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(0,255,255,0.2);
     --glow-cyan: 0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(0,255,255,0.2);
     --gradient-rainbow: linear-gradient(135deg, #FF00FF, #FF0066, #00FFFF, #FF00FF);
+    --font-heading: 'Orbitron', sans-serif; --font-body: 'Space Grotesk', sans-serif;
 }
 
-/* 3. Dracula */
-html.theme-dracula {
+/* 3. Castlevania */
+html.theme-castlevania {
     --purple: #BD93F9; --purple-dark: #6272A4; --purple-light: #BD93F9; --purple-neon: #D4B4FF;
     --pink: #FF79C6; --pink-dark: #CC5FA0; --pink-neon: #FF92D0;
     --teal: #8BE9FD; --teal-dark: #6BC5D4; --teal-neon: #A4F0FF;
@@ -42,10 +43,11 @@ html.theme-dracula {
     --glow-teal: 0 0 30px rgba(139,233,253,0.4), 0 0 60px rgba(139,233,253,0.15);
     --glow-cyan: 0 0 30px rgba(139,233,253,0.4), 0 0 60px rgba(139,233,253,0.15);
     --gradient-rainbow: linear-gradient(135deg, #BD93F9, #FF79C6, #8BE9FD, #BD93F9);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 4. Midnight Blue */
-html.theme-midnight-blue {
+/* 4. Mega Man */
+html.theme-mega-man {
     --purple: #3B82F6; --purple-dark: #1D4ED8; --purple-light: #60A5FA; --purple-neon: #93C5FD;
     --pink: #818CF8; --pink-dark: #6366F1; --pink-neon: #A5B4FC;
     --teal: #38BDF8; --teal-dark: #0284C7; --teal-neon: #7DD3FC;
@@ -60,10 +62,11 @@ html.theme-midnight-blue {
     --glow-teal: 0 0 30px rgba(56,189,248,0.4), 0 0 60px rgba(56,189,248,0.15);
     --glow-cyan: 0 0 30px rgba(56,189,248,0.4), 0 0 60px rgba(56,189,248,0.15);
     --gradient-rainbow: linear-gradient(135deg, #3B82F6, #818CF8, #38BDF8, #3B82F6);
+    --font-heading: 'Russo One', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 5. Noir */
-html.theme-noir {
+/* 5. Max Payne */
+html.theme-max-payne {
     --purple: #A0A0A0; --purple-dark: #606060; --purple-light: #C0C0C0; --purple-neon: #D0D0D0;
     --pink: #909090; --pink-dark: #606060; --pink-neon: #B0B0B0;
     --teal: #808080; --teal-dark: #505050; --teal-neon: #A0A0A0;
@@ -78,10 +81,11 @@ html.theme-noir {
     --glow-teal: 0 0 20px rgba(128,128,128,0.2), 0 0 40px rgba(128,128,128,0.08);
     --glow-cyan: 0 0 20px rgba(144,144,144,0.2), 0 0 40px rgba(144,144,144,0.08);
     --gradient-rainbow: linear-gradient(135deg, #666, #999, #CCC, #666);
+    --font-heading: 'Inter', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 6. Emerald Night */
-html.theme-emerald-night {
+/* 6. Metal Gear */
+html.theme-metal-gear {
     --purple: #10B981; --purple-dark: #047857; --purple-light: #34D399; --purple-neon: #6EE7B7;
     --pink: #14B8A6; --pink-dark: #0D9488; --pink-neon: #5EEAD4;
     --teal: #10B981; --teal-dark: #047857; --teal-neon: #34D399;
@@ -96,10 +100,11 @@ html.theme-emerald-night {
     --glow-teal: 0 0 30px rgba(16,185,129,0.4), 0 0 60px rgba(16,185,129,0.15);
     --glow-cyan: 0 0 30px rgba(6,214,160,0.4), 0 0 60px rgba(6,214,160,0.15);
     --gradient-rainbow: linear-gradient(135deg, #10B981, #14B8A6, #06D6A0, #10B981);
+    --font-heading: 'Russo One', sans-serif; --font-body: 'Space Grotesk', sans-serif;
 }
 
-/* 7. Blood Moon */
-html.theme-blood-moon {
+/* 7. DOOM */
+html.theme-doom {
     --purple: #DC2626; --purple-dark: #7F1D1D; --purple-light: #EF4444; --purple-neon: #FCA5A5;
     --pink: #E11D48; --pink-dark: #9F1239; --pink-neon: #FB7185;
     --teal: #F97316; --teal-dark: #C2410C; --teal-neon: #FB923C;
@@ -114,10 +119,11 @@ html.theme-blood-moon {
     --glow-teal: 0 0 30px rgba(249,115,22,0.4), 0 0 60px rgba(249,115,22,0.15);
     --glow-cyan: 0 0 30px rgba(239,68,68,0.4), 0 0 60px rgba(239,68,68,0.15);
     --gradient-rainbow: linear-gradient(135deg, #DC2626, #E11D48, #F97316, #DC2626);
+    --font-heading: 'Russo One', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 8. Deep Space */
-html.theme-deep-space {
+/* 8. Metroid */
+html.theme-metroid {
     --purple: #8B5CF6; --purple-dark: #5B21B6; --purple-light: #A78BFA; --purple-neon: #C4B5FD;
     --pink: #EC4899; --pink-dark: #BE185D; --pink-neon: #F472B6;
     --teal: #2DD4BF; --teal-dark: #0D9488; --teal-neon: #5EEAD4;
@@ -132,10 +138,11 @@ html.theme-deep-space {
     --glow-teal: 0 0 30px rgba(45,212,191,0.4), 0 0 60px rgba(45,212,191,0.15);
     --glow-cyan: 0 0 30px rgba(34,211,238,0.4), 0 0 60px rgba(34,211,238,0.15);
     --gradient-rainbow: linear-gradient(135deg, #8B5CF6, #EC4899, #2DD4BF, #8B5CF6);
+    --font-heading: 'Orbitron', sans-serif; --font-body: 'Space Grotesk', sans-serif;
 }
 
-/* 9. Hacker Green */
-html.theme-hacker {
+/* 9. System Shock */
+html.theme-system-shock {
     --purple: #00FF41; --purple-dark: #008F11; --purple-light: #33FF66; --purple-neon: #80FF99;
     --pink: #00FF41; --pink-dark: #008F11; --pink-neon: #33FF66;
     --teal: #00FF41; --teal-dark: #008F11; --teal-neon: #33FF66;
@@ -150,10 +157,11 @@ html.theme-hacker {
     --glow-teal: 0 0 30px rgba(0,255,65,0.3), 0 0 60px rgba(0,255,65,0.1);
     --glow-cyan: 0 0 30px rgba(0,255,65,0.3), 0 0 60px rgba(0,255,65,0.1);
     --gradient-rainbow: linear-gradient(135deg, #00FF41, #00CC33, #00FF41, #33FF66);
+    --font-heading: 'Share Tech Mono', monospace; --font-body: 'Share Tech Mono', monospace;
 }
 
-/* 10. Sunset */
-html.theme-sunset {
+/* 10. Journey */
+html.theme-journey {
     --purple: #F59E0B; --purple-dark: #B45309; --purple-light: #FBBF24; --purple-neon: #FCD34D;
     --pink: #F97316; --pink-dark: #C2410C; --pink-neon: #FB923C;
     --teal: #EF4444; --teal-dark: #B91C1C; --teal-neon: #F87171;
@@ -168,10 +176,11 @@ html.theme-sunset {
     --glow-teal: 0 0 30px rgba(239,68,68,0.4), 0 0 60px rgba(239,68,68,0.15);
     --glow-cyan: 0 0 30px rgba(245,158,11,0.4), 0 0 60px rgba(245,158,11,0.15);
     --gradient-rainbow: linear-gradient(135deg, #F59E0B, #F97316, #EF4444, #F59E0B);
+    --font-heading: 'Quicksand', sans-serif; --font-body: 'Quicksand', sans-serif;
 }
 
-/* 11. Ocean Abyss */
-html.theme-ocean {
+/* 11. Ecco */
+html.theme-ecco {
     --purple: #0891B2; --purple-dark: #155E75; --purple-light: #06B6D4; --purple-neon: #22D3EE;
     --pink: #0EA5E9; --pink-dark: #0369A1; --pink-neon: #38BDF8;
     --teal: #14B8A6; --teal-dark: #0D9488; --teal-neon: #2DD4BF;
@@ -186,10 +195,11 @@ html.theme-ocean {
     --glow-teal: 0 0 30px rgba(20,184,166,0.4), 0 0 60px rgba(20,184,166,0.15);
     --glow-cyan: 0 0 30px rgba(6,182,212,0.4), 0 0 60px rgba(6,182,212,0.15);
     --gradient-rainbow: linear-gradient(135deg, #0891B2, #0EA5E9, #14B8A6, #0891B2);
+    --font-heading: 'Quicksand', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 12. Sakura Night */
-html.theme-sakura-night {
+/* 12. Okami */
+html.theme-okami {
     --purple: #F472B6; --purple-dark: #BE185D; --purple-light: #F9A8D4; --purple-neon: #FBCFE8;
     --pink: #EC4899; --pink-dark: #DB2777; --pink-neon: #F472B6;
     --teal: #FDA4AF; --teal-dark: #E11D48; --teal-neon: #FECDD3;
@@ -204,12 +214,13 @@ html.theme-sakura-night {
     --glow-teal: 0 0 30px rgba(253,164,175,0.4), 0 0 60px rgba(253,164,175,0.15);
     --glow-cyan: 0 0 30px rgba(244,114,182,0.4), 0 0 60px rgba(244,114,182,0.15);
     --gradient-rainbow: linear-gradient(135deg, #F472B6, #EC4899, #FDA4AF, #F472B6);
+    --font-heading: 'Cinzel', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* ─── NEON THEMES ────────────────────────────────────────────── */
+/* ─── NEON GAMES ─────────────────────────────────────────────── */
 
-/* 13. Neon Arcade */
-html.theme-neon-arcade {
+/* 13. TRON */
+html.theme-tron {
     --purple: #E040FB; --purple-dark: #AB00D9; --purple-light: #EA80FC; --purple-neon: #F0B0FF;
     --pink: #FF4081; --pink-dark: #F50057; --pink-neon: #FF80AB;
     --teal: #64FFDA; --teal-dark: #1DE9B6; --teal-neon: #A7FFEB;
@@ -224,10 +235,11 @@ html.theme-neon-arcade {
     --glow-teal: 0 0 30px rgba(100,255,218,0.4), 0 0 60px rgba(100,255,218,0.15);
     --glow-cyan: 0 0 30px rgba(64,196,255,0.4), 0 0 60px rgba(64,196,255,0.15);
     --gradient-rainbow: linear-gradient(135deg, #E040FB, #FF4081, #64FFDA, #40C4FF, #E040FB);
+    --font-heading: 'Orbitron', sans-serif; --font-body: 'Space Grotesk', sans-serif;
 }
 
-/* 14. Synthwave */
-html.theme-synthwave {
+/* 14. Hotline Miami */
+html.theme-hotline-miami {
     --purple: #E94EC0; --purple-dark: #9B2D7A; --purple-light: #F080D0; --purple-neon: #F5A0E0;
     --pink: #FF6AC1; --pink-dark: #D14FA0; --pink-neon: #FF90D0;
     --teal: #72F1B8; --teal-dark: #42CC8A; --teal-neon: #A0FFD0;
@@ -242,10 +254,11 @@ html.theme-synthwave {
     --glow-teal: 0 0 30px rgba(114,241,184,0.4), 0 0 60px rgba(114,241,184,0.15);
     --glow-cyan: 0 0 30px rgba(54,249,246,0.4), 0 0 60px rgba(54,249,246,0.15);
     --gradient-rainbow: linear-gradient(135deg, #E94EC0, #FF6AC1, #72F1B8, #36F9F6, #E94EC0);
+    --font-heading: 'Righteous', cursive; --font-body: 'Inter', sans-serif;
 }
 
-/* 15. Electric Blue */
-html.theme-electric-blue {
+/* 15. Sonic */
+html.theme-sonic {
     --purple: #2979FF; --purple-dark: #0D47A1; --purple-light: #448AFF; --purple-neon: #82B1FF;
     --pink: #536DFE; --pink-dark: #304FFE; --pink-neon: #8C9EFF;
     --teal: #00E5FF; --teal-dark: #00B8D4; --teal-neon: #84FFFF;
@@ -260,10 +273,11 @@ html.theme-electric-blue {
     --glow-teal: 0 0 30px rgba(0,229,255,0.4), 0 0 60px rgba(0,229,255,0.15);
     --glow-cyan: 0 0 30px rgba(0,176,255,0.4), 0 0 60px rgba(0,176,255,0.15);
     --gradient-rainbow: linear-gradient(135deg, #2979FF, #536DFE, #00E5FF, #2979FF);
+    --font-heading: 'Bangers', cursive; --font-body: 'Fredoka', sans-serif;
 }
 
-/* 16. Toxic */
-html.theme-toxic {
+/* 16. Fallout */
+html.theme-fallout {
     --purple: #76FF03; --purple-dark: #558B2F; --purple-light: #B2FF59; --purple-neon: #CCFF90;
     --pink: #EEFF41; --pink-dark: #C6FF00; --pink-neon: #F4FF81;
     --teal: #00E676; --teal-dark: #00C853; --teal-neon: #69F0AE;
@@ -278,12 +292,13 @@ html.theme-toxic {
     --glow-teal: 0 0 30px rgba(0,230,118,0.4), 0 0 60px rgba(0,230,118,0.15);
     --glow-cyan: 0 0 30px rgba(118,255,3,0.4), 0 0 60px rgba(118,255,3,0.15);
     --gradient-rainbow: linear-gradient(135deg, #76FF03, #EEFF41, #00E676, #76FF03);
+    --font-heading: 'Share Tech Mono', monospace; --font-body: 'Share Tech Mono', monospace;
 }
 
-/* ─── RETRO THEMES ───────────────────────────────────────────── */
+/* ─── RETRO CLASSICS ─────────────────────────────────────────── */
 
-/* 17. Gameboy */
-html.theme-gameboy {
+/* 17. Pokemon */
+html.theme-pokemon {
     --purple: #306230; --purple-dark: #1A3A1A; --purple-light: #4A8A4A; --purple-neon: #5AA55A;
     --pink: #306230; --pink-dark: #1A3A1A; --pink-neon: #4A8A4A;
     --teal: #306230; --teal-dark: #1A3A1A; --teal-neon: #4A8A4A;
@@ -295,10 +310,11 @@ html.theme-gameboy {
     --border: rgba(15, 56, 15, 0.2); --border-glow: rgba(15, 56, 15, 0.3);
     --glow-purple: none; --glow-pink: none; --glow-teal: none; --glow-cyan: none;
     --gradient-rainbow: linear-gradient(135deg, #0F380F, #306230, #8BAC0F, #9BBC0F);
+    --font-heading: 'Press Start 2P', monospace; --font-body: 'Inter', sans-serif;
 }
 
-/* 18. NES Classic */
-html.theme-nes {
+/* 18. Mario */
+html.theme-mario {
     --purple: #CC0000; --purple-dark: #880000; --purple-light: #EE0000; --purple-neon: #FF4444;
     --pink: #CC0000; --pink-dark: #880000; --pink-neon: #FF4444;
     --teal: #0058CC; --teal-dark: #003388; --teal-neon: #4488FF;
@@ -310,10 +326,11 @@ html.theme-nes {
     --border: rgba(0, 0, 0, 0.1); --border-glow: rgba(204, 0, 0, 0.3);
     --glow-purple: none; --glow-pink: none; --glow-teal: none; --glow-cyan: none;
     --gradient-rainbow: linear-gradient(135deg, #CC0000, #0058CC, #CC0000);
+    --font-heading: 'Press Start 2P', monospace; --font-body: 'Inter', sans-serif;
 }
 
-/* 19. SNES */
-html.theme-snes {
+/* 19. Zelda */
+html.theme-zelda {
     --purple: #5C2D91; --purple-dark: #3B1B5C; --purple-light: #7B4DB5; --purple-neon: #9B6DD5;
     --pink: #6B38A8; --pink-dark: #4A2580; --pink-neon: #8B58C8;
     --teal: #007EC6; --teal-dark: #005A90; --teal-neon: #40A0E0;
@@ -328,10 +345,11 @@ html.theme-snes {
     --glow-teal: 0 0 15px rgba(0,126,198,0.2), 0 0 30px rgba(0,126,198,0.08);
     --glow-cyan: 0 0 15px rgba(92,45,145,0.2), 0 0 30px rgba(92,45,145,0.08);
     --gradient-rainbow: linear-gradient(135deg, #5C2D91, #007EC6, #6B38A8, #5C2D91);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 20. Sega Genesis */
-html.theme-genesis {
+/* 20. Streets of Rage */
+html.theme-streets-of-rage {
     --purple: #0066CC; --purple-dark: #003D7A; --purple-light: #3388DD; --purple-neon: #66AAEE;
     --pink: #0066CC; --pink-dark: #003D7A; --pink-neon: #3388DD;
     --teal: #0066CC; --teal-dark: #003D7A; --teal-neon: #3388DD;
@@ -346,10 +364,11 @@ html.theme-genesis {
     --glow-teal: 0 0 25px rgba(0,102,204,0.4), 0 0 50px rgba(0,102,204,0.15);
     --glow-cyan: 0 0 25px rgba(0,102,204,0.4), 0 0 50px rgba(0,102,204,0.15);
     --gradient-rainbow: linear-gradient(135deg, #0066CC, #003D7A, #3388DD, #0066CC);
+    --font-heading: 'Russo One', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 21. PS1 */
-html.theme-ps1 {
+/* 21. Final Fantasy */
+html.theme-final-fantasy {
     --purple: #0070D1; --purple-dark: #004A8C; --purple-light: #3090E0; --purple-neon: #60B0F0;
     --pink: #E01040; --pink-dark: #A00830; --pink-neon: #FF4070;
     --teal: #00A090; --teal-dark: #007060; --teal-neon: #30D0C0;
@@ -364,10 +383,11 @@ html.theme-ps1 {
     --glow-teal: 0 0 25px rgba(0,160,144,0.4), 0 0 50px rgba(0,160,144,0.15);
     --glow-cyan: 0 0 25px rgba(0,112,209,0.4), 0 0 50px rgba(0,112,209,0.15);
     --gradient-rainbow: linear-gradient(135deg, #0070D1, #E01040, #00A090, #0070D1);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 22. Commodore 64 */
-html.theme-c64 {
+/* 22. Maniac Mansion */
+html.theme-maniac-mansion {
     --purple: #6C5EB5; --purple-dark: #4A3A8A; --purple-light: #8878D0; --purple-neon: #A498E0;
     --pink: #6C5EB5; --pink-dark: #4A3A8A; --pink-neon: #8878D0;
     --teal: #6C5EB5; --teal-dark: #4A3A8A; --teal-neon: #8878D0;
@@ -382,10 +402,11 @@ html.theme-c64 {
     --glow-teal: 0 0 20px rgba(108,94,181,0.3), 0 0 40px rgba(108,94,181,0.1);
     --glow-cyan: 0 0 20px rgba(108,94,181,0.3), 0 0 40px rgba(108,94,181,0.1);
     --gradient-rainbow: linear-gradient(135deg, #6C5EB5, #40318D, #8878D0, #6C5EB5);
+    --font-heading: 'Press Start 2P', monospace; --font-body: 'Inter', sans-serif;
 }
 
-/* 23. Atari */
-html.theme-atari {
+/* 23. Asteroids */
+html.theme-asteroids {
     --purple: #E87000; --purple-dark: #B85500; --purple-light: #FF9030; --purple-neon: #FFB060;
     --pink: #E87000; --pink-dark: #B85500; --pink-neon: #FF9030;
     --teal: #E87000; --teal-dark: #B85500; --teal-neon: #FF9030;
@@ -400,14 +421,23 @@ html.theme-atari {
     --glow-teal: 0 0 25px rgba(232,112,0,0.4), 0 0 50px rgba(232,112,0,0.15);
     --glow-cyan: 0 0 25px rgba(232,112,0,0.4), 0 0 50px rgba(232,112,0,0.15);
     --gradient-rainbow: linear-gradient(135deg, #E87000, #B85500, #FF9030, #E87000);
+    --font-heading: 'Press Start 2P', monospace; --font-body: 'Inter', sans-serif;
 }
 
-/* ─── LIGHT THEMES ───────────────────────────────────────────── */
+/* ─── LIGHT REALMS ───────────────────────────────────────────── */
 
-/* 24. Paper (already "light" in arcade.css) */
+/* 24. Animal Crossing (light) — font vars only, colors in arcade.css */
+html.theme-animal-crossing {
+    --font-heading: 'Fredoka', sans-serif; --font-body: 'Quicksand', sans-serif;
+}
 
-/* 25. Rose Gold */
-html.theme-rose-gold {
+/* 25. Mirror's Edge (light) — font vars only, colors in arcade.css */
+html.theme-mirrors-edge {
+    --font-heading: 'Quicksand', sans-serif; --font-body: 'Quicksand', sans-serif;
+}
+
+/* 26. Princess Peach */
+html.theme-peach {
     --purple: #B76E79; --purple-dark: #8C4A56; --purple-light: #D4919C; --purple-neon: #E8B4BC;
     --pink: #C77B85; --pink-dark: #A0555F; --pink-neon: #E0A0AA;
     --teal: #B76E79; --teal-dark: #8C4A56; --teal-neon: #D4919C;
@@ -422,10 +452,11 @@ html.theme-rose-gold {
     --glow-teal: 0 0 20px rgba(183,110,121,0.15), 0 0 40px rgba(183,110,121,0.05);
     --glow-cyan: 0 0 20px rgba(183,110,121,0.15), 0 0 40px rgba(183,110,121,0.05);
     --gradient-rainbow: linear-gradient(135deg, #B76E79, #D4919C, #E8B4BC, #B76E79);
+    --font-heading: 'Fredoka', sans-serif; --font-body: 'Quicksand', sans-serif;
 }
 
-/* 26. Mint */
-html.theme-mint {
+/* 27. Kirby */
+html.theme-kirby {
     --purple: #059669; --purple-dark: #047857; --purple-light: #10B981; --purple-neon: #34D399;
     --pink: #14B8A6; --pink-dark: #0D9488; --pink-neon: #2DD4BF;
     --teal: #059669; --teal-dark: #047857; --teal-neon: #10B981;
@@ -440,10 +471,11 @@ html.theme-mint {
     --glow-teal: 0 0 20px rgba(5,150,105,0.15), 0 0 40px rgba(5,150,105,0.05);
     --glow-cyan: 0 0 20px rgba(5,150,105,0.15), 0 0 40px rgba(5,150,105,0.05);
     --gradient-rainbow: linear-gradient(135deg, #059669, #14B8A6, #10B981, #059669);
+    --font-heading: 'Bangers', cursive; --font-body: 'Fredoka', sans-serif;
 }
 
-/* 27. Lavender */
-html.theme-lavender {
+/* 28. Spyro */
+html.theme-spyro {
     --purple: #7C3AED; --purple-dark: #5B21B6; --purple-light: #8B5CF6; --purple-neon: #A78BFA;
     --pink: #8B5CF6; --pink-dark: #6D28D9; --pink-neon: #A78BFA;
     --teal: #7C3AED; --teal-dark: #5B21B6; --teal-neon: #8B5CF6;
@@ -458,10 +490,11 @@ html.theme-lavender {
     --glow-teal: 0 0 20px rgba(124,58,237,0.15), 0 0 40px rgba(124,58,237,0.05);
     --glow-cyan: 0 0 20px rgba(124,58,237,0.15), 0 0 40px rgba(124,58,237,0.05);
     --gradient-rainbow: linear-gradient(135deg, #7C3AED, #8B5CF6, #A78BFA, #7C3AED);
+    --font-heading: 'Bangers', cursive; --font-body: 'Fredoka', sans-serif;
 }
 
-/* 28. Coral */
-html.theme-coral {
+/* 29. Donkey Kong */
+html.theme-donkey-kong {
     --purple: #F97316; --purple-dark: #C2410C; --purple-light: #FB923C; --purple-neon: #FDBA74;
     --pink: #EF4444; --pink-dark: #B91C1C; --pink-neon: #F87171;
     --teal: #F97316; --teal-dark: #C2410C; --teal-neon: #FB923C;
@@ -476,10 +509,11 @@ html.theme-coral {
     --glow-teal: 0 0 20px rgba(249,115,22,0.15), 0 0 40px rgba(249,115,22,0.05);
     --glow-cyan: 0 0 20px rgba(249,115,22,0.15), 0 0 40px rgba(249,115,22,0.05);
     --gradient-rainbow: linear-gradient(135deg, #F97316, #EF4444, #FB923C, #F97316);
+    --font-heading: 'Bangers', cursive; --font-body: 'Fredoka', sans-serif;
 }
 
-/* 29. Sky */
-html.theme-sky {
+/* 30. Pilotwings */
+html.theme-pilotwings {
     --purple: #0284C7; --purple-dark: #075985; --purple-light: #0EA5E9; --purple-neon: #38BDF8;
     --pink: #0EA5E9; --pink-dark: #0284C7; --pink-neon: #38BDF8;
     --teal: #0284C7; --teal-dark: #075985; --teal-neon: #0EA5E9;
@@ -494,10 +528,11 @@ html.theme-sky {
     --glow-teal: 0 0 20px rgba(2,132,199,0.15), 0 0 40px rgba(2,132,199,0.05);
     --glow-cyan: 0 0 20px rgba(2,132,199,0.15), 0 0 40px rgba(2,132,199,0.05);
     --gradient-rainbow: linear-gradient(135deg, #0284C7, #0EA5E9, #38BDF8, #0284C7);
+    --font-heading: 'Quicksand', sans-serif; --font-body: 'Quicksand', sans-serif;
 }
 
-/* 30. Warm Sand */
-html.theme-sand {
+/* 31. Prince of Persia */
+html.theme-prince-of-persia {
     --purple: #92400E; --purple-dark: #78350F; --purple-light: #B45309; --purple-neon: #D97706;
     --pink: #A16207; --pink-dark: #854D0E; --pink-neon: #CA8A04;
     --teal: #92400E; --teal-dark: #78350F; --teal-neon: #B45309;
@@ -512,10 +547,11 @@ html.theme-sand {
     --glow-teal: 0 0 20px rgba(146,64,14,0.15), 0 0 40px rgba(146,64,14,0.05);
     --glow-cyan: 0 0 20px rgba(146,64,14,0.15), 0 0 40px rgba(146,64,14,0.05);
     --gradient-rainbow: linear-gradient(135deg, #92400E, #A16207, #B45309, #92400E);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 31. Slate */
-html.theme-slate {
+/* 32. Portal */
+html.theme-portal {
     --purple: #475569; --purple-dark: #334155; --purple-light: #64748B; --purple-neon: #94A3B8;
     --pink: #475569; --pink-dark: #334155; --pink-neon: #64748B;
     --teal: #475569; --teal-dark: #334155; --teal-neon: #64748B;
@@ -530,12 +566,13 @@ html.theme-slate {
     --glow-teal: 0 0 15px rgba(71,85,105,0.1), 0 0 30px rgba(71,85,105,0.04);
     --glow-cyan: 0 0 15px rgba(71,85,105,0.1), 0 0 30px rgba(71,85,105,0.04);
     --gradient-rainbow: linear-gradient(135deg, #475569, #64748B, #94A3B8, #475569);
+    --font-heading: 'Space Grotesk', sans-serif; --font-body: 'Space Grotesk', sans-serif;
 }
 
-/* ─── LUXURY / PREMIUM THEMES ────────────────────────────────── */
+/* ─── LEGENDARY ──────────────────────────────────────────────── */
 
-/* 32. Gold */
-html.theme-gold {
+/* 33. Triforce */
+html.theme-triforce {
     --purple: #B8860B; --purple-dark: #8B6508; --purple-light: #DAA520; --purple-neon: #FFD700;
     --pink: #CD853F; --pink-dark: #A0682C; --pink-neon: #DEB887;
     --teal: #B8860B; --teal-dark: #8B6508; --teal-neon: #DAA520;
@@ -550,10 +587,11 @@ html.theme-gold {
     --glow-teal: 0 0 30px rgba(184,134,11,0.4), 0 0 60px rgba(184,134,11,0.15);
     --glow-cyan: 0 0 30px rgba(184,134,11,0.4), 0 0 60px rgba(184,134,11,0.15);
     --gradient-rainbow: linear-gradient(135deg, #B8860B, #DAA520, #FFD700, #B8860B);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 33. Carbon */
-html.theme-carbon {
+/* 34. Gran Turismo */
+html.theme-gran-turismo {
     --purple: #525252; --purple-dark: #333; --purple-light: #737373; --purple-neon: #A3A3A3;
     --pink: #525252; --pink-dark: #333; --pink-neon: #737373;
     --teal: #525252; --teal-dark: #333; --teal-neon: #737373;
@@ -568,10 +606,11 @@ html.theme-carbon {
     --glow-teal: 0 0 15px rgba(100,100,100,0.15), 0 0 30px rgba(100,100,100,0.05);
     --glow-cyan: 0 0 15px rgba(100,100,100,0.15), 0 0 30px rgba(100,100,100,0.05);
     --gradient-rainbow: linear-gradient(135deg, #525252, #737373, #A3A3A3, #525252);
+    --font-heading: 'Orbitron', sans-serif; --font-body: 'Space Grotesk', sans-serif;
 }
 
-/* 34. Royal Purple */
-html.theme-royal {
+/* 35. Kingdom Hearts */
+html.theme-kingdom-hearts {
     --purple: #6D28D9; --purple-dark: #4C1D95; --purple-light: #7C3AED; --purple-neon: #8B5CF6;
     --pink: #9333EA; --pink-dark: #7E22CE; --pink-neon: #A855F7;
     --teal: #6D28D9; --teal-dark: #4C1D95; --teal-neon: #7C3AED;
@@ -586,30 +625,13 @@ html.theme-royal {
     --glow-teal: 0 0 30px rgba(109,40,217,0.5), 0 0 60px rgba(109,40,217,0.2);
     --glow-cyan: 0 0 30px rgba(109,40,217,0.5), 0 0 60px rgba(109,40,217,0.2);
     --gradient-rainbow: linear-gradient(135deg, #6D28D9, #9333EA, #7C3AED, #6D28D9);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 35. Copper */
-html.theme-copper {
-    --purple: #B87333; --purple-dark: #8B5A2B; --purple-light: #D4944A; --purple-neon: #E8B06A;
-    --pink: #C48746; --pink-dark: #9A6830; --pink-neon: #DCA060;
-    --teal: #B87333; --teal-dark: #8B5A2B; --teal-neon: #D4944A;
-    --cyan: #B87333;
-    --bg: #F5EDE3; --bg-card: rgba(255, 255, 255, 0.92); --bg-card-solid: #FFFFFF;
-    --bg-card-hover: rgba(255, 252, 248, 1); --bg-sidebar: rgba(252, 248, 240, 0.98);
-    --bg-input: rgba(245, 237, 227, 0.9); --bg-glass: rgba(252, 248, 240, 0.8);
-    --text: #3D2B1F; --text-dim: #6B4C38; --text-muted: #C8AD94;
-    --border: rgba(184, 115, 51, 0.12); --border-glow: rgba(184, 115, 51, 0.25);
-    --glow-purple: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
-    --glow-pink: 0 0 20px rgba(196,135,70,0.15), 0 0 40px rgba(196,135,70,0.05);
-    --glow-teal: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
-    --glow-cyan: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
-    --gradient-rainbow: linear-gradient(135deg, #B87333, #D4944A, #E8B06A, #B87333);
-}
+/* ─── OPEN WORLD ─────────────────────────────────────────────── */
 
-/* ─── NATURE THEMES ──────────────────────────────────────────── */
-
-/* 36. Forest */
-html.theme-forest {
+/* 36. Link */
+html.theme-link {
     --purple: #15803D; --purple-dark: #166534; --purple-light: #22C55E; --purple-neon: #4ADE80;
     --pink: #16A34A; --pink-dark: #15803D; --pink-neon: #22C55E;
     --teal: #059669; --teal-dark: #047857; --teal-neon: #10B981;
@@ -624,10 +646,11 @@ html.theme-forest {
     --glow-teal: 0 0 25px rgba(5,150,105,0.3), 0 0 50px rgba(5,150,105,0.12);
     --glow-cyan: 0 0 25px rgba(21,128,61,0.3), 0 0 50px rgba(21,128,61,0.12);
     --gradient-rainbow: linear-gradient(135deg, #15803D, #059669, #22C55E, #15803D);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 37. Aurora */
-html.theme-aurora {
+/* 37. Skyrim */
+html.theme-skyrim {
     --purple: #8B5CF6; --purple-dark: #6D28D9; --purple-light: #A78BFA; --purple-neon: #C4B5FD;
     --pink: #06B6D4; --pink-dark: #0891B2; --pink-neon: #22D3EE;
     --teal: #10B981; --teal-dark: #059669; --teal-neon: #34D399;
@@ -642,10 +665,11 @@ html.theme-aurora {
     --glow-teal: 0 0 30px rgba(16,185,129,0.4), 0 0 60px rgba(16,185,129,0.15);
     --glow-cyan: 0 0 30px rgba(6,182,212,0.4), 0 0 60px rgba(6,182,212,0.15);
     --gradient-rainbow: linear-gradient(135deg, #8B5CF6, #06B6D4, #10B981, #8B5CF6);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 38. Volcanic */
-html.theme-volcanic {
+/* 38. Bowser */
+html.theme-bowser {
     --purple: #DC2626; --purple-dark: #991B1B; --purple-light: #EF4444; --purple-neon: #FCA5A5;
     --pink: #F97316; --pink-dark: #C2410C; --pink-neon: #FB923C;
     --teal: #EAB308; --teal-dark: #A16207; --teal-neon: #FACC15;
@@ -660,10 +684,11 @@ html.theme-volcanic {
     --glow-teal: 0 0 30px rgba(234,179,8,0.4), 0 0 60px rgba(234,179,8,0.15);
     --glow-cyan: 0 0 30px rgba(239,68,68,0.4), 0 0 60px rgba(239,68,68,0.15);
     --gradient-rainbow: linear-gradient(135deg, #DC2626, #F97316, #EAB308, #DC2626);
+    --font-heading: 'Russo One', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 39. Arctic */
-html.theme-arctic {
+/* 39. Ice Climber */
+html.theme-ice-climber {
     --purple: #0EA5E9; --purple-dark: #0369A1; --purple-light: #38BDF8; --purple-neon: #7DD3FC;
     --pink: #06B6D4; --pink-dark: #0891B2; --pink-neon: #22D3EE;
     --teal: #0EA5E9; --teal-dark: #0369A1; --teal-neon: #38BDF8;
@@ -678,10 +703,11 @@ html.theme-arctic {
     --glow-teal: 0 0 20px rgba(14,165,233,0.15), 0 0 40px rgba(14,165,233,0.05);
     --glow-cyan: 0 0 20px rgba(14,165,233,0.15), 0 0 40px rgba(14,165,233,0.05);
     --gradient-rainbow: linear-gradient(135deg, #0EA5E9, #06B6D4, #38BDF8, #0EA5E9);
+    --font-heading: 'Quicksand', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 40. Desert */
-html.theme-desert {
+/* 40. Gerudo */
+html.theme-gerudo {
     --purple: #D97706; --purple-dark: #92400E; --purple-light: #F59E0B; --purple-neon: #FBBF24;
     --pink: #B45309; --pink-dark: #92400E; --pink-neon: #D97706;
     --teal: #D97706; --teal-dark: #92400E; --teal-neon: #F59E0B;
@@ -696,12 +722,13 @@ html.theme-desert {
     --glow-teal: 0 0 25px rgba(217,119,6,0.4), 0 0 50px rgba(217,119,6,0.15);
     --glow-cyan: 0 0 25px rgba(217,119,6,0.4), 0 0 50px rgba(217,119,6,0.15);
     --gradient-rainbow: linear-gradient(135deg, #D97706, #B45309, #F59E0B, #D97706);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* ─── SPECIAL THEMES ─────────────────────────────────────────── */
+/* ─── SPECIAL STAGES ─────────────────────────────────────────── */
 
-/* 41. Vaporwave */
-html.theme-vaporwave {
+/* 41. Katamari */
+html.theme-katamari {
     --purple: #FF71CE; --purple-dark: #CC50A0; --purple-light: #FF99DD; --purple-neon: #FFBBEE;
     --pink: #FF71CE; --pink-dark: #CC50A0; --pink-neon: #FF99DD;
     --teal: #01CDFE; --teal-dark: #009BC4; --teal-neon: #66E0FF;
@@ -716,9 +743,10 @@ html.theme-vaporwave {
     --glow-teal: 0 0 30px rgba(1,205,254,0.4), 0 0 60px rgba(1,205,254,0.15);
     --glow-cyan: 0 0 30px rgba(1,205,254,0.4), 0 0 60px rgba(1,205,254,0.15);
     --gradient-rainbow: linear-gradient(135deg, #FF71CE, #01CDFE, #B967FF, #FF71CE);
+    --font-heading: 'Bangers', cursive; --font-body: 'Fredoka', sans-serif;
 }
 
-/* 42. Outrun */
+/* 42. OutRun */
 html.theme-outrun {
     --purple: #FF2975; --purple-dark: #CC1050; --purple-light: #FF5090; --purple-neon: #FF80B0;
     --pink: #FF2975; --pink-dark: #CC1050; --pink-neon: #FF5090;
@@ -734,10 +762,11 @@ html.theme-outrun {
     --glow-teal: 0 0 30px rgba(242,34,255,0.4), 0 0 60px rgba(242,34,255,0.15);
     --glow-cyan: 0 0 30px rgba(255,102,0,0.4), 0 0 60px rgba(255,102,0,0.15);
     --gradient-rainbow: linear-gradient(135deg, #FF2975, #F222FF, #FF6600, #FF2975);
+    --font-heading: 'Righteous', cursive; --font-body: 'Inter', sans-serif;
 }
 
-/* 43. Bubblegum */
-html.theme-bubblegum {
+/* 43. Bubble Bobble */
+html.theme-bubble-bobble {
     --purple: #E91E90; --purple-dark: #BA1870; --purple-light: #F050A8; --purple-neon: #F580C0;
     --pink: #E91E90; --pink-dark: #BA1870; --pink-neon: #F050A8;
     --teal: #E91E90; --teal-dark: #BA1870; --teal-neon: #F050A8;
@@ -752,10 +781,11 @@ html.theme-bubblegum {
     --glow-teal: 0 0 20px rgba(233,30,144,0.15), 0 0 40px rgba(233,30,144,0.05);
     --glow-cyan: 0 0 20px rgba(233,30,144,0.15), 0 0 40px rgba(233,30,144,0.05);
     --gradient-rainbow: linear-gradient(135deg, #E91E90, #F050A8, #F580C0, #E91E90);
+    --font-heading: 'Bangers', cursive; --font-body: 'Fredoka', sans-serif;
 }
 
-/* 44. Monochrome */
-html.theme-monochrome {
+/* 44. Limbo */
+html.theme-limbo {
     --purple: #000000; --purple-dark: #000000; --purple-light: #333333; --purple-neon: #666666;
     --pink: #000000; --pink-dark: #000000; --pink-neon: #333333;
     --teal: #000000; --teal-dark: #000000; --teal-neon: #333333;
@@ -767,10 +797,11 @@ html.theme-monochrome {
     --border: rgba(0, 0, 0, 0.1); --border-glow: rgba(0, 0, 0, 0.15);
     --glow-purple: none; --glow-pink: none; --glow-teal: none; --glow-cyan: none;
     --gradient-rainbow: linear-gradient(135deg, #000, #333, #666, #000);
+    --font-heading: 'Inter', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 45. Neon Miami */
-html.theme-miami {
+/* 45. Vice City */
+html.theme-vice-city {
     --purple: #F72585; --purple-dark: #B5179E; --purple-light: #FF4DA6; --purple-neon: #FF80C0;
     --pink: #F72585; --pink-dark: #B5179E; --pink-neon: #FF4DA6;
     --teal: #4CC9F0; --teal-dark: #3A9BC0; --teal-neon: #7DD8F5;
@@ -785,10 +816,11 @@ html.theme-miami {
     --glow-teal: 0 0 30px rgba(76,201,240,0.4), 0 0 60px rgba(76,201,240,0.15);
     --glow-cyan: 0 0 30px rgba(67,97,238,0.4), 0 0 60px rgba(67,97,238,0.15);
     --gradient-rainbow: linear-gradient(135deg, #F72585, #B5179E, #4361EE, #4CC9F0, #F72585);
+    --font-heading: 'Righteous', cursive; --font-body: 'Inter', sans-serif;
 }
 
-/* 46. Pastel Dream */
-html.theme-pastel {
+/* 46. Yoshi */
+html.theme-yoshi {
     --purple: #A78BFA; --purple-dark: #7C3AED; --purple-light: #C4B5FD; --purple-neon: #DDD6FE;
     --pink: #F9A8D4; --pink-dark: #EC4899; --pink-neon: #FBCFE8;
     --teal: #6EE7B7; --teal-dark: #34D399; --teal-neon: #A7F3D0;
@@ -803,10 +835,11 @@ html.theme-pastel {
     --glow-teal: 0 0 20px rgba(110,231,183,0.15), 0 0 40px rgba(110,231,183,0.05);
     --glow-cyan: 0 0 20px rgba(103,232,249,0.15), 0 0 40px rgba(103,232,249,0.05);
     --gradient-rainbow: linear-gradient(135deg, #A78BFA, #F9A8D4, #6EE7B7, #67E8F9, #A78BFA);
+    --font-heading: 'Bangers', cursive; --font-body: 'Fredoka', sans-serif;
 }
 
-/* 47. Steampunk */
-html.theme-steampunk {
+/* 47. BioShock */
+html.theme-bioshock {
     --purple: #A0522D; --purple-dark: #6B3420; --purple-light: #CD853F; --purple-neon: #DEB887;
     --pink: #B8860B; --pink-dark: #8B6508; --pink-neon: #DAA520;
     --teal: #8B4513; --teal-dark: #654321; --teal-neon: #A0522D;
@@ -821,10 +854,11 @@ html.theme-steampunk {
     --glow-teal: 0 0 25px rgba(139,69,19,0.3), 0 0 50px rgba(139,69,19,0.12);
     --glow-cyan: 0 0 25px rgba(160,82,45,0.3), 0 0 50px rgba(160,82,45,0.12);
     --gradient-rainbow: linear-gradient(135deg, #A0522D, #B8860B, #CD853F, #A0522D);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 48. Midnight Rose */
-html.theme-midnight-rose {
+/* 48. Bayonetta */
+html.theme-bayonetta {
     --purple: #BE185D; --purple-dark: #9D174D; --purple-light: #DB2777; --purple-neon: #EC4899;
     --pink: #E11D48; --pink-dark: #BE123C; --pink-neon: #F43F5E;
     --teal: #BE185D; --teal-dark: #9D174D; --teal-neon: #DB2777;
@@ -839,10 +873,11 @@ html.theme-midnight-rose {
     --glow-teal: 0 0 30px rgba(190,24,93,0.4), 0 0 60px rgba(190,24,93,0.15);
     --glow-cyan: 0 0 30px rgba(190,24,93,0.4), 0 0 60px rgba(190,24,93,0.15);
     --gradient-rainbow: linear-gradient(135deg, #BE185D, #E11D48, #DB2777, #BE185D);
+    --font-heading: 'Righteous', cursive; --font-body: 'Inter', sans-serif;
 }
 
-/* 49. Ice */
-html.theme-ice {
+/* 49. Sub-Zero */
+html.theme-sub-zero {
     --purple: #60A5FA; --purple-dark: #2563EB; --purple-light: #93C5FD; --purple-neon: #BFDBFE;
     --pink: #818CF8; --pink-dark: #6366F1; --pink-neon: #A5B4FC;
     --teal: #60A5FA; --teal-dark: #2563EB; --teal-neon: #93C5FD;
@@ -857,10 +892,11 @@ html.theme-ice {
     --glow-teal: 0 0 20px rgba(96,165,250,0.15), 0 0 40px rgba(96,165,250,0.05);
     --glow-cyan: 0 0 20px rgba(96,165,250,0.15), 0 0 40px rgba(96,165,250,0.05);
     --gradient-rainbow: linear-gradient(135deg, #60A5FA, #818CF8, #93C5FD, #60A5FA);
+    --font-heading: 'Orbitron', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
-/* 50. Amber */
-html.theme-amber {
+/* 50. Professor Layton */
+html.theme-professor-layton {
     --purple: #D97706; --purple-dark: #B45309; --purple-light: #F59E0B; --purple-neon: #FBBF24;
     --pink: #D97706; --pink-dark: #B45309; --pink-neon: #F59E0B;
     --teal: #D97706; --teal-dark: #B45309; --teal-neon: #F59E0B;
@@ -875,92 +911,217 @@ html.theme-amber {
     --glow-teal: 0 0 20px rgba(217,119,6,0.15), 0 0 40px rgba(217,119,6,0.05);
     --glow-cyan: 0 0 20px rgba(217,119,6,0.15), 0 0 40px rgba(217,119,6,0.05);
     --gradient-rainbow: linear-gradient(135deg, #D97706, #F59E0B, #FBBF24, #D97706);
+    --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif;
+}
+
+/* 51. Ratchet */
+html.theme-ratchet {
+    --purple: #B87333; --purple-dark: #8B5A2B; --purple-light: #D4944A; --purple-neon: #E8B06A;
+    --pink: #C48746; --pink-dark: #9A6830; --pink-neon: #DCA060;
+    --teal: #B87333; --teal-dark: #8B5A2B; --teal-neon: #D4944A;
+    --cyan: #B87333;
+    --bg: #F5EDE3; --bg-card: rgba(255, 255, 255, 0.92); --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(255, 252, 248, 1); --bg-sidebar: rgba(252, 248, 240, 0.98);
+    --bg-input: rgba(245, 237, 227, 0.9); --bg-glass: rgba(252, 248, 240, 0.8);
+    --text: #3D2B1F; --text-dim: #6B4C38; --text-muted: #C8AD94;
+    --border: rgba(184, 115, 51, 0.12); --border-glow: rgba(184, 115, 51, 0.25);
+    --glow-purple: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
+    --glow-pink: 0 0 20px rgba(196,135,70,0.15), 0 0 40px rgba(196,135,70,0.05);
+    --glow-teal: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
+    --glow-cyan: 0 0 20px rgba(184,115,51,0.15), 0 0 40px rgba(184,115,51,0.05);
+    --gradient-rainbow: linear-gradient(135deg, #B87333, #D4944A, #E8B06A, #B87333);
+    --font-heading: 'Russo One', sans-serif; --font-body: 'Inter', sans-serif;
 }
 
 /* ─── GENERIC OVERRIDES FOR ALL LIGHT-BG THEMES ──────────────── */
 /* Any theme with a light --bg needs these selector overrides */
-html.theme-nes, html.theme-snes, html.theme-gameboy,
-html.theme-rose-gold, html.theme-mint, html.theme-lavender,
-html.theme-coral, html.theme-sky, html.theme-sand, html.theme-slate,
-html.theme-copper, html.theme-arctic, html.theme-bubblegum,
-html.theme-monochrome, html.theme-pastel, html.theme-ice, html.theme-amber {
+html.theme-mario, html.theme-zelda, html.theme-pokemon,
+html.theme-peach, html.theme-kirby, html.theme-spyro,
+html.theme-donkey-kong, html.theme-pilotwings, html.theme-prince-of-persia, html.theme-portal,
+html.theme-ratchet, html.theme-ice-climber, html.theme-bubble-bobble,
+html.theme-limbo, html.theme-yoshi, html.theme-sub-zero, html.theme-professor-layton {
     color-scheme: light;
 }
-html.theme-nes body, html.theme-snes body, html.theme-gameboy body,
-html.theme-rose-gold body, html.theme-mint body, html.theme-lavender body,
-html.theme-coral body, html.theme-sky body, html.theme-sand body, html.theme-slate body,
-html.theme-copper body, html.theme-arctic body, html.theme-bubblegum body,
-html.theme-monochrome body, html.theme-pastel body, html.theme-ice body, html.theme-amber body {
+html.theme-mario body, html.theme-zelda body, html.theme-pokemon body,
+html.theme-peach body, html.theme-kirby body, html.theme-spyro body,
+html.theme-donkey-kong body, html.theme-pilotwings body, html.theme-prince-of-persia body, html.theme-portal body,
+html.theme-ratchet body, html.theme-ice-climber body, html.theme-bubble-bobble body,
+html.theme-limbo body, html.theme-yoshi body, html.theme-sub-zero body, html.theme-professor-layton body {
     color: var(--text);
 }
-html.theme-nes .sidebar, html.theme-snes .sidebar, html.theme-gameboy .sidebar,
-html.theme-rose-gold .sidebar, html.theme-mint .sidebar, html.theme-lavender .sidebar,
-html.theme-coral .sidebar, html.theme-sky .sidebar, html.theme-sand .sidebar, html.theme-slate .sidebar,
-html.theme-copper .sidebar, html.theme-arctic .sidebar, html.theme-bubblegum .sidebar,
-html.theme-monochrome .sidebar, html.theme-pastel .sidebar, html.theme-ice .sidebar, html.theme-amber .sidebar {
+html.theme-mario .sidebar, html.theme-zelda .sidebar, html.theme-pokemon .sidebar,
+html.theme-peach .sidebar, html.theme-kirby .sidebar, html.theme-spyro .sidebar,
+html.theme-donkey-kong .sidebar, html.theme-pilotwings .sidebar, html.theme-prince-of-persia .sidebar, html.theme-portal .sidebar,
+html.theme-ratchet .sidebar, html.theme-ice-climber .sidebar, html.theme-bubble-bobble .sidebar,
+html.theme-limbo .sidebar, html.theme-yoshi .sidebar, html.theme-sub-zero .sidebar, html.theme-professor-layton .sidebar {
     background: var(--bg-sidebar); border-right: 1px solid var(--border); box-shadow: 2px 0 12px rgba(0,0,0,0.04);
 }
-html.theme-nes .game-card, html.theme-snes .game-card, html.theme-gameboy .game-card,
-html.theme-rose-gold .game-card, html.theme-mint .game-card, html.theme-lavender .game-card,
-html.theme-coral .game-card, html.theme-sky .game-card, html.theme-sand .game-card, html.theme-slate .game-card,
-html.theme-copper .game-card, html.theme-arctic .game-card, html.theme-bubblegum .game-card,
-html.theme-monochrome .game-card, html.theme-pastel .game-card, html.theme-ice .game-card, html.theme-amber .game-card {
+html.theme-mario .game-card, html.theme-zelda .game-card, html.theme-pokemon .game-card,
+html.theme-peach .game-card, html.theme-kirby .game-card, html.theme-spyro .game-card,
+html.theme-donkey-kong .game-card, html.theme-pilotwings .game-card, html.theme-prince-of-persia .game-card, html.theme-portal .game-card,
+html.theme-ratchet .game-card, html.theme-ice-climber .game-card, html.theme-bubble-bobble .game-card,
+html.theme-limbo .game-card, html.theme-yoshi .game-card, html.theme-sub-zero .game-card, html.theme-professor-layton .game-card {
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
-html.theme-nes .game-card:hover, html.theme-snes .game-card:hover, html.theme-gameboy .game-card:hover,
-html.theme-rose-gold .game-card:hover, html.theme-mint .game-card:hover, html.theme-lavender .game-card:hover,
-html.theme-coral .game-card:hover, html.theme-sky .game-card:hover, html.theme-sand .game-card:hover, html.theme-slate .game-card:hover,
-html.theme-copper .game-card:hover, html.theme-arctic .game-card:hover, html.theme-bubblegum .game-card:hover,
-html.theme-monochrome .game-card:hover, html.theme-pastel .game-card:hover, html.theme-ice .game-card:hover, html.theme-amber .game-card:hover {
+html.theme-mario .game-card:hover, html.theme-zelda .game-card:hover, html.theme-pokemon .game-card:hover,
+html.theme-peach .game-card:hover, html.theme-kirby .game-card:hover, html.theme-spyro .game-card:hover,
+html.theme-donkey-kong .game-card:hover, html.theme-pilotwings .game-card:hover, html.theme-prince-of-persia .game-card:hover, html.theme-portal .game-card:hover,
+html.theme-ratchet .game-card:hover, html.theme-ice-climber .game-card:hover, html.theme-bubble-bobble .game-card:hover,
+html.theme-limbo .game-card:hover, html.theme-yoshi .game-card:hover, html.theme-sub-zero .game-card:hover, html.theme-professor-layton .game-card:hover {
     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
 }
 /* Light theme switcher overrides */
-html.theme-nes .theme-switcher, html.theme-snes .theme-switcher, html.theme-gameboy .theme-switcher,
-html.theme-rose-gold .theme-switcher, html.theme-mint .theme-switcher, html.theme-lavender .theme-switcher,
-html.theme-coral .theme-switcher, html.theme-sky .theme-switcher, html.theme-sand .theme-switcher, html.theme-slate .theme-switcher,
-html.theme-copper .theme-switcher, html.theme-arctic .theme-switcher, html.theme-bubblegum .theme-switcher,
-html.theme-monochrome .theme-switcher, html.theme-pastel .theme-switcher, html.theme-ice .theme-switcher, html.theme-amber .theme-switcher {
+html.theme-mario .theme-switcher, html.theme-zelda .theme-switcher, html.theme-pokemon .theme-switcher,
+html.theme-peach .theme-switcher, html.theme-kirby .theme-switcher, html.theme-spyro .theme-switcher,
+html.theme-donkey-kong .theme-switcher, html.theme-pilotwings .theme-switcher, html.theme-prince-of-persia .theme-switcher, html.theme-portal .theme-switcher,
+html.theme-ratchet .theme-switcher, html.theme-ice-climber .theme-switcher, html.theme-bubble-bobble .theme-switcher,
+html.theme-limbo .theme-switcher, html.theme-yoshi .theme-switcher, html.theme-sub-zero .theme-switcher, html.theme-professor-layton .theme-switcher {
     background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.06);
 }
-html.theme-nes .theme-btn, html.theme-snes .theme-btn, html.theme-gameboy .theme-btn,
-html.theme-rose-gold .theme-btn, html.theme-mint .theme-btn, html.theme-lavender .theme-btn,
-html.theme-coral .theme-btn, html.theme-sky .theme-btn, html.theme-sand .theme-btn, html.theme-slate .theme-btn,
-html.theme-copper .theme-btn, html.theme-arctic .theme-btn, html.theme-bubblegum .theme-btn,
-html.theme-monochrome .theme-btn, html.theme-pastel .theme-btn, html.theme-ice .theme-btn, html.theme-amber .theme-btn {
+html.theme-mario .theme-btn, html.theme-zelda .theme-btn, html.theme-pokemon .theme-btn,
+html.theme-peach .theme-btn, html.theme-kirby .theme-btn, html.theme-spyro .theme-btn,
+html.theme-donkey-kong .theme-btn, html.theme-pilotwings .theme-btn, html.theme-prince-of-persia .theme-btn, html.theme-portal .theme-btn,
+html.theme-ratchet .theme-btn, html.theme-ice-climber .theme-btn, html.theme-bubble-bobble .theme-btn,
+html.theme-limbo .theme-btn, html.theme-yoshi .theme-btn, html.theme-sub-zero .theme-btn, html.theme-professor-layton .theme-btn {
     color: rgba(0,0,0,0.35);
 }
-html.theme-nes .theme-btn:hover, html.theme-snes .theme-btn:hover, html.theme-gameboy .theme-btn:hover,
-html.theme-rose-gold .theme-btn:hover, html.theme-mint .theme-btn:hover, html.theme-lavender .theme-btn:hover,
-html.theme-coral .theme-btn:hover, html.theme-sky .theme-btn:hover, html.theme-sand .theme-btn:hover, html.theme-slate .theme-btn:hover,
-html.theme-copper .theme-btn:hover, html.theme-arctic .theme-btn:hover, html.theme-bubblegum .theme-btn:hover,
-html.theme-monochrome .theme-btn:hover, html.theme-pastel .theme-btn:hover, html.theme-ice .theme-btn:hover, html.theme-amber .theme-btn:hover {
+html.theme-mario .theme-btn:hover, html.theme-zelda .theme-btn:hover, html.theme-pokemon .theme-btn:hover,
+html.theme-peach .theme-btn:hover, html.theme-kirby .theme-btn:hover, html.theme-spyro .theme-btn:hover,
+html.theme-donkey-kong .theme-btn:hover, html.theme-pilotwings .theme-btn:hover, html.theme-prince-of-persia .theme-btn:hover, html.theme-portal .theme-btn:hover,
+html.theme-ratchet .theme-btn:hover, html.theme-ice-climber .theme-btn:hover, html.theme-bubble-bobble .theme-btn:hover,
+html.theme-limbo .theme-btn:hover, html.theme-yoshi .theme-btn:hover, html.theme-sub-zero .theme-btn:hover, html.theme-professor-layton .theme-btn:hover {
     color: rgba(0,0,0,0.7); background: rgba(0,0,0,0.04);
 }
-html.theme-nes .theme-btn.active, html.theme-snes .theme-btn.active, html.theme-gameboy .theme-btn.active,
-html.theme-rose-gold .theme-btn.active, html.theme-mint .theme-btn.active, html.theme-lavender .theme-btn.active,
-html.theme-coral .theme-btn.active, html.theme-sky .theme-btn.active, html.theme-sand .theme-btn.active, html.theme-slate .theme-btn.active,
-html.theme-copper .theme-btn.active, html.theme-arctic .theme-btn.active, html.theme-bubblegum .theme-btn.active,
-html.theme-monochrome .theme-btn.active, html.theme-pastel .theme-btn.active, html.theme-ice .theme-btn.active, html.theme-amber .theme-btn.active {
+html.theme-mario .theme-btn.active, html.theme-zelda .theme-btn.active, html.theme-pokemon .theme-btn.active,
+html.theme-peach .theme-btn.active, html.theme-kirby .theme-btn.active, html.theme-spyro .theme-btn.active,
+html.theme-donkey-kong .theme-btn.active, html.theme-pilotwings .theme-btn.active, html.theme-prince-of-persia .theme-btn.active, html.theme-portal .theme-btn.active,
+html.theme-ratchet .theme-btn.active, html.theme-ice-climber .theme-btn.active, html.theme-bubble-bobble .theme-btn.active,
+html.theme-limbo .theme-btn.active, html.theme-yoshi .theme-btn.active, html.theme-sub-zero .theme-btn.active, html.theme-professor-layton .theme-btn.active {
     border-color: var(--purple); color: var(--purple); background: rgba(0,0,0,0.04); box-shadow: none;
 }
-html.theme-nes .sidebar-rainbow, html.theme-snes .sidebar-rainbow, html.theme-gameboy .sidebar-rainbow,
-html.theme-rose-gold .sidebar-rainbow, html.theme-mint .sidebar-rainbow, html.theme-lavender .sidebar-rainbow,
-html.theme-coral .sidebar-rainbow, html.theme-sky .sidebar-rainbow, html.theme-sand .sidebar-rainbow, html.theme-slate .sidebar-rainbow,
-html.theme-copper .sidebar-rainbow, html.theme-arctic .sidebar-rainbow, html.theme-bubblegum .sidebar-rainbow,
-html.theme-monochrome .sidebar-rainbow, html.theme-pastel .sidebar-rainbow, html.theme-ice .sidebar-rainbow, html.theme-amber .sidebar-rainbow {
+html.theme-mario .sidebar-rainbow, html.theme-zelda .sidebar-rainbow, html.theme-pokemon .sidebar-rainbow,
+html.theme-peach .sidebar-rainbow, html.theme-kirby .sidebar-rainbow, html.theme-spyro .sidebar-rainbow,
+html.theme-donkey-kong .sidebar-rainbow, html.theme-pilotwings .sidebar-rainbow, html.theme-prince-of-persia .sidebar-rainbow, html.theme-portal .sidebar-rainbow,
+html.theme-ratchet .sidebar-rainbow, html.theme-ice-climber .sidebar-rainbow, html.theme-bubble-bobble .sidebar-rainbow,
+html.theme-limbo .sidebar-rainbow, html.theme-yoshi .sidebar-rainbow, html.theme-sub-zero .sidebar-rainbow, html.theme-professor-layton .sidebar-rainbow {
     background: var(--gradient-rainbow);
 }
-html.theme-nes .nav-link.active, html.theme-snes .nav-link.active, html.theme-gameboy .nav-link.active,
-html.theme-rose-gold .nav-link.active, html.theme-mint .nav-link.active, html.theme-lavender .nav-link.active,
-html.theme-coral .nav-link.active, html.theme-sky .nav-link.active, html.theme-sand .nav-link.active, html.theme-slate .nav-link.active,
-html.theme-copper .nav-link.active, html.theme-arctic .nav-link.active, html.theme-bubblegum .nav-link.active,
-html.theme-monochrome .nav-link.active, html.theme-pastel .nav-link.active, html.theme-ice .nav-link.active, html.theme-amber .nav-link.active {
+html.theme-mario .nav-link.active, html.theme-zelda .nav-link.active, html.theme-pokemon .nav-link.active,
+html.theme-peach .nav-link.active, html.theme-kirby .nav-link.active, html.theme-spyro .nav-link.active,
+html.theme-donkey-kong .nav-link.active, html.theme-pilotwings .nav-link.active, html.theme-prince-of-persia .nav-link.active, html.theme-portal .nav-link.active,
+html.theme-ratchet .nav-link.active, html.theme-ice-climber .nav-link.active, html.theme-bubble-bobble .nav-link.active,
+html.theme-limbo .nav-link.active, html.theme-yoshi .nav-link.active, html.theme-sub-zero .nav-link.active, html.theme-professor-layton .nav-link.active {
     background: rgba(0,0,0,0.06); color: var(--purple);
 }
-html.theme-nes .btn-purple, html.theme-snes .btn-purple, html.theme-gameboy .btn-purple,
-html.theme-rose-gold .btn-purple, html.theme-mint .btn-purple, html.theme-lavender .btn-purple,
-html.theme-coral .btn-purple, html.theme-sky .btn-purple, html.theme-sand .btn-purple, html.theme-slate .btn-purple,
-html.theme-copper .btn-purple, html.theme-arctic .btn-purple, html.theme-bubblegum .btn-purple,
-html.theme-monochrome .btn-purple, html.theme-pastel .btn-purple, html.theme-ice .btn-purple, html.theme-amber .btn-purple {
+html.theme-mario .btn-purple, html.theme-zelda .btn-purple, html.theme-pokemon .btn-purple,
+html.theme-peach .btn-purple, html.theme-kirby .btn-purple, html.theme-spyro .btn-purple,
+html.theme-donkey-kong .btn-purple, html.theme-pilotwings .btn-purple, html.theme-prince-of-persia .btn-purple, html.theme-portal .btn-purple,
+html.theme-ratchet .btn-purple, html.theme-ice-climber .btn-purple, html.theme-bubble-bobble .btn-purple,
+html.theme-limbo .btn-purple, html.theme-yoshi .btn-purple, html.theme-sub-zero .btn-purple, html.theme-professor-layton .btn-purple {
     background: linear-gradient(135deg, var(--purple-dark), var(--purple));
+}
+/* ── Light theme intel-content (bio/guide) readability fixes ─── */
+html.theme-mario .intel-content, html.theme-zelda .intel-content, html.theme-pokemon .intel-content,
+html.theme-peach .intel-content, html.theme-kirby .intel-content, html.theme-spyro .intel-content,
+html.theme-donkey-kong .intel-content, html.theme-pilotwings .intel-content, html.theme-prince-of-persia .intel-content, html.theme-portal .intel-content,
+html.theme-ratchet .intel-content, html.theme-ice-climber .intel-content, html.theme-bubble-bobble .intel-content,
+html.theme-limbo .intel-content, html.theme-yoshi .intel-content, html.theme-sub-zero .intel-content, html.theme-professor-layton .intel-content,
+html.theme-animal-crossing .intel-content {
+    color: var(--text);
+}
+html.theme-mario .intel-content h1, html.theme-zelda .intel-content h1, html.theme-pokemon .intel-content h1,
+html.theme-peach .intel-content h1, html.theme-kirby .intel-content h1, html.theme-spyro .intel-content h1,
+html.theme-donkey-kong .intel-content h1, html.theme-pilotwings .intel-content h1, html.theme-prince-of-persia .intel-content h1, html.theme-portal .intel-content h1,
+html.theme-ratchet .intel-content h1, html.theme-ice-climber .intel-content h1, html.theme-bubble-bobble .intel-content h1,
+html.theme-limbo .intel-content h1, html.theme-yoshi .intel-content h1, html.theme-sub-zero .intel-content h1, html.theme-professor-layton .intel-content h1,
+html.theme-animal-crossing .intel-content h1 {
+    background: var(--text); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+html.theme-mario .intel-content h2, html.theme-zelda .intel-content h2, html.theme-pokemon .intel-content h2,
+html.theme-peach .intel-content h2, html.theme-kirby .intel-content h2, html.theme-spyro .intel-content h2,
+html.theme-donkey-kong .intel-content h2, html.theme-pilotwings .intel-content h2, html.theme-prince-of-persia .intel-content h2, html.theme-portal .intel-content h2,
+html.theme-ratchet .intel-content h2, html.theme-ice-climber .intel-content h2, html.theme-bubble-bobble .intel-content h2,
+html.theme-limbo .intel-content h2, html.theme-yoshi .intel-content h2, html.theme-sub-zero .intel-content h2, html.theme-professor-layton .intel-content h2,
+html.theme-animal-crossing .intel-content h2 {
+    color: var(--text); border-left-color: var(--purple); background: linear-gradient(90deg, rgba(0,0,0,0.03), transparent);
+}
+html.theme-mario .intel-content h3, html.theme-zelda .intel-content h3, html.theme-pokemon .intel-content h3,
+html.theme-peach .intel-content h3, html.theme-kirby .intel-content h3, html.theme-spyro .intel-content h3,
+html.theme-donkey-kong .intel-content h3, html.theme-pilotwings .intel-content h3, html.theme-prince-of-persia .intel-content h3, html.theme-portal .intel-content h3,
+html.theme-ratchet .intel-content h3, html.theme-ice-climber .intel-content h3, html.theme-bubble-bobble .intel-content h3,
+html.theme-limbo .intel-content h3, html.theme-yoshi .intel-content h3, html.theme-sub-zero .intel-content h3, html.theme-professor-layton .intel-content h3,
+html.theme-animal-crossing .intel-content h3 {
+    color: var(--text-dim);
+}
+html.theme-mario .intel-content strong, html.theme-zelda .intel-content strong, html.theme-pokemon .intel-content strong,
+html.theme-peach .intel-content strong, html.theme-kirby .intel-content strong, html.theme-spyro .intel-content strong,
+html.theme-donkey-kong .intel-content strong, html.theme-pilotwings .intel-content strong, html.theme-prince-of-persia .intel-content strong, html.theme-portal .intel-content strong,
+html.theme-ratchet .intel-content strong, html.theme-ice-climber .intel-content strong, html.theme-bubble-bobble .intel-content strong,
+html.theme-limbo .intel-content strong, html.theme-yoshi .intel-content strong, html.theme-sub-zero .intel-content strong, html.theme-professor-layton .intel-content strong,
+html.theme-animal-crossing .intel-content strong {
+    color: var(--text);
+}
+html.theme-mario .intel-content em, html.theme-zelda .intel-content em, html.theme-pokemon .intel-content em,
+html.theme-peach .intel-content em, html.theme-kirby .intel-content em, html.theme-spyro .intel-content em,
+html.theme-donkey-kong .intel-content em, html.theme-pilotwings .intel-content em, html.theme-prince-of-persia .intel-content em, html.theme-portal .intel-content em,
+html.theme-ratchet .intel-content em, html.theme-ice-climber .intel-content em, html.theme-bubble-bobble .intel-content em,
+html.theme-limbo .intel-content em, html.theme-yoshi .intel-content em, html.theme-sub-zero .intel-content em, html.theme-professor-layton .intel-content em,
+html.theme-animal-crossing .intel-content em {
+    color: var(--purple);
+}
+html.theme-mario .intel-content blockquote, html.theme-zelda .intel-content blockquote, html.theme-pokemon .intel-content blockquote,
+html.theme-peach .intel-content blockquote, html.theme-kirby .intel-content blockquote, html.theme-spyro .intel-content blockquote,
+html.theme-donkey-kong .intel-content blockquote, html.theme-pilotwings .intel-content blockquote, html.theme-prince-of-persia .intel-content blockquote, html.theme-portal .intel-content blockquote,
+html.theme-ratchet .intel-content blockquote, html.theme-ice-climber .intel-content blockquote, html.theme-bubble-bobble .intel-content blockquote,
+html.theme-limbo .intel-content blockquote, html.theme-yoshi .intel-content blockquote, html.theme-sub-zero .intel-content blockquote, html.theme-professor-layton .intel-content blockquote,
+html.theme-animal-crossing .intel-content blockquote {
+    border-left-color: var(--purple); background: rgba(0,0,0,0.02); color: var(--text-dim);
+}
+html.theme-mario .intel-content ul li, html.theme-zelda .intel-content ul li, html.theme-pokemon .intel-content ul li,
+html.theme-peach .intel-content ul li, html.theme-kirby .intel-content ul li, html.theme-spyro .intel-content ul li,
+html.theme-donkey-kong .intel-content ul li, html.theme-pilotwings .intel-content ul li, html.theme-prince-of-persia .intel-content ul li, html.theme-portal .intel-content ul li,
+html.theme-ratchet .intel-content ul li, html.theme-ice-climber .intel-content ul li, html.theme-bubble-bobble .intel-content ul li,
+html.theme-limbo .intel-content ul li, html.theme-yoshi .intel-content ul li, html.theme-sub-zero .intel-content ul li, html.theme-professor-layton .intel-content ul li,
+html.theme-animal-crossing .intel-content ul li {
+    color: var(--text);
+}
+html.theme-mario .intel-content ul li:hover, html.theme-zelda .intel-content ul li:hover, html.theme-pokemon .intel-content ul li:hover,
+html.theme-peach .intel-content ul li:hover, html.theme-kirby .intel-content ul li:hover, html.theme-spyro .intel-content ul li:hover,
+html.theme-donkey-kong .intel-content ul li:hover, html.theme-pilotwings .intel-content ul li:hover, html.theme-prince-of-persia .intel-content ul li:hover, html.theme-portal .intel-content ul li:hover,
+html.theme-ratchet .intel-content ul li:hover, html.theme-ice-climber .intel-content ul li:hover, html.theme-bubble-bobble .intel-content ul li:hover,
+html.theme-limbo .intel-content ul li:hover, html.theme-yoshi .intel-content ul li:hover, html.theme-sub-zero .intel-content ul li:hover, html.theme-professor-layton .intel-content ul li:hover,
+html.theme-animal-crossing .intel-content ul li:hover {
+    background: rgba(0,0,0,0.02);
+}
+html.theme-mario .intel-content ol li, html.theme-zelda .intel-content ol li, html.theme-pokemon .intel-content ol li,
+html.theme-peach .intel-content ol li, html.theme-kirby .intel-content ol li, html.theme-spyro .intel-content ol li,
+html.theme-donkey-kong .intel-content ol li, html.theme-pilotwings .intel-content ol li, html.theme-prince-of-persia .intel-content ol li, html.theme-portal .intel-content ol li,
+html.theme-ratchet .intel-content ol li, html.theme-ice-climber .intel-content ol li, html.theme-bubble-bobble .intel-content ol li,
+html.theme-limbo .intel-content ol li, html.theme-yoshi .intel-content ol li, html.theme-sub-zero .intel-content ol li, html.theme-professor-layton .intel-content ol li,
+html.theme-animal-crossing .intel-content ol li {
+    color: var(--text);
+}
+html.theme-mario .intel-content h1::after, html.theme-zelda .intel-content h1::after, html.theme-pokemon .intel-content h1::after,
+html.theme-peach .intel-content h1::after, html.theme-kirby .intel-content h1::after, html.theme-spyro .intel-content h1::after,
+html.theme-donkey-kong .intel-content h1::after, html.theme-pilotwings .intel-content h1::after, html.theme-prince-of-persia .intel-content h1::after, html.theme-portal .intel-content h1::after,
+html.theme-ratchet .intel-content h1::after, html.theme-ice-climber .intel-content h1::after, html.theme-bubble-bobble .intel-content h1::after,
+html.theme-limbo .intel-content h1::after, html.theme-yoshi .intel-content h1::after, html.theme-sub-zero .intel-content h1::after, html.theme-professor-layton .intel-content h1::after,
+html.theme-animal-crossing .intel-content h1::after {
+    background: var(--purple); box-shadow: 0 0 12px rgba(0,0,0,0.1);
+}
+html.theme-mario .intel-content h3::after, html.theme-zelda .intel-content h3::after, html.theme-pokemon .intel-content h3::after,
+html.theme-peach .intel-content h3::after, html.theme-kirby .intel-content h3::after, html.theme-spyro .intel-content h3::after,
+html.theme-donkey-kong .intel-content h3::after, html.theme-pilotwings .intel-content h3::after, html.theme-prince-of-persia .intel-content h3::after, html.theme-portal .intel-content h3::after,
+html.theme-ratchet .intel-content h3::after, html.theme-ice-climber .intel-content h3::after, html.theme-bubble-bobble .intel-content h3::after,
+html.theme-limbo .intel-content h3::after, html.theme-yoshi .intel-content h3::after, html.theme-sub-zero .intel-content h3::after, html.theme-professor-layton .intel-content h3::after,
+html.theme-animal-crossing .intel-content h3::after {
+    background: rgba(0,0,0,0.08);
+}
+html.theme-mario .intel-content code, html.theme-zelda .intel-content code, html.theme-pokemon .intel-content code,
+html.theme-peach .intel-content code, html.theme-kirby .intel-content code, html.theme-spyro .intel-content code,
+html.theme-donkey-kong .intel-content code, html.theme-pilotwings .intel-content code, html.theme-prince-of-persia .intel-content code, html.theme-portal .intel-content code,
+html.theme-ratchet .intel-content code, html.theme-ice-climber .intel-content code, html.theme-bubble-bobble .intel-content code,
+html.theme-limbo .intel-content code, html.theme-yoshi .intel-content code, html.theme-sub-zero .intel-content code, html.theme-professor-layton .intel-content code,
+html.theme-animal-crossing .intel-content code {
+    background: rgba(0,0,0,0.06); color: var(--text);
 }

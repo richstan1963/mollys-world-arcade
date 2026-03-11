@@ -9,6 +9,17 @@ window.CabinetMode = {
         // Restore state from previous session
         if (localStorage.getItem('cabinet_mode') === '1') this._activate(true);
 
+        // Triple-tap top-left corner to exit cabinet mode (touch escape hatch)
+        let tapCount = 0, tapTimer = null;
+        document.addEventListener('click', (e) => {
+            if (!this.active) return;
+            if (e.clientX > 80 || e.clientY > 80) { tapCount = 0; return; }
+            tapCount++;
+            clearTimeout(tapTimer);
+            if (tapCount >= 3) { tapCount = 0; this._deactivate(); return; }
+            tapTimer = setTimeout(() => { tapCount = 0; }, 800);
+        });
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             // Ctrl+K → toggle cabinet mode

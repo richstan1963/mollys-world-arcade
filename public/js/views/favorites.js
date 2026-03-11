@@ -82,7 +82,13 @@ window.FavoritesView = {
                 CustomizeView.applyConfig({ ...CustomizeView.DEFAULTS, ...p.preferences });
             }
 
-            let html = `<div class="player-profile">`;
+            // Character theme wrapper
+            const charTheme = p.character_theme || '';
+            const charThemeClass = charTheme ? ` character-theme-${charTheme}` : '';
+            const CHAR_LABELS = { raya: '⚔️ Raya Princess', minnie: '🎀 Minnie', elf: '🍃 Woodland Elf' };
+            const charLabel = CHAR_LABELS[charTheme] || '';
+
+            let html = `<div class="player-profile${charThemeClass}">`;
 
             // ── Hero Banner ──
             html += `
@@ -94,10 +100,12 @@ window.FavoritesView = {
                     </div>
                     <div class="pp-hero-info">
                         <h1 class="pp-name">${H.escHtml(p.name)}</h1>
+                        ${charLabel ? `<div class="character-badge">${charLabel}</div>` : ''}
                         <div class="pp-edit-row">
                             <button class="pp-inline-edit" onclick="FavoritesView.editName(${p.id}, '${H.escHtml(p.name).replace(/'/g, "\\'")}')">Edit Name</button>
                             <button class="pp-inline-edit" onclick="FavoritesView.editColor(${p.id})">Change Color</button>
                             <button class="pp-inline-edit" onclick="FavoritesView.editTheme(${p.id})">🎨 Theme</button>
+                            <button class="pp-inline-edit" onclick="FavoritesView.editCharacter(${p.id})">👸 Character</button>
                             <button class="pp-inline-edit" onclick="FavoritesView.manageClan(${p.id})">🏰 Clan</button>
                             <button class="pp-inline-edit ${editMode ? 'active' : ''}" onclick="FavoritesView.toggleEditMode(${playerId})">${editMode ? '✓ Done Editing' : '⚙️ Manage'}</button>
                         </div>
@@ -787,6 +795,55 @@ window.FavoritesView = {
             H.toast(`${name} joined the arcade!`, 'success');
             arcade.loadPlayers();
             Router.navigate(`#/player/${player.id}`);
+        } catch (e) { H.toast('Failed: ' + e.message, 'error'); }
+    },
+
+    // ── Edit Character Theme ────────────────
+    editCharacter(playerId) {
+        const CHARS = [
+            { id: 'raya',   label: 'Raya Princess',  icon: '⚔️', desc: 'Dragon warrior · Pink & gold', colors: ['#DB2777','#DAA520'] },
+            { id: 'minnie', label: 'Minnie Mouse',   icon: '🎀', desc: 'Classic charm · Red polka dots', colors: ['#EF4444','#EC4899'] },
+            { id: 'elf',    label: 'Woodland Elf',    icon: '🍃', desc: 'Enchanted forest · Green & gold', colors: ['#22C55E','#DAA520'] },
+        ];
+        const picker = document.createElement('div');
+        picker.className = 'emoji-picker-overlay';
+        picker.innerHTML = `
+            <div class="emoji-picker" style="max-width:400px">
+                <h3>👸 Choose Your Character</h3>
+                <div style="display:flex;flex-direction:column;gap:10px;padding:4px">
+                    ${CHARS.map(c => `
+                        <button onclick="FavoritesView.setCharacter(${playerId},'${c.id}')"
+                            style="display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;border:2px solid ${c.colors[0]}33;background:linear-gradient(135deg,${c.colors[0]}15,${c.colors[1]}15);cursor:pointer;text-align:left;transition:all .2s"
+                            onmouseover="this.style.borderColor='${c.colors[0]}';this.style.transform='scale(1.03)'"
+                            onmouseout="this.style.borderColor='${c.colors[0]}33';this.style.transform='scale(1)'">
+                            <span style="font-size:32px">${c.icon}</span>
+                            <div>
+                                <div style="font-weight:700;color:#E2E8F0;font-size:15px">${c.label}</div>
+                                <div style="font-size:12px;color:#94A3B8">${c.desc}</div>
+                                <div style="display:flex;gap:4px;margin-top:4px">${c.colors.map(cl => `<span style="width:16px;height:16px;border-radius:50%;background:${cl};display:inline-block"></span>`).join('')}</div>
+                            </div>
+                        </button>
+                    `).join('')}
+                    <button onclick="FavoritesView.setCharacter(${playerId},'')"
+                        style="padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;color:#94A3B8;font-size:13px;transition:all .2s"
+                        onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'"
+                        onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+                        ✕ Remove Character Theme
+                    </button>
+                </div>
+                <button class="emoji-picker-close" onclick="this.closest('.emoji-picker-overlay').remove()">Cancel</button>
+            </div>
+        `;
+        document.body.appendChild(picker);
+    },
+
+    async setCharacter(playerId, charId) {
+        document.querySelector('.emoji-picker-overlay')?.remove();
+        try {
+            await API.updatePlayer(playerId, { character_theme: charId || null });
+            const labels = { raya: '⚔️ Raya', minnie: '🎀 Minnie', elf: '🍃 Woodland Elf' };
+            H.toast(charId ? `${labels[charId]} theme activated!` : 'Character theme removed', 'success');
+            this.renderPlayer({ id: playerId });
         } catch (e) { H.toast('Failed: ' + e.message, 'error'); }
     },
 

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import compression from 'compression';
 import path from 'path';
@@ -67,6 +68,7 @@ import adminRoutes from './routes/admin.js';
 import tunnelRoutes from './routes/tunnel.js';
 import desktopRoutes from './routes/desktop.js';
 import intelRoutes from './routes/intel.js';
+import engineRoutes from './routes/engine.js';
 
 const app = express();
 
@@ -131,6 +133,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/tunnel', tunnelRoutes);
 app.use('/api/desktop', desktopRoutes);
 app.use('/api/intel',  intelRoutes);
+app.use('/api/engine', engineRoutes);
 
 // BIOS file serving — serve neogeo.zip etc from roms directories
 app.get('/bios/:system/:file', (req, res) => {

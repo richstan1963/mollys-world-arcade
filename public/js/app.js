@@ -50,6 +50,9 @@ window.arcade = {
         Router.register('/speedrun', () => SpeedrunView.render());
         Router.register('/card/:id', (params) => PlayerCardView.render(params));
 
+        // System detail
+        Router.register('/system/:id', (params) => SystemDetailView.render(params));
+
         // Intel Hub
         Router.register('/intel', () => IntelHubView.render());
 
@@ -59,6 +62,12 @@ window.arcade = {
         Router.register('/game-requests', () => GameRequestsView.render());
         Router.register('/ai', () => AISearchView.render());
         Router.register('/social', () => SocialHubView.render());
+
+        // Arcade Gallery
+        Router.register('/arcade-gallery', () => ArcadeGalleryView.render());
+
+        // Retro Stars — Game Character Encyclopedia
+        Router.register('/retro-stars', () => RetroStarsView.render());
 
         Router.start();
         this.loadSidebarStats();

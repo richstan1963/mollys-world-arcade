@@ -74,4 +74,8 @@ window.H = {
         };
         return map[systemId] || '🎮';
     },
+
+    systemImg(systemId) {
+        return `/assets/img/system-icons/${systemId}.png`;
+    },
 };

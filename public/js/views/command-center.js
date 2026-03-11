@@ -4,6 +4,8 @@
    ════════════════════════════════════════════════════════════════ */
 window.CommandCenterView = {
     data: null,
+    engineData: null,
+    enginePollTimer: null,
     collapsed: {},
 
     async render() {
@@ -13,9 +15,13 @@ window.CommandCenterView = {
             <div style="font-size:36px;margin-bottom:12px;">📊</div>Loading Command Center...</div></div>`;
 
         try {
-            this.data = await API.ccStats();
+            [this.data, this.engineData] = await Promise.all([
+                API.ccStats(),
+                API.engineStatus(),
+            ]);
             app.innerHTML = this.buildHTML();
             this.bindEvents();
+            this.startEnginePolling();
             SFX.click();
         } catch (err) {
             console.error('CC load error:', err);
@@ -47,6 +53,10 @@ window.CommandCenterView = {
         </div>`;
 
         html += `<div class="cc-grid">`;
+
+        // ═══════ ENGINE ═══════
+        html += this.sectionLabel('ENGINE', 'var(--cc-cat-engine)');
+        html += this.enginePanel();
 
         // ═══════ MONITOR ═══════
         html += this.sectionLabel('MONITOR', 'var(--cc-cat-monitor)');
@@ -511,6 +521,175 @@ window.CommandCenterView = {
             { value: '—', label: '', color: 'transparent' },
             { value: '—', label: '', color: 'transparent' },
         ], body, { color: 'var(--cc-cat-config)' });
+    },
+
+    // ── 14. ENGINE ──
+    enginePanel() {
+        const e = this.engineData;
+        if (!e) return '';
+
+        const sources = [
+            { key: 'artwork',       label: 'Artwork',        data: e.metadata.artwork,       color: 'var(--cc-pink)' },
+            { key: 'nointro',       label: 'No-Intro',       data: e.metadata.nointro,       color: 'var(--cc-cyan)' },
+            { key: 'screenscraper', label: 'ScreenScraper',   data: e.metadata.screenscraper, color: 'var(--cc-green)' },
+            { key: 'igdb',          label: 'IGDB',            data: e.metadata.igdb,          color: 'var(--cc-amber)' },
+            { key: 'ra',            label: 'RetroAchieve',    data: e.metadata.ra,            color: 'var(--cc-purple)' },
+            { key: 'manuals',       label: 'Manuals',         data: e.metadata.manuals,       color: 'var(--cc-red)' },
+        ];
+
+        const intelSources = [
+            { key: 'bios',     label: 'Game Bios',   data: e.intel.bios,   color: 'var(--cc-cyan)' },
+            { key: 'guides',   label: 'Game Guides',  data: e.intel.guides, color: 'var(--cc-green)' },
+            { key: 'sysBios',  label: 'System Bios',  data: e.systemBios,   color: 'var(--cc-amber)' },
+        ];
+
+        const barHTML = (items, label) => {
+            const bars = items.map(s => {
+                const noKey = s.data.configured === false;
+                const dim = noKey ? 'opacity:0.35' : '';
+                const tag = noKey ? `<span style="color:#ef4444;font-size:9px;margin-left:6px">NO KEY</span>` : '';
+                return `
+                <div class="cc-engine-row" style="${dim}">
+                    <span class="cc-engine-label" style="color:${s.color}">${s.label}${tag}</span>
+                    <div class="cc-progress-bar cc-engine-bar">
+                        <div class="cc-progress-fill" style="width:${s.data.pct}%;background:${s.color}"></div>
+                    </div>
+                    <span class="cc-engine-pct">${s.data.pct}%</span>
+                    <span class="cc-engine-count">${s.data.done}/${s.data.total}</span>
+                </div>`;
+            }).join('');
+            return `<div style="font-size:11px;color:rgba(255,255,255,0.35);margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">${label}</div>${bars}`;
+        };
+
+        const body = `
+        ${barHTML(sources, 'Metadata Sources')}
+        ${barHTML(intelSources, 'AI Intelligence')}
+
+        <div class="cc-engine-controls">
+            <button class="cc-engine-btn cc-engine-run" onclick="CommandCenterView.engineRun()">
+                <span>▶</span> Run All
+            </button>
+            <button class="cc-engine-btn cc-engine-stage" onclick="CommandCenterView.engineRunStage('metadata')">
+                <span>▶</span> Metadata
+            </button>
+            <button class="cc-engine-btn cc-engine-stage" onclick="CommandCenterView.engineRunStage('intel')">
+                <span>▶</span> Intel
+            </button>
+            <button class="cc-engine-btn cc-engine-stage" onclick="CommandCenterView.engineRunStage('system-bios')">
+                <span>▶</span> Sys Bios
+            </button>
+        </div>
+
+        <div id="cc-engine-live" class="cc-engine-live" style="display:none">
+            <div class="cc-engine-live-header">
+                <span id="cc-engine-live-stage" class="cc-engine-live-stage"></span>
+                <button class="cc-engine-btn cc-engine-stop" onclick="CommandCenterView.engineStop()">
+                    <span>■</span> Stop
+                </button>
+            </div>
+            <div class="cc-progress-bar" style="height:10px;margin-top:8px">
+                <div id="cc-engine-live-bar" class="cc-progress-fill" style="width:0%;background:linear-gradient(90deg,var(--cc-cyan),var(--cc-green));transition:width 0.5s"></div>
+            </div>
+            <div id="cc-engine-live-detail" class="cc-engine-live-detail"></div>
+        </div>`;
+
+        const totalDone = sources.reduce((s, x) => s + x.data.done, 0) + intelSources.reduce((s, x) => s + x.data.done, 0);
+        const totalAll = sources.reduce((s, x) => s + x.data.total, 0) + intelSources.reduce((s, x) => s + x.data.total, 0);
+        const overallPct = totalAll > 0 ? Math.round(totalDone / totalAll * 100) : 0;
+
+        return this.panelWrap('engine', '⚡', 'Enrichment Engine', 'Metadata &bull; AI intel &bull; system bios', [
+            { value: overallPct + '%', label: 'Overall', color: 'var(--cc-cyan)' },
+            { value: this.fmtNum(e.library.totalRoms), label: 'ROMs', color: 'var(--cc-green)' },
+            { value: this.fmtNum(e.library.totalTitles), label: 'Titles', color: 'var(--cc-amber)' },
+            { value: e.library.totalSystems, label: 'Systems', color: 'var(--cc-purple)' },
+        ], body, { color: 'var(--cc-cat-engine)', fullWidth: true });
+    },
+
+    // ── Engine Actions ──
+    async engineRun() {
+        try {
+            SFX.click();
+            await API.engineRun({ stages: ['metadata', 'intel', 'system-bios'] });
+            H.toast('Engine started — full pipeline', 'success');
+            this.startEnginePolling();
+        } catch (err) { H.toast('Engine start failed: ' + err.message, 'error'); }
+    },
+
+    async engineRunStage(stage) {
+        try {
+            SFX.click();
+            await API.engineRunStage(stage);
+            H.toast(`Engine started — ${stage}`, 'success');
+            this.startEnginePolling();
+        } catch (err) { H.toast('Engine start failed: ' + err.message, 'error'); }
+    },
+
+    async engineStop() {
+        try {
+            SFX.click();
+            await API.engineStop();
+            H.toast('Engine stop signal sent', 'success');
+        } catch (err) { H.toast('Stop failed: ' + err.message, 'error'); }
+    },
+
+    startEnginePolling() {
+        if (this.enginePollTimer) clearInterval(this.enginePollTimer);
+        this.enginePollTimer = setInterval(() => this.pollEngine(), 2000);
+        this.pollEngine();
+    },
+
+    async pollEngine() {
+        try {
+            const prog = await API.engineProgress();
+            const liveEl = document.getElementById('cc-engine-live');
+            if (!liveEl) { clearInterval(this.enginePollTimer); return; }
+
+            if (prog.running) {
+                liveEl.style.display = 'block';
+                const stageEl = document.getElementById('cc-engine-live-stage');
+                const barEl = document.getElementById('cc-engine-live-bar');
+                const detailEl = document.getElementById('cc-engine-live-detail');
+
+                const stageLabel = { metadata: 'Metadata Enrichment', intel: 'AI Intel Generation', 'system-bios': 'System Bios' };
+                stageEl.textContent = `Stage ${prog.stageIndex}/${prog.totalStages}: ${stageLabel[prog.stage] || prog.stage}`;
+
+                // Calculate progress based on stage type
+                let pct = 0, detail = '';
+                const sd = prog.stageDetail;
+                if (prog.stage === 'metadata' && sd) {
+                    pct = sd.totalSources > 0 ? Math.round(sd.currentIndex / sd.totalSources * 100) : 0;
+                    detail = sd.currentSource ? `Source: ${sd.currentSource} (${sd.currentIndex}/${sd.totalSources})` : 'Starting...';
+                } else if (prog.stage === 'intel' && sd) {
+                    pct = sd.total > 0 ? Math.round(sd.done / sd.total * 100) : 0;
+                    detail = sd.current
+                        ? `${sd.done}/${sd.total} — ${sd.current.type} for "${sd.current.title}"`
+                        : `${sd.done}/${sd.total}`;
+                } else if (prog.stage === 'system-bios' && sd) {
+                    pct = sd.total > 0 ? Math.round(sd.done / sd.total * 100) : 0;
+                    detail = sd.current
+                        ? `${sd.done}/${sd.total} — ${sd.current.name}`
+                        : `${sd.done}/${sd.total}`;
+                }
+
+                barEl.style.width = pct + '%';
+                detailEl.textContent = detail;
+            } else {
+                liveEl.style.display = 'none';
+                if (prog.finishedAt) {
+                    clearInterval(this.enginePollTimer);
+                    // Refresh coverage stats
+                    this.engineData = await API.engineStatus();
+                    const panel = document.querySelector('[data-panel="engine"]');
+                    if (panel) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = this.enginePanel();
+                        const newPanel = tempDiv.firstElementChild;
+                        if (newPanel) panel.replaceWith(newPanel);
+                    }
+                    H.toast('Engine pipeline complete', 'success');
+                }
+            }
+        } catch { /* ignore poll errors */ }
     },
 
     // ═══════════════════════════════════════════════════════

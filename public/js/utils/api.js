@@ -60,6 +60,8 @@ window.API = {
 
     // Systems
     systems() { return this.get('/api/systems'); },
+    systemDetail(id) { return this.get(`/api/systems/${id}`); },
+    generateSystemBio(id) { return this.post(`/api/systems/${id}/generate-bio`); },
 
     // Game detail
     game(id) { return this.get(`/api/game/${id}`); },
@@ -342,4 +344,11 @@ window.API = {
     generateGameIntel(romId, type){ return this.post(`/api/intel/${romId}/generate`, { type }); },
     deleteGameIntel(romId, type)  { return this.del(`/api/intel/${romId}/${type}`); },
     saveGameIntel(romId, type, md){ return this.put(`/api/intel/${romId}/${type}`, { content_md: md }); },
+
+    // ═══ ENRICHMENT ENGINE ═══
+    engineStatus()             { return this.get('/api/engine/status'); },
+    engineRun(opts)            { return this.post('/api/engine/run', opts); },
+    engineProgress()           { return this.get('/api/engine/progress'); },
+    engineStop()               { return this.post('/api/engine/stop'); },
+    engineRunStage(stage, opts){ return this.post('/api/engine/run-stage', { stage, ...opts }); },
 };

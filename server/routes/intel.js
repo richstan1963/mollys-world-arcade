@@ -1,33 +1,8 @@
 import { Router } from 'express';
 import { getDB } from '../db.js';
+import { callAI, INTEL_PROVIDER, checkProviderKey, getProviderStatus } from '../lib/ai.js';
 
 const router = Router();
-
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const ANTHROPIC_MODEL   = process.env.ANTHROPIC_MODEL || 'claude-opus-4-5';
-const ANTHROPIC_URL     = 'https://api.anthropic.com/v1/messages';
-const INTEL_PROVIDER    = process.env.INTEL_PROVIDER  || 'anthropic'; // 'anthropic' | 'ollama' | 'cerebras' | 'groq'
-const OLLAMA_URL        = process.env.OLLAMA_URL       || 'http://localhost:11434';
-const OLLAMA_MODEL      = process.env.OLLAMA_MODEL     || 'qwen2.5:7b';
-const CEREBRAS_API_KEY  = process.env.CEREBRAS_API_KEY;
-const GROQ_API_KEY      = process.env.GROQ_API_KEY;
-
-const OAI_PROVIDERS = {
-    cerebras: {
-        name:      'Cerebras',
-        model:     'gpt-oss-120b',
-        url:       'https://api.cerebras.ai/v1/chat/completions',
-        key:       () => CEREBRAS_API_KEY,
-        maxTokens: 8192,
-    },
-    groq: {
-        name:      'Groq',
-        model:     'llama-3.3-70b-versatile',
-        url:       'https://api.groq.com/openai/v1/chat/completions',
-        key:       () => GROQ_API_KEY,
-        maxTokens: 32768,
-    },
-};
 
 // ── Batch state ───────────────────────────────────────────────────────────────
 const batch = {
@@ -161,102 +136,6 @@ Be specific and practical. Write for real players who want to get good at this g
     }
 }
 
-// ── Helper: OpenAI-compatible call (Cerebras + Groq) ─────────────────────────
-async function callOpenAICompatible(provider, prompt) {
-    const cfg = OAI_PROVIDERS[provider];
-
-    const makeRequest = () => fetch(cfg.url, {
-        method:  'POST',
-        headers: { 'Authorization': `Bearer ${cfg.key()}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-            model:       cfg.model,
-            messages:    [{ role: 'user', content: prompt }],
-            max_tokens:  cfg.maxTokens,
-            temperature: 0.7,
-        }),
-    });
-
-    let res = await makeRequest();
-
-    if (res.status === 429) {
-        const waitSec = parseInt(res.headers.get('retry-after')) || 30;
-        console.log(`[Intel] ${cfg.name} rate limited — waiting ${waitSec}s`);
-        await new Promise(r => setTimeout(r, waitSec * 1000));
-        res = await makeRequest();
-    }
-
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || `${cfg.name} API error ${res.status}`);
-    }
-
-    const data    = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error(`Empty response from ${cfg.name}`);
-
-    // Groq wraps usage in x_groq.usage; Cerebras uses top-level usage
-    const usage      = (provider === 'groq' ? data.x_groq?.usage : null) ?? data.usage ?? {};
-    const tokensUsed = (usage.prompt_tokens || 0) + (usage.completion_tokens || 0);
-
-    return { content, modelName: cfg.model, tokensUsed };
-}
-
-// ── Shared: call AI provider ──────────────────────────────────────────────────
-async function callAI(prompt) {
-    if (INTEL_PROVIDER === 'cerebras' || INTEL_PROVIDER === 'groq') {
-        return callOpenAICompatible(INTEL_PROVIDER, prompt);
-    }
-
-    if (INTEL_PROVIDER === 'ollama') {
-        const res = await fetch(`${OLLAMA_URL}/api/chat`, {
-            method:  'POST',
-            headers: { 'content-type': 'application/json' },
-            body:    JSON.stringify({
-                model:    OLLAMA_MODEL,
-                messages: [{ role: 'user', content: prompt }],
-                stream:   false,
-                options:  { num_predict: 4096, temperature: 0.7 },
-            }),
-        });
-        if (!res.ok) {
-            const txt = await res.text().catch(() => '');
-            throw new Error(`Ollama error ${res.status}: ${txt}`);
-        }
-        const od = await res.json();
-        if (!od.message?.content) throw new Error('Empty response from Ollama');
-        return {
-            content:    od.message.content,
-            modelName:  OLLAMA_MODEL,
-            tokensUsed: (od.prompt_eval_count || 0) + (od.eval_count || 0),
-        };
-    } else {
-        const res = await fetch(ANTHROPIC_URL, {
-            method:  'POST',
-            headers: {
-                'content-type':      'application/json',
-                'x-api-key':         ANTHROPIC_API_KEY,
-                'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify({
-                model:      ANTHROPIC_MODEL,
-                max_tokens: 4096,
-                messages:   [{ role: 'user', content: prompt }],
-            }),
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error?.message || `Anthropic API error ${res.status}`);
-        }
-        const ad = await res.json();
-        if (!ad.content?.[0]?.text) throw new Error('Empty response from Anthropic');
-        return {
-            content:    ad.content[0].text,
-            modelName:  ad.model || ANTHROPIC_MODEL,
-            tokensUsed: (ad.usage?.input_tokens || 0) + (ad.usage?.output_tokens || 0),
-        };
-    }
-}
-
 // ── GET /api/intel/batch — status ─────────────────────────────────────────────
 router.get('/batch', (req, res) => {
     res.json({
@@ -282,15 +161,12 @@ router.post('/batch', async (req, res) => {
         });
     }
 
-    const missingKey = (INTEL_PROVIDER === 'anthropic' && !ANTHROPIC_API_KEY)
-        ? 'ANTHROPIC_API_KEY' : (INTEL_PROVIDER === 'cerebras' && !CEREBRAS_API_KEY)
-        ? 'CEREBRAS_API_KEY'  : (INTEL_PROVIDER === 'groq' && !GROQ_API_KEY)
-        ? 'GROQ_API_KEY'      : null;
+    const missingKey = checkProviderKey();
     if (missingKey) {
         return res.status(503).json({ error: `${missingKey} not set. Add it to your .env file then restart the server.` });
     }
 
-    const { types = ['bio', 'guide'], delay = 500 } = req.body;
+    const { types = ['bio', 'guide'], delay = 500, strategy = 'quality' } = req.body;
     const db = getDB();
 
     // One query: all (romId, type) pairs where intel doesn't exist yet,
@@ -341,9 +217,9 @@ router.post('/batch', async (req, res) => {
 
             try {
                 const prompt = buildPrompt(promptTitle, info, type);
-                const { content, modelName, tokensUsed } = await callAI(prompt);
+                const { content, modelName, tokensUsed } = await callAI(prompt, { strategy });
                 insertStmt.run(cleanName, type, content, modelName, tokensUsed);
-                console.log(`[Intel Batch] ${batch.done + 1}/${batch.total} ✓ ${type} — "${promptTitle}" on ${info.systems.length} systems (${tokensUsed} tok)`);
+                console.log(`[Intel Batch] ${batch.done + 1}/${batch.total} ✓ ${type} — "${promptTitle}" via ${modelName} (${tokensUsed} tok)`);
             } catch (err) {
                 console.error(`[Intel Batch] ✗ "${promptTitle}" ${type}:`, err.message);
                 batch.errors++;
@@ -363,10 +239,14 @@ router.post('/batch', async (req, res) => {
 
 // ── GET /api/intel/config — provider info ─────────────────────────────────────
 router.get('/config', (req, res) => {
-    const model = INTEL_PROVIDER === 'ollama'    ? OLLAMA_MODEL
-                : OAI_PROVIDERS[INTEL_PROVIDER]  ? OAI_PROVIDERS[INTEL_PROVIDER].model
-                :                                  ANTHROPIC_MODEL;
-    res.json({ provider: INTEL_PROVIDER, model, ollamaUrl: OLLAMA_URL });
+    const status = getProviderStatus();
+    const primarySlot = status.slots.find(s => s.key === status.primary);
+    res.json({
+        provider: status.primary,
+        model:    primarySlot?.model || status.ollama.model,
+        ollamaUrl: status.ollama.url,
+        ...status,
+    });
 });
 
 // ── GET /api/intel/stats — aggregate counts ────────────────────────────────────
@@ -515,15 +395,12 @@ router.put('/:romId/:type', (req, res) => {
 
 // ── POST /api/intel/:romId/generate — single AI generate ─────────────────────
 router.post('/:romId/generate', async (req, res) => {
-    const missingKey2 = (INTEL_PROVIDER === 'anthropic' && !ANTHROPIC_API_KEY)
-        ? 'ANTHROPIC_API_KEY' : (INTEL_PROVIDER === 'cerebras' && !CEREBRAS_API_KEY)
-        ? 'CEREBRAS_API_KEY'  : (INTEL_PROVIDER === 'groq' && !GROQ_API_KEY)
-        ? 'GROQ_API_KEY'      : null;
+    const missingKey2 = checkProviderKey();
     if (missingKey2) {
         return res.status(503).json({ error: `${missingKey2} not set. Add it to your .env file then restart the server.` });
     }
 
-    const { type = 'bio' } = req.body;
+    const { type = 'bio', strategy = 'quality' } = req.body;
     if (!['bio', 'guide'].includes(type)) {
         return res.status(400).json({ error: 'type must be bio or guide' });
     }
@@ -546,14 +423,14 @@ router.post('/:romId/generate', async (req, res) => {
 
     try {
         const prompt = buildPrompt(promptTitle, info, type);
-        const { content, modelName, tokensUsed } = await callAI(prompt);
+        const { content, modelName, tokensUsed } = await callAI(prompt, { strategy });
 
         db.prepare(`INSERT OR REPLACE INTO game_intel (game_title, doc_type, content_md, model, tokens_used)
                     VALUES (?, ?, ?, ?, ?)`).run(
             cleanName, type, content, modelName, tokensUsed
         );
 
-        console.log(`[Intel] Generated ${type} for "${promptTitle}" (key: ${cleanName}) on ${info.systems.length} systems via ${INTEL_PROVIDER} (${tokensUsed} tok)`);
+        console.log(`[Intel] Generated ${type} for "${promptTitle}" (key: ${cleanName}) via ${modelName} (${tokensUsed} tok)`);
 
         res.json({ doc_type: type, content_md: content, model: modelName, tokens_used: tokensUsed, generated: true });
 

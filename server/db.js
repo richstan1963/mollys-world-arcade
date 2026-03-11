@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { CONFIG, SYSTEMS } from './config.js';
+import { seedRetroStars, downloadCharacterImages } from './services/retro-stars-seeder.js';
 
 let db;
 
@@ -146,24 +147,22 @@ CREATE INDEX IF NOT EXISTS idx_achievements_player ON achievements(player_id);
 `;
 
 function seedSystems(database) {
+    // INSERT OR IGNORE + UPDATE preserves bio columns across restarts
     const insert = database.prepare(`
-        INSERT OR REPLACE INTO systems (id, name, short_name, emulatorjs_core, extensions, libretro_dir, bios_files, color, sort_order)
+        INSERT OR IGNORE INTO systems (id, name, short_name, emulatorjs_core, extensions, libretro_dir, bios_files, color, sort_order)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const update = database.prepare(`
+        UPDATE systems SET name=?, short_name=?, emulatorjs_core=?, extensions=?, libretro_dir=?, bios_files=?, color=?, sort_order=?
+        WHERE id=?
     `);
 
     const tx = database.transaction(() => {
         for (const sys of SYSTEMS) {
-            insert.run(
-                sys.id,
-                sys.name,
-                sys.short_name,
-                sys.core,
-                sys.extensions.join(','),
-                sys.libretro_dir || null,
-                sys.bios.length > 0 ? JSON.stringify(sys.bios) : null,
-                sys.color || null,
-                sys.sort_order || 0
-            );
+            const ext = sys.extensions.join(',');
+            const bios = sys.bios.length > 0 ? JSON.stringify(sys.bios) : null;
+            insert.run(sys.id, sys.name, sys.short_name, sys.core, ext, sys.libretro_dir || null, bios, sys.color || null, sys.sort_order || 0);
+            update.run(sys.name, sys.short_name, sys.core, ext, sys.libretro_dir || null, bios, sys.color || null, sys.sort_order || 0, sys.id);
         }
     });
     tx();
@@ -229,6 +228,19 @@ function seedPlayerThemes(database) {
     tx();
 }
 
+function seedCharacterThemes(database) {
+    const update = database.prepare("UPDATE players SET character_theme = ? WHERE name = ? AND character_theme IS NULL");
+    const themes = [
+        ['Molly',   'raya'],    // Disney warrior princess — deep pink/gold
+        ['Lylah',   'minnie'],  // Minnie Mouse — red/polka dots/purple
+        ['Alannah', 'elf'],     // Woodland elf — forest green/gold/rose
+    ];
+    const tx = database.transaction(() => {
+        for (const [name, theme] of themes) update.run(theme, name);
+    });
+    tx();
+}
+
 function seedDefaults(database) {
     const insert = database.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
     insert.run('port', String(CONFIG.PORT));
@@ -260,6 +272,11 @@ export function initDB() {
     try { db.exec("ALTER TABLE play_history ADD COLUMN player_id INTEGER REFERENCES players(id)"); } catch {}
     try { db.exec("ALTER TABLE players ADD COLUMN bio TEXT DEFAULT ''"); } catch {}
     try { db.exec("ALTER TABLE players ADD COLUMN clan_id INTEGER REFERENCES clans(id)"); } catch {}
+
+    // V11: System bios — LLM-generated system biographies
+    try { db.exec("ALTER TABLE systems ADD COLUMN bio TEXT"); } catch {}
+    try { db.exec("ALTER TABLE systems ADD COLUMN bio_model TEXT"); } catch {}
+    try { db.exec("ALTER TABLE systems ADD COLUMN bio_generated_at TEXT"); } catch {}
 
     // V5: Clans (Clan Battles)
     db.exec(`CREATE TABLE IF NOT EXISTS clans (
@@ -796,6 +813,65 @@ export function initDB() {
     try { db.exec("ALTER TABLE metadata ADD COLUMN igdb_id INTEGER"); } catch {}
     try { db.exec("ALTER TABLE metadata ADD COLUMN screenscraper_id INTEGER"); } catch {}
 
+    // V12: New API enrichment columns (RAWG, MobyGames, Giant Bomb)
+    try { db.exec("ALTER TABLE metadata ADD COLUMN rawg_id INTEGER"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN metacritic_score INTEGER"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN rawg_rating REAL"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN moby_id INTEGER"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN moby_attributes TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN giantbomb_id INTEGER"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN giantbomb_deck TEXT"); } catch {}
+
+    // V12: Bulk import columns (Libretro thumbnails, cabinet art)
+    try { db.exec("ALTER TABLE metadata ADD COLUMN title_screen_path TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN snap_path TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN boxart_path TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN cabinet_path TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN marquee_path TEXT"); } catch {}
+    try { db.exec("ALTER TABLE metadata ADD COLUMN flyer_path TEXT"); } catch {}
+
+    // V12: Game history/trivia (from history.dat)
+    db.exec(`CREATE TABLE IF NOT EXISTS game_history (
+        rom_id INTEGER PRIMARY KEY REFERENCES roms(id) ON DELETE CASCADE,
+        history_text TEXT NOT NULL,
+        source TEXT DEFAULT 'history.dat',
+        imported_at TEXT DEFAULT (datetime('now'))
+    )`);
+
+    // V13: Character themes for player profiles
+    try { db.exec("ALTER TABLE players ADD COLUMN character_theme TEXT"); } catch {}
+
+    // V14: Retro Stars — game character encyclopedia
+    db.exec(`CREATE TABLE IF NOT EXISTS game_characters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slug TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        title TEXT,
+        category TEXT,
+        genre_tag TEXT,
+        bio TEXT,
+        debut_game TEXT,
+        debut_year INTEGER,
+        era TEXT,
+        franchise TEXT,
+        match_patterns TEXT,
+        wiki_slug TEXT,
+        image_path TEXT,
+        rank_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+    db.exec(`CREATE TABLE IF NOT EXISTS character_appearances (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        character_id INTEGER NOT NULL REFERENCES game_characters(id) ON DELETE CASCADE,
+        rom_id INTEGER NOT NULL REFERENCES roms(id) ON DELETE CASCADE,
+        appearance_order INTEGER DEFAULT 0,
+        role TEXT DEFAULT 'protagonist',
+        note TEXT,
+        UNIQUE(character_id, rom_id)
+    )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_charapp_char ON character_appearances(character_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_charapp_rom ON character_appearances(rom_id)');
+
     // V9: RetroAchievements per-game stats
     db.exec(`CREATE TABLE IF NOT EXISTS retro_achievements (
         rom_id INTEGER PRIMARY KEY REFERENCES roms(id) ON DELETE CASCADE,
@@ -815,9 +891,15 @@ export function initDB() {
     seedPlayerThemes(db);
     seedClans(db);
     seedPlayerBios(db);
+    seedCharacterThemes(db);
+    seedRetroStars(db);
     seedDefaults(db);
     seedOriginalGames(db);
     seedCollections(db);
+
+    // Download character images in background (non-blocking)
+    setTimeout(() => downloadCharacterImages().catch(() => {}), 5000);
+
     return db;
 }
 
