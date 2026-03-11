@@ -36,8 +36,7 @@ export const SS_SYSTEM_MAP = {
     nes: 3, snes: 4, gba: 12, genesis: 1, gamegear: 21, saturn: 22,
     dreamcast: 23, '32x': 19, psx: 57, atari2600: 26, atari7800: 41,
     jaguar: 27, lynx: 28, tg16: 31, neogeo: 142, ngp: 25, arcade: 75,
-    fbneo: 75, wonderswan: 45, vb: 11, gamecube: 13, wii: 16, wiiu: 18,
-    ps2: 58, xbox: 32,
+    fbneo: 75, wonderswan: 45, vb: 11,
 };
 
 // IGDB platform ID mapping (our system_id → IGDB platform)
@@ -45,8 +44,7 @@ export const IGDB_PLATFORM_MAP = {
     nes: 18, snes: 19, gba: 24, genesis: 29, gamegear: 35, saturn: 32,
     dreamcast: 23, '32x': 30, psx: 7, atari2600: 59, atari7800: 60,
     jaguar: 62, lynx: 61, tg16: 86, neogeo: 80, ngp: 119, arcade: 52,
-    fbneo: 52, wonderswan: 57, vb: 87, gamecube: 21, wii: 5, wiiu: 41,
-    ps2: 8, xbox: 11,
+    fbneo: 52, wonderswan: 57, vb: 87,
 };
 
 export const SYSTEMS = [
@@ -336,63 +334,6 @@ export const SYSTEMS = [
         color: '#000000',
         sort_order: 22,
     },
-
-    // ── Desktop Mode: Native Emulator Systems ────────────────────────────────
-    {
-        id: 'gamecube',
-        name: 'Nintendo GameCube',
-        short_name: 'GCN',
-        core: 'native',
-        extensions: ['.iso', '.gcm', '.gcz', '.ciso', '.rvz'],
-        libretro_dir: 'Nintendo - GameCube',
-        bios: [],
-        color: '#7B2D8E',
-        sort_order: 3,
-    },
-    {
-        id: 'wii',
-        name: 'Nintendo Wii',
-        short_name: 'Wii',
-        core: 'native',
-        extensions: ['.iso', '.wbfs', '.gcz', '.ciso', '.rvz'],
-        libretro_dir: 'Nintendo - Wii',
-        bios: [],
-        color: '#C0C0C0',
-        sort_order: 4,
-    },
-    {
-        id: 'wiiu',
-        name: 'Nintendo Wii U',
-        short_name: 'WiiU',
-        core: 'native',
-        extensions: ['.wud', '.wux', '.iso', '.rpx'],
-        libretro_dir: 'Nintendo - Wii U',
-        bios: [],
-        color: '#009AC7',
-        sort_order: 5,
-    },
-    {
-        id: 'ps2',
-        name: 'PlayStation 2',
-        short_name: 'PS2',
-        core: 'native',
-        extensions: ['.iso', '.bin', '.img', '.chd'],
-        libretro_dir: 'Sony - PlayStation 2',
-        bios: ['SCPH10000.BIN'],
-        color: '#00308F',
-        sort_order: 21,
-    },
-    {
-        id: 'xbox',
-        name: 'Xbox',
-        short_name: 'Xbox',
-        core: 'native',
-        extensions: ['.iso', '.xbe'],
-        libretro_dir: 'Microsoft - Xbox',
-        bios: ['mcpx_1.0.bin', 'Complex_4627.bin'],
-        color: '#107C10',
-        sort_order: 23,
-    },
 ];
 
 // Extension → system lookup (built at import time)
@@ -434,17 +375,5 @@ export const FOLDER_HINTS = new Map([
     ['n64', 'n64'], ['nintendo 64', 'n64'], ['nintendo64', 'n64'],
     ['nds', 'nds'], ['nintendo ds', 'nds'], ['ds', 'nds'],
     ['psp', 'psp'], ['playstation portable', 'psp'],
-    // Native systems
-    ['gamecube', 'gamecube'], ['gcn', 'gamecube'], ['gc', 'gamecube'], ['nintendo gamecube', 'gamecube'],
-    ['wii', 'wii'], ['nintendo wii', 'wii'],
-    ['wiiu', 'wiiu'], ['wii u', 'wiiu'], ['nintendo wii u', 'wiiu'],
-    ['ps2', 'ps2'], ['playstation 2', 'ps2'], ['playstation2', 'ps2'],
-    ['xbox', 'xbox'], ['xbox original', 'xbox'], ['microsoft xbox', 'xbox'],
 ]);
 
-// Cores that bypass EmulatorJS and launch via native desktop emulators
-export const NATIVE_CORES = new Set(['native']);
-
-// Systems with core='native' — no browser play, require Windows PC + NVIDIA GPU
-// ROMs scanned for these systems are auto-marked source='test' (hidden from public library)
-export const TEST_ONLY_SYSTEMS = new Set(['gamecube', 'ps2', 'ps3', 'switch', 'wii', 'wiiu', 'xbox']);

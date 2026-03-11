@@ -19,21 +19,6 @@ window.GameView = {
                     .catch(() => ({ ...p, isFav: false })))
             );
 
-            // ─── Desktop Mode detection ──────────────────────────────────────────
-            const DESKTOP_INFO = {
-                psx:       { emulator: 'DuckStation', quality: '4K/60fps'  },
-                ps2:       { emulator: 'PCSX2',       quality: '4K/60fps'  },
-                gamecube:  { emulator: 'Dolphin',     quality: '4K/60fps'  },
-                wii:       { emulator: 'Dolphin',     quality: '4K/60fps'  },
-                dreamcast: { emulator: 'Flycast',     quality: '4K/60fps'  },
-                xbox:      { emulator: 'Xemu',        quality: '4K/60fps'  },
-                wiiu:      { emulator: 'Cemu',        quality: '4K/60fps'  },
-            };
-            const isNative = game.core === 'native' || game.core === 'flycast';
-            const deskInfo = isNative
-                ? (DESKTOP_INFO[game.system_id] || { emulator: 'Native', quality: '4K' })
-                : null;
-
             // ─── Era quip for trivia ────────────────────────────────────────────
             const getEraQuip = y => {
                 const n = parseInt(y);
@@ -92,18 +77,9 @@ window.GameView = {
                         </div>
 
                         <div class="game-detail-actions">
-                            ${isNative ? `
-                            <div class="dm-detail-wrap">
-                                <div class="dm-detail-mode-label">🖥️ DESKTOP MODE</div>
-                                <button class="dm-detail-btn" onclick="window.arcade.playGame(${game.id})">
-                                    <span class="dm-detail-btn-icon">🚀</span>
-                                    <span class="dm-detail-btn-main">Launch in ${deskInfo.emulator}</span>
-                                    <span class="dm-detail-btn-quality">${deskInfo.quality}</span>
-                                </button>
-                            </div>` : `
                             <button class="btn btn-yellow btn-lg" onclick="window.arcade.playGame(${game.id})">
                                 ▶ Play Now
-                            </button>`}
+                            </button>
                             <button class="btn btn-ghost" id="favBtn" onclick="GameView.toggleFav(${game.id}, ${game.is_favorite ? 'false' : 'true'})">
                                 ${game.is_favorite ? '⭐ Favorited' : '☆ Favorite'}
                             </button>
@@ -167,8 +143,7 @@ window.GameView = {
 
                         <dl class="meta-table">
                             <dt>System</dt>
-                            <dd><span style="color:${game.system_color || '#7B2D8E'}">${H.escHtml(game.system_full_name || game.system_name)}</span>${isNative ? ' <span class="dm-native-tag">NATIVE</span>' : ''}</dd>
-                            ${isNative ? `<dt>Emulator</dt><dd><span class="dm-meta-emu">${deskInfo.emulator}</span> <span class="dm-meta-quality">${deskInfo.quality}</span></dd>` : ''}
+                            <dd><span style="color:${game.system_color || '#7B2D8E'}">${H.escHtml(game.system_full_name || game.system_name)}</span></dd>
                             ${game.region ? `<dt>Region</dt><dd>${H.escHtml(game.region)}</dd>` : ''}
                             ${game.year ? `<dt>Year</dt><dd>${H.escHtml(game.year)}</dd>` : ''}
                             ${game.developer ? `<dt>Developer</dt><dd>${H.escHtml(game.developer)}</dd>` : ''}

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { EXT_TO_SYSTEM, FOLDER_HINTS, TEST_ONLY_SYSTEMS } from '../config.js';
+import { EXT_TO_SYSTEM, FOLDER_HINTS } from '../config.js';
 import { parseFilename } from './filename-parser.js';
 import { computeMD5 } from './hash-service.js';
 
@@ -61,7 +61,7 @@ export async function scanDirectories(db, scanPaths, onProgress) {
             const md5 = await computeMD5(file.filepath);
             const parsed = parseFilename(file.filename);
 
-            const source = TEST_ONLY_SYSTEMS.has(file.system_id) ? 'test' : 'local';
+            const source = 'local';
             const info = insertRom.run(
                 file.filepath,
                 file.filename,

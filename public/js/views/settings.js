@@ -124,7 +124,7 @@ window.SettingsView = {
                     <div class="setting-row">
                         <div class="setting-label">
                             Your World Arcade
-                            <small>v8.0.0 — Powered by EmulatorJS + Desktop Mode</small>
+                            <small>v8.0.0 — Powered by EmulatorJS</small>
                         </div>
                     </div>
                     <div class="setting-row">

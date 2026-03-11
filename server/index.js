@@ -66,7 +66,6 @@ import llmSearchRoutes from './routes/llm-search.js';
 import socialHubRouter from './routes/social-hub.js';
 import adminRoutes from './routes/admin.js';
 import tunnelRoutes from './routes/tunnel.js';
-import desktopRoutes from './routes/desktop.js';
 import intelRoutes from './routes/intel.js';
 import engineRoutes from './routes/engine.js';
 
@@ -131,7 +130,6 @@ app.use('/api/llm', llmSearchRoutes);
 app.use('/api/social', socialHubRouter);
 app.use('/api/admin', adminRoutes);
 app.use('/api/tunnel', tunnelRoutes);
-app.use('/api/desktop', desktopRoutes);
 app.use('/api/intel',  intelRoutes);
 app.use('/api/engine', engineRoutes);
 

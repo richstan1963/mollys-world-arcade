@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getDB } from '../db.js';
-import { CONFIG, NATIVE_CORES } from '../config.js';
+import { CONFIG } from '../config.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -20,12 +20,9 @@ router.get('/config/:id', (req, res) => {
 
     if (!rom) return res.status(404).json({ error: 'ROM not found' });
 
-    const isNative = NATIVE_CORES.has(rom.core);
-
     const config = {
         core:       rom.core,
         systemId:   rom.system_id,
-        isNative,
         gameUrl:    `/rom-file/${rom.id}/${encodeURIComponent(rom.filename)}`,
         pathtodata: '/data/',
         gameName:   rom.title || rom.clean_name || rom.filename,
