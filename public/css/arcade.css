@@ -1058,6 +1058,44 @@ select:focus-visible, input:focus-visible, button:focus-visible {
     gap: 6px;
 }
 
+/* ── Metacritic / Rating Badges ── */
+.metacritic-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.metacritic-badge.mc-green { background: #6c3; color: #fff; }
+.metacritic-badge.mc-yellow { background: #fc3; color: #333; }
+.metacritic-badge.mc-red { background: #f00; color: #fff; }
+.metacritic-badge.mc-na { background: rgba(255,255,255,0.08); color: var(--text-muted); font-weight: 400; font-size: 9px; }
+
+.rating-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #DAA520;
+}
+.rating-badge .star { font-size: 11px; }
+.game-card-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+    z-index: 2;
+}
+
 /* ═══════════════════════════════════════════════
    SYSTEM CARDS — Glass panels
    ═══════════════════════════════════════════════ */
@@ -2098,6 +2136,208 @@ select:focus-visible, input:focus-visible, button:focus-visible {
     overflow: hidden;
     position: relative;
 }
+/* ── Trivia Countdown Overlay ─────────────────────────────────────────────── */
+.trivia-countdown-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    background: radial-gradient(ellipse at center, #1a0a2e 0%, #0a0015 60%, #000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: triviaFadeIn 0.3s ease-out;
+}
+.trivia-countdown-overlay.trivia-exit {
+    animation: triviaFadeOut 0.4s ease-in forwards;
+}
+@keyframes triviaFadeIn { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: scale(1); } }
+@keyframes triviaFadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+
+.trivia-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    max-width: 560px;
+    width: 90%;
+    padding: 2rem 1.5rem;
+}
+
+.trivia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+.trivia-loading-label {
+    font-family: var(--font-display, 'Press Start 2P', monospace);
+    font-size: 0.55rem;
+    color: #888;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: triviaLabelPulse 2s ease-in-out infinite;
+}
+@keyframes triviaLabelPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+.trivia-scoreboard {
+    display: flex;
+    gap: 1rem;
+    font-family: var(--font-display, 'Press Start 2P', monospace);
+    font-size: 0.75rem;
+}
+.trivia-score-correct { color: #00ff88; text-shadow: 0 0 10px rgba(0, 255, 136, 0.5); }
+.trivia-score-wrong { color: #ff4466; text-shadow: 0 0 10px rgba(255, 68, 102, 0.5); }
+
+/* ── Timer Ring ── */
+.trivia-timer-ring {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0.5rem 0;
+}
+.trivia-ring-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+.trivia-ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.08);
+    stroke-width: 6;
+}
+.trivia-ring-fill {
+    fill: none;
+    stroke: #00ff88;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.9s linear, stroke 0.3s;
+    filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
+}
+.trivia-timer-urgent ~ .trivia-ring-fill,
+.trivia-timer-ring:has(.trivia-timer-urgent) .trivia-ring-fill {
+    stroke: #ff4466;
+    filter: drop-shadow(0 0 12px rgba(255, 68, 102, 0.6));
+}
+.trivia-timer-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display, 'Press Start 2P', monospace);
+    font-size: 3rem;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+.trivia-timer-number.trivia-timer-urgent {
+    color: #ff4466;
+    animation: triviaTimerPulse 0.5s ease-in-out infinite;
+    text-shadow: 0 0 20px rgba(255, 68, 102, 0.6);
+}
+@keyframes triviaTimerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+/* ── Question Area ── */
+.trivia-question-area {
+    width: 100%;
+    text-align: center;
+}
+.trivia-question {
+    font-family: var(--font-display, 'Press Start 2P', monospace);
+    font-size: 0.8rem;
+    line-height: 1.8;
+    color: #e0d0ff;
+    margin-bottom: 1rem;
+    min-height: 3rem;
+    text-shadow: 0 0 10px rgba(224, 208, 255, 0.2);
+}
+.trivia-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+.trivia-option {
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 0.7rem 0.5rem;
+    font-family: var(--font-display, 'Press Start 2P', monospace);
+    font-size: 0.55rem;
+    line-height: 1.5;
+    color: #ccc;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+}
+.trivia-option:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: #a78bfa;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.2);
+}
+.trivia-option.correct {
+    background: rgba(0, 255, 136, 0.15);
+    border-color: #00ff88;
+    color: #00ff88;
+    animation: triviaCorrect 0.4s ease-out;
+}
+.trivia-option.wrong {
+    background: rgba(255, 68, 102, 0.15);
+    border-color: #ff4466;
+    color: #ff4466;
+    animation: triviaWrong 0.4s ease-out;
+}
+@keyframes triviaCorrect { 0% { transform: scale(0.95); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+@keyframes triviaWrong { 0%, 25%, 50%, 75% { transform: translateX(-3px); } 12.5%, 37.5%, 62.5% { transform: translateX(3px); } 100% { transform: translateX(0); } }
+
+.trivia-result {
+    font-family: var(--font-display, 'Press Start 2P', monospace);
+    font-size: 0.9rem;
+    margin-top: 0.8rem;
+    min-height: 1.5rem;
+    transition: all 0.2s;
+}
+.trivia-result.correct { color: #00ff88; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); }
+.trivia-result.wrong { color: #ff4466; text-shadow: 0 0 15px rgba(255, 68, 102, 0.5); }
+
+.trivia-skip-btn {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 0.4rem 1.5rem;
+    font-family: var(--font-display, 'Press Start 2P', monospace);
+    font-size: 0.5rem;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+}
+.trivia-skip-btn:hover { color: #aaa; border-color: #aaa; }
+
+/* ── Scanlines on trivia (extra retro feel) ── */
+.trivia-countdown-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
+    );
+    pointer-events: none;
+}
+
+/* Mobile trivia adjustments */
+@media (max-width: 600px) {
+    .trivia-timer-ring { width: 100px; height: 100px; }
+    .trivia-timer-number { font-size: 2.2rem; }
+    .trivia-question { font-size: 0.65rem; }
+    .trivia-options { grid-template-columns: 1fr; }
+    .trivia-option { font-size: 0.5rem; padding: 0.6rem; }
+}
+
 /* Original games canvas — maintain aspect ratio */
 #original-game-canvas {
     object-fit: contain;

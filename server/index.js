@@ -68,6 +68,7 @@ import adminRoutes from './routes/admin.js';
 import tunnelRoutes from './routes/tunnel.js';
 import intelRoutes from './routes/intel.js';
 import engineRoutes from './routes/engine.js';
+import triviaRoutes from './routes/trivia.js';
 
 const app = express();
 
@@ -132,6 +133,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/tunnel', tunnelRoutes);
 app.use('/api/intel',  intelRoutes);
 app.use('/api/engine', engineRoutes);
+app.use('/api/trivia', triviaRoutes);
 
 // BIOS file serving — serve neogeo.zip etc from roms directories
 app.get('/bios/:system/:file', (req, res) => {

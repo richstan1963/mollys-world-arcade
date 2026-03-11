@@ -366,10 +366,13 @@ window.arcade = {
             overlay.style.display = '';
             document.body.style.overflow = 'hidden';
 
-            // Focus iframe so keyboard events reach EmulatorJS
-            iframe.focus();
-            setTimeout(() => { iframe.focus(); iframe.contentWindow?.focus(); }, 300);
-            setTimeout(() => { iframe.focus(); iframe.contentWindow?.focus(); }, 1000);
+            // ── TRIVIA COUNTDOWN SCREEN ──────────────────────────────────
+            this._showTriviaCountdown(container, config.gameName).then(() => {
+                // Focus iframe after trivia dismisses
+                iframe.focus();
+                iframe.contentWindow?.focus();
+            });
+
             // Re-focus on click anywhere in overlay (use named handler to avoid leak)
             if (!overlay._ejsFocusHandler) {
                 overlay._ejsFocusHandler = () => {
@@ -382,6 +385,147 @@ window.arcade = {
         } catch (err) {
             H.toast('Failed to load game: ' + err.message, 'error');
         }
+    },
+
+    // ── Trivia Countdown Overlay ──────────────────────────────────────────
+    async _showTriviaCountdown(container, gameName) {
+        // Load trivia score from localStorage
+        const scoreKey = 'arcade_trivia_score';
+        let score = JSON.parse(localStorage.getItem(scoreKey) || '{"correct":0,"wrong":0}');
+
+        // Fetch trivia questions (fire-and-forget if fails, use hardcoded fallback)
+        let questions = [];
+        try {
+            const data = await API.triviaQuestions(8);
+            questions = data.questions || [];
+        } catch {
+            questions = [
+                { question: 'What year was the NES released in North America?', options: ['1983', '1985', '1987', '1981'], correct: 1 },
+                { question: 'Who is Mario\'s brother?', options: ['Wario', 'Luigi', 'Toad', 'Yoshi'], correct: 1 },
+            ];
+        }
+
+        if (!questions.length) return;
+
+        let qIndex = 0;
+        let timeLeft = 10;
+        let answered = false;
+        let triviaTimer = null;
+
+        // Build the trivia overlay
+        const triviaEl = document.createElement('div');
+        triviaEl.className = 'trivia-countdown-overlay';
+        triviaEl.innerHTML = `
+            <div class="trivia-screen">
+                <div class="trivia-header">
+                    <div class="trivia-loading-label">LOADING ${gameName.toUpperCase().replace(/</g, '&lt;')}</div>
+                    <div class="trivia-scoreboard">
+                        <span class="trivia-score-correct">✓ ${score.correct}</span>
+                        <span class="trivia-score-wrong">✗ ${score.wrong}</span>
+                    </div>
+                </div>
+                <div class="trivia-timer-ring">
+                    <svg viewBox="0 0 120 120" class="trivia-ring-svg">
+                        <circle cx="60" cy="60" r="54" class="trivia-ring-bg"/>
+                        <circle cx="60" cy="60" r="54" class="trivia-ring-fill"/>
+                    </svg>
+                    <div class="trivia-timer-number">${timeLeft}</div>
+                </div>
+                <div class="trivia-question-area">
+                    <div class="trivia-question"></div>
+                    <div class="trivia-options"></div>
+                    <div class="trivia-result"></div>
+                </div>
+                <button class="trivia-skip-btn">SKIP →</button>
+            </div>
+        `;
+        container.appendChild(triviaEl);
+
+        const timerNum = triviaEl.querySelector('.trivia-timer-number');
+        const ringFill = triviaEl.querySelector('.trivia-ring-fill');
+        const questionEl = triviaEl.querySelector('.trivia-question');
+        const optionsEl = triviaEl.querySelector('.trivia-options');
+        const resultEl = triviaEl.querySelector('.trivia-result');
+        const scoreCorrectEl = triviaEl.querySelector('.trivia-score-correct');
+        const scoreWrongEl = triviaEl.querySelector('.trivia-score-wrong');
+        const skipBtn = triviaEl.querySelector('.trivia-skip-btn');
+
+        const circumference = 2 * Math.PI * 54;
+        ringFill.style.strokeDasharray = circumference;
+        ringFill.style.strokeDashoffset = '0';
+
+        function showQuestion() {
+            if (qIndex >= questions.length) qIndex = 0; // loop
+            const q = questions[qIndex];
+            answered = false;
+            resultEl.textContent = '';
+            resultEl.className = 'trivia-result';
+            questionEl.textContent = q.question;
+            optionsEl.innerHTML = q.options.map((opt, i) => `
+                <button class="trivia-option" data-idx="${i}">${opt.replace(/</g, '&lt;')}</button>
+            `).join('');
+
+            optionsEl.querySelectorAll('.trivia-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (answered) return;
+                    answered = true;
+                    const idx = parseInt(btn.dataset.idx);
+                    const isCorrect = idx === q.correct;
+                    if (isCorrect) {
+                        score.correct++;
+                        btn.classList.add('correct');
+                        resultEl.textContent = '🎯 CORRECT!';
+                        resultEl.classList.add('correct');
+                    } else {
+                        score.wrong++;
+                        btn.classList.add('wrong');
+                        // Highlight the right answer
+                        optionsEl.querySelector(`[data-idx="${q.correct}"]`).classList.add('correct');
+                        resultEl.textContent = '💥 WRONG!';
+                        resultEl.classList.add('wrong');
+                    }
+                    scoreCorrectEl.textContent = '✓ ' + score.correct;
+                    scoreWrongEl.textContent = '✗ ' + score.wrong;
+                    localStorage.setItem(scoreKey, JSON.stringify(score));
+
+                    // Next question after a beat
+                    setTimeout(() => {
+                        qIndex++;
+                        if (timeLeft > 0) showQuestion();
+                    }, 1200);
+                });
+            });
+        }
+
+        showQuestion();
+
+        return new Promise(resolve => {
+            function dismiss() {
+                clearInterval(triviaTimer);
+                triviaEl.classList.add('trivia-exit');
+                setTimeout(() => { triviaEl.remove(); resolve(); }, 400);
+            }
+
+            skipBtn.addEventListener('click', dismiss);
+
+            triviaTimer = setInterval(() => {
+                timeLeft--;
+                timerNum.textContent = timeLeft;
+
+                // Animate ring
+                const progress = 1 - (timeLeft / 10);
+                ringFill.style.strokeDashoffset = circumference * progress;
+
+                // Pulse effect on low time
+                if (timeLeft <= 3) {
+                    timerNum.classList.add('trivia-timer-urgent');
+                }
+
+                if (timeLeft <= 0) {
+                    dismiss();
+                }
+            }, 1000);
+        });
     },
 
     async exitPlayer() {

@@ -101,6 +101,7 @@ window.API = {
 
     // Player (emulator config)
     playerConfig(id) { return this.get(`/api/player/config/${id}`); },
+    triviaQuestions(count = 5) { return this.get(`/api/trivia/random?count=${count}`); },
 
     // Player Profiles
     players() { return this.get('/api/players'); },
