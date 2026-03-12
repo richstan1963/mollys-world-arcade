@@ -3524,6 +3524,9 @@ select:focus-visible, input:focus-visible, button:focus-visible {
     overflow: hidden;
     margin-bottom: 28px;
     min-height: 140px;
+    /* Support image backgrounds from character themes */
+    background-size: cover;
+    background-position: center;
 }
 .pp-hero-bg {
     position: absolute;

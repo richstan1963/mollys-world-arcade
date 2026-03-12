@@ -1,45 +1,295 @@
 /* ═══════════════════════════════════════════════════════════════════
-   CHARACTER THEMES — Themed player profiles for the Haines girls
-   Molly → Raya (Disney warrior princess)
-   Lylah → Minnie Mouse
-   Alannah → Elf (woodland elf)
+   CHARACTER THEMES — LEVEL 9 — Immersive themed player profiles
+   Molly  → Raya (Dragon Warrior Princess)
+   Lylah  → Minnie Mouse (Pink & Bows)
+   Alannah → Buddy the Elf (Christmas magic)
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Raya Theme (Molly) ─────────────────────────────────────────── */
-.character-theme-raya .pp-hero {
+/* ══════════════════════════════════════════════════════════════
+   CINEMATIC HERO — shared structure for image-backed heroes
+   ══════════════════════════════════════════════════════════════ */
+.pp-hero-cinematic {
+    min-height: 280px !important;
+    padding: 0 !important;
+    border-radius: 24px !important;
+    background-image: var(--hero-bg) !important;
+    background-size: cover !important;
+    background-position: center !important;
+    position: relative;
+    flex-direction: column !important;
+    align-items: stretch !important;
+}
+.pp-hero-cinematic .pp-hero-bg {
+    background: none !important;
+    border: none !important;
+}
+.pp-hero-overlay {
+    display: none;
+}
+.pp-hero-cinematic .pp-hero-overlay {
+    display: block;
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    background: linear-gradient(to top,
+        rgba(0,0,0,0.92) 0%,
+        rgba(0,0,0,0.7) 35%,
+        rgba(0,0,0,0.4) 65%,
+        rgba(0,0,0,0.25) 100%
+    );
+    z-index: 1;
+}
+.pp-hero-content {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 36px 40px;
+    width: 100%;
+    min-height: 280px;
+}
+.pp-hero:not(.pp-hero-cinematic) .pp-hero-content {
+    padding: 0;
+}
+
+/* Hero text readability — name, badge, buttons */
+.pp-hero-cinematic .pp-hero-content .pp-name {
+    -webkit-text-fill-color: #fff !important;
+    background: none !important;
+    background-clip: unset !important;
+    -webkit-background-clip: unset !important;
+    color: #fff !important;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.4) !important;
+    filter: none !important;
+    font-size: 42px !important;
+}
+.pp-hero-cinematic .character-badge {
+    background: rgba(0,0,0,0.5) !important;
+    backdrop-filter: blur(12px);
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.25) !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    font-size: 15px !important;
+}
+.pp-hero-cinematic .pp-edit-row .pp-action-btn {
+    background: rgba(0,0,0,0.45) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+}
+
+/* Character portrait overlay (standing pose on right) */
+.pp-hero-portrait {
+    display: none;
+}
+.pp-hero-cinematic .pp-hero-portrait {
+    display: block;
+    position: absolute;
+    right: 20px;
+    bottom: 0;
+    z-index: 2;
+    pointer-events: none;
+    height: 105%;
+    max-width: 35%;
+}
+.pp-hero-portrait img {
+    height: 100%;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 20px rgba(0,0,0,0.5));
+}
+
+/* Avatar with image instead of emoji */
+.pp-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center 20%;  /* Show face/eyes, not cropped at top */
+}
+.pp-avatar-emoji { font-size: 56px; }
+
+/* ── Scene banner between sections ──────────────────────────── */
+.pp-scene-banner {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    border-radius: 16px;
+    overflow: hidden;
+    margin: 8px 0 24px;
+}
+.pp-scene-banner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+.pp-scene-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+        rgba(15,15,25,0.6) 0%,
+        rgba(15,15,25,0.2) 50%,
+        rgba(15,15,25,0.6) 100%
+    );
+    pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   POWER STATS — Animated fighting-game style bars
+   ══════════════════════════════════════════════════════════════ */
+.pp-power-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 24px;
+    background: rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 16px;
+    margin-bottom: 28px;
+}
+.pp-power-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 50px;
+    align-items: center;
+    gap: 14px;
+}
+.pp-power-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: rgba(0,0,0,0.7);
+    white-space: nowrap;
+}
+.pp-power-icon {
+    margin-right: 4px;
+}
+.pp-power-bar-wrap {
+    height: 28px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+.pp-power-bar-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 14px;
+    background: linear-gradient(90deg, var(--bar-color), color-mix(in srgb, var(--bar-color) 70%, white));
+    transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--bar-color) 50%, transparent);
+}
+.pp-power-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+    animation: powerShine 2.5s ease-in-out infinite 1.3s;
+}
+@keyframes powerShine {
+    0%, 100% { left: -60%; }
+    50% { left: 100%; }
+}
+.pp-power-value {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 900;
+    text-align: right;
+    color: rgba(0,0,0,0.8);
+    text-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHARACTER BADGE — Upgraded with shine animation
+   ══════════════════════════════════════════════════════════════ */
+.character-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-top: 8px;
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+}
+.cb-shine {
+    position: absolute;
+    top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: cbShine 3s ease-in-out infinite;
+}
+@keyframes cbShine {
+    0%, 100% { left: -60%; }
+    50% { left: 120%; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   🐉 RAYA THEME (Molly) — Gold, Purple, Dragon Warrior
+   ══════════════════════════════════════════════════════════════ */
+.character-theme-raya .pp-hero:not(.pp-hero-cinematic) {
     background: linear-gradient(135deg, #2D1B3D 0%, #4A1942 30%, #6B2E5D 60%, #8B4513 100%) !important;
 }
-.character-theme-raya .pp-hero-bg {
-    background:
-        radial-gradient(ellipse at 30% 20%, rgba(218, 165, 32, 0.15) 0%, transparent 60%),
-        radial-gradient(ellipse at 70% 80%, rgba(244, 114, 182, 0.1) 0%, transparent 50%),
-        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5L35 15L45 15L37 22L40 32L30 26L20 32L23 22L15 15L25 15Z' fill='rgba(218,165,32,0.04)'/%3E%3C/svg%3E") !important;
-    opacity: 1 !important;
+.character-theme-raya .pp-hero-overlay {
+    background: linear-gradient(to top,
+        rgba(20,10,30,0.9) 0%,
+        rgba(45,27,61,0.5) 40%,
+        rgba(75,25,66,0.2) 70%,
+        transparent 100%
+    ) !important;
 }
 .character-theme-raya .pp-avatar {
     border-color: #DAA520 !important;
-    box-shadow: 0 0 30px rgba(218, 165, 32, 0.4), 0 0 60px rgba(218, 165, 32, 0.15) !important;
+    border-width: 4px !important;
+    box-shadow: 0 0 30px rgba(218, 165, 32, 0.5), 0 0 60px rgba(218, 165, 32, 0.2), inset 0 0 15px rgba(218,165,32,0.1) !important;
+}
+.character-theme-raya .pp-avatar-wrap::before {
+    border-color: rgba(218, 165, 32, 0.3) !important;
 }
 .character-theme-raya .pp-name {
-    background: linear-gradient(135deg, #F472B6, #DAA520) !important;
+    font-size: 38px !important;
+    background: linear-gradient(135deg, #FFE4B5, #DAA520, #F472B6) !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
+    text-shadow: none !important;
+    filter: drop-shadow(0 2px 8px rgba(218,165,32,0.3));
+}
+.character-theme-raya .character-badge {
+    background: rgba(218, 165, 32, 0.2);
+    color: #FFD700;
+    border: 1px solid rgba(218, 165, 32, 0.35);
+    box-shadow: 0 0 20px rgba(218,165,32,0.15);
 }
 .character-theme-raya .pp-section-title {
     color: #DAA520 !important;
-    text-shadow: 0 0 20px rgba(218, 165, 32, 0.2);
+    text-shadow: 0 0 20px rgba(218, 165, 32, 0.3);
+    font-size: 20px;
 }
-.character-theme-raya .stat-card {
-    border-color: rgba(218, 165, 32, 0.15) !important;
-    background: rgba(218, 165, 32, 0.04) !important;
+.character-theme-raya .pp-section-title::before { content: '⚔️ '; }
+.character-theme-raya .pp-power-bar-fill {
+    background: linear-gradient(90deg, #DAA520, #F472B6, #FFD700) !important;
+    background-size: 200% 100% !important;
+    animation: rayaBarShift 3s ease infinite !important;
 }
-.character-theme-raya .stat-card:hover {
-    border-color: rgba(218, 165, 32, 0.35) !important;
-    box-shadow: 0 4px 20px rgba(218, 165, 32, 0.1) !important;
+@keyframes rayaBarShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
 }
-.character-theme-raya .pp-section-title::before {
-    content: '⚔️ ';
+.character-theme-raya .pp-scene-banner {
+    border: 2px solid rgba(218,165,32,0.2);
+    box-shadow: 0 4px 30px rgba(218,165,32,0.1);
 }
 .character-theme-raya .game-card::after {
     background: linear-gradient(135deg, #DAA520, #F472B6, #DAA520) !important;
@@ -49,162 +299,270 @@
     color: #DAA520 !important;
     text-shadow: 0 0 20px rgba(218, 165, 32, 0.4) !important;
 }
-
-/* ── Minnie Mouse Theme (Lylah) ─────────────────────────────────── */
-.character-theme-minnie .pp-hero {
-    background: linear-gradient(135deg, #2D1B3D 0%, #4A1535 30%, #6B1E3D 60%, #8B2252 100%) !important;
+/* Raya achievement glow */
+.character-theme-raya .pp-ach-legendary {
+    border-color: rgba(218,165,32,0.4) !important;
+    box-shadow: 0 0 20px rgba(218,165,32,0.15), inset 0 0 15px rgba(218,165,32,0.05) !important;
 }
-.character-theme-minnie .pp-hero-bg {
+.character-theme-raya .pp-ach-card {
+    border-color: rgba(218,165,32,0.12) !important;
+}
+/* Raya floating golden orbs */
+@keyframes rayaFloat {
+    0%   { transform: translateY(0) scale(1); opacity: 0; }
+    15%  { opacity: 0.7; }
+    85%  { opacity: 0.5; }
+    100% { transform: translateY(-400px) scale(0.3); opacity: 0; }
+}
+.character-theme-raya .player-profile::after,
+.character-theme-raya::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 0;
     background:
-        radial-gradient(circle at 15% 25%, rgba(239, 68, 68, 0.12) 2px, transparent 3px),
-        radial-gradient(circle at 35% 60%, rgba(239, 68, 68, 0.10) 3px, transparent 4px),
-        radial-gradient(circle at 55% 15%, rgba(239, 68, 68, 0.08) 2px, transparent 3px),
-        radial-gradient(circle at 75% 45%, rgba(239, 68, 68, 0.12) 4px, transparent 5px),
-        radial-gradient(circle at 25% 80%, rgba(239, 68, 68, 0.10) 3px, transparent 4px),
-        radial-gradient(circle at 65% 75%, rgba(239, 68, 68, 0.08) 2px, transparent 3px),
-        radial-gradient(circle at 85% 20%, rgba(239, 68, 68, 0.10) 3px, transparent 4px),
-        radial-gradient(circle at 45% 40%, rgba(239, 68, 68, 0.06) 4px, transparent 5px),
-        radial-gradient(circle at 90% 70%, rgba(239, 68, 68, 0.08) 2px, transparent 3px) !important;
-    opacity: 1 !important;
+        radial-gradient(circle 4px at 10% 90%, rgba(218,165,32,0.4) 0%, transparent 100%),
+        radial-gradient(circle 3px at 25% 80%, rgba(244,114,182,0.3) 0%, transparent 100%),
+        radial-gradient(circle 5px at 40% 95%, rgba(218,165,32,0.35) 0%, transparent 100%),
+        radial-gradient(circle 3px at 60% 85%, rgba(244,114,182,0.25) 0%, transparent 100%),
+        radial-gradient(circle 4px at 80% 92%, rgba(218,165,32,0.4) 0%, transparent 100%),
+        radial-gradient(circle 2px at 90% 88%, rgba(244,114,182,0.3) 0%, transparent 100%);
+    animation: rayaFloat 8s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   🎀 MINNIE MOUSE THEME (Lylah) — Pink, Hearts, Bows
+   ══════════════════════════════════════════════════════════════ */
+.character-theme-minnie .pp-hero:not(.pp-hero-cinematic) {
+    background: linear-gradient(135deg, #3D1B2E 0%, #5A1540 30%, #8B2260 60%, #C2346E 100%) !important;
+}
+.character-theme-minnie .pp-hero-overlay {
+    background: linear-gradient(to top,
+        rgba(30,10,20,0.9) 0%,
+        rgba(90,21,64,0.5) 40%,
+        rgba(139,34,96,0.2) 70%,
+        transparent 100%
+    ) !important;
 }
 .character-theme-minnie .pp-avatar {
-    border-color: #EF4444 !important;
-    box-shadow: 0 0 30px rgba(239, 68, 68, 0.4), 0 0 60px rgba(239, 68, 68, 0.15) !important;
+    border-color: #F472B6 !important;
+    border-width: 4px !important;
+    box-shadow: 0 0 30px rgba(244,114,182,0.5), 0 0 60px rgba(236,72,153,0.2), inset 0 0 15px rgba(244,114,182,0.1) !important;
+}
+.character-theme-minnie .pp-avatar-wrap::before {
+    border-color: rgba(244,114,182,0.3) !important;
 }
 .character-theme-minnie .pp-name {
-    background: linear-gradient(135deg, #EF4444, #F472B6) !important;
+    font-size: 38px !important;
+    background: linear-gradient(135deg, #FFB6D9, #F472B6, #EC4899) !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
+    text-shadow: none !important;
+    filter: drop-shadow(0 2px 8px rgba(244,114,182,0.3));
+}
+.character-theme-minnie .character-badge {
+    background: rgba(244,114,182,0.2);
+    color: #F9A8D4;
+    border: 1px solid rgba(244,114,182,0.35);
+    box-shadow: 0 0 20px rgba(244,114,182,0.15);
 }
 .character-theme-minnie .pp-section-title {
-    color: #EF4444 !important;
-    text-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+    color: #F472B6 !important;
+    text-shadow: 0 0 20px rgba(244,114,182,0.3);
+    font-size: 20px;
 }
-.character-theme-minnie .stat-card {
-    border-color: rgba(239, 68, 68, 0.15) !important;
-    background: rgba(239, 68, 68, 0.04) !important;
+.character-theme-minnie .pp-section-title::before { content: '🎀 '; }
+.character-theme-minnie .pp-power-bar-fill {
+    background: linear-gradient(90deg, #EC4899, #F9A8D4, #F472B6) !important;
+    background-size: 200% 100% !important;
 }
-.character-theme-minnie .stat-card:hover {
-    border-color: rgba(239, 68, 68, 0.35) !important;
-    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.1) !important;
-}
-.character-theme-minnie .pp-section-title::before {
-    content: '🎀 ';
+.character-theme-minnie .pp-scene-banner {
+    border: 2px solid rgba(244,114,182,0.2);
+    box-shadow: 0 4px 30px rgba(244,114,182,0.1);
 }
 .character-theme-minnie .game-card::after {
-    background: linear-gradient(135deg, #EF4444, #F472B6, #EF4444) !important;
+    background: linear-gradient(135deg, #EC4899, #F9A8D4, #EC4899) !important;
     background-size: 300% 300% !important;
 }
 .character-theme-minnie .game-card:hover .game-card-title {
-    color: #EF4444 !important;
-    text-shadow: 0 0 20px rgba(239, 68, 68, 0.4) !important;
+    color: #F472B6 !important;
+    text-shadow: 0 0 20px rgba(244,114,182,0.4) !important;
 }
-/* Polka dot pattern on game card art */
+/* Polka dots on game cards */
 .character-theme-minnie .game-card-art::before {
     content: '';
     position: absolute;
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    background:
-        radial-gradient(circle 3px, rgba(239, 68, 68, 0.15) 100%, transparent 100%);
+    background: radial-gradient(circle 3px, rgba(244,114,182,0.18) 100%, transparent 100%);
     background-size: 16px 16px;
     opacity: 0;
     transition: opacity 0.3s;
 }
 .character-theme-minnie .game-card:hover .game-card-art::before { opacity: 1; }
-
-/* ── Elf Theme (Alannah) ────────────────────────────────────────── */
-.character-theme-elf .pp-hero {
-    background: linear-gradient(135deg, #0F2A1B 0%, #1A3D2B 30%, #2D5A3D 60%, #1F3A2A 100%) !important;
+/* Minnie achievement styling */
+.character-theme-minnie .pp-ach-legendary {
+    border-color: rgba(244,114,182,0.4) !important;
+    box-shadow: 0 0 20px rgba(244,114,182,0.15), inset 0 0 15px rgba(244,114,182,0.05) !important;
 }
-.character-theme-elf .pp-hero-bg {
-    background:
-        radial-gradient(ellipse at 20% 30%, rgba(34, 197, 94, 0.1) 0%, transparent 60%),
-        radial-gradient(ellipse at 80% 70%, rgba(218, 165, 32, 0.08) 0%, transparent 50%),
-        url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 10C30 25 15 35 15 50C15 62 26 70 40 70C54 70 65 62 65 50C65 35 50 25 40 10Z' fill='none' stroke='rgba(34,197,94,0.06)' stroke-width='1'/%3E%3C/svg%3E") !important;
-    opacity: 1 !important;
+.character-theme-minnie .pp-ach-card {
+    border-color: rgba(244,114,182,0.12) !important;
+}
+/* Floating hearts */
+@keyframes minnieFloat {
+    0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 0; }
+    10%  { opacity: 0.6; }
+    90%  { opacity: 0.4; }
+    100% { transform: translateY(-350px) rotate(20deg) scale(0.4); opacity: 0; }
+}
+.character-theme-minnie::after {
+    content: '💖';
+    position: fixed;
+    font-size: 18px;
+    bottom: 10%;
+    left: 15%;
+    pointer-events: none;
+    z-index: 0;
+    animation: minnieFloat 6s ease-in-out infinite;
+}
+.character-theme-minnie::before {
+    content: '🎀';
+    position: fixed;
+    font-size: 14px;
+    bottom: 15%;
+    right: 20%;
+    pointer-events: none;
+    z-index: 0;
+    animation: minnieFloat 7s ease-in-out infinite 1.5s;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   🎄 ELF THEME (Alannah) — Christmas green, snow, Buddy energy
+   ══════════════════════════════════════════════════════════════ */
+.character-theme-elf .pp-hero:not(.pp-hero-cinematic) {
+    background: linear-gradient(135deg, #0D2818 0%, #1B4332 30%, #2D6A4F 60%, #1B4332 100%) !important;
+}
+.character-theme-elf .pp-hero-overlay {
+    background: linear-gradient(to top,
+        rgba(5,15,10,0.9) 0%,
+        rgba(13,40,24,0.5) 40%,
+        rgba(27,67,50,0.2) 70%,
+        transparent 100%
+    ) !important;
 }
 .character-theme-elf .pp-avatar {
     border-color: #22C55E !important;
-    box-shadow: 0 0 30px rgba(34, 197, 94, 0.4), 0 0 60px rgba(34, 197, 94, 0.15) !important;
+    border-width: 4px !important;
+    box-shadow: 0 0 30px rgba(34,197,94,0.5), 0 0 60px rgba(34,197,94,0.2), inset 0 0 15px rgba(34,197,94,0.1) !important;
+}
+.character-theme-elf .pp-avatar-wrap::before {
+    border-color: rgba(34,197,94,0.3) !important;
 }
 .character-theme-elf .pp-name {
-    background: linear-gradient(135deg, #22C55E, #DAA520, #FB7185) !important;
+    font-size: 38px !important;
+    background: linear-gradient(135deg, #86EFAC, #22C55E, #EF4444) !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
+    text-shadow: none !important;
+    filter: drop-shadow(0 2px 8px rgba(34,197,94,0.3));
+}
+.character-theme-elf .character-badge {
+    background: rgba(34,197,94,0.2);
+    color: #86EFAC;
+    border: 1px solid rgba(34,197,94,0.35);
+    box-shadow: 0 0 20px rgba(34,197,94,0.15);
 }
 .character-theme-elf .pp-section-title {
     color: #22C55E !important;
-    text-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+    text-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+    font-size: 20px;
 }
-.character-theme-elf .stat-card {
-    border-color: rgba(34, 197, 94, 0.15) !important;
-    background: rgba(34, 197, 94, 0.04) !important;
+.character-theme-elf .pp-section-title::before { content: '🎄 '; }
+.character-theme-elf .pp-power-bar-fill {
+    background: linear-gradient(90deg, #22C55E, #EF4444, #22C55E) !important;
+    background-size: 200% 100% !important;
 }
-.character-theme-elf .stat-card:hover {
-    border-color: rgba(34, 197, 94, 0.35) !important;
-    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.1) !important;
-}
-.character-theme-elf .pp-section-title::before {
-    content: '🍃 ';
+.character-theme-elf .pp-scene-banner {
+    border: 2px solid rgba(34,197,94,0.2);
+    box-shadow: 0 4px 30px rgba(34,197,94,0.1);
 }
 .character-theme-elf .game-card::after {
-    background: linear-gradient(135deg, #22C55E, #DAA520, #FB7185, #22C55E) !important;
+    background: linear-gradient(135deg, #22C55E, #EF4444, #22C55E) !important;
     background-size: 300% 300% !important;
 }
 .character-theme-elf .game-card:hover .game-card-title {
     color: #22C55E !important;
     text-shadow: 0 0 20px rgba(34, 197, 94, 0.4) !important;
 }
-
-/* Floating firefly particles for elf theme */
-@keyframes elfFirefly {
-    0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
-    50% { opacity: 0.8; transform: translateY(-20px) scale(1); }
+/* Elf achievement styling */
+.character-theme-elf .pp-ach-legendary {
+    border-color: rgba(34,197,94,0.4) !important;
+    box-shadow: 0 0 20px rgba(34,197,94,0.15), inset 0 0 15px rgba(34,197,94,0.05) !important;
 }
-.character-theme-elf .pp-hero::after {
-    content: '';
-    position: absolute;
-    inset: 0;
+.character-theme-elf .pp-ach-card {
+    border-color: rgba(34,197,94,0.12) !important;
+}
+/* Floating snowflakes */
+@keyframes elfSnow {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10%  { opacity: 0.8; }
+    90%  { opacity: 0.5; }
+    100% { transform: translateY(400px) rotate(360deg); opacity: 0; }
+}
+.character-theme-elf::after {
+    content: '❄️';
+    position: fixed;
+    font-size: 16px;
+    top: 5%;
+    left: 20%;
     pointer-events: none;
-    background:
-        radial-gradient(circle 2px at 15% 40%, rgba(218, 165, 32, 0.5) 0%, transparent 100%),
-        radial-gradient(circle 2px at 45% 20%, rgba(34, 197, 94, 0.5) 0%, transparent 100%),
-        radial-gradient(circle 2px at 70% 60%, rgba(218, 165, 32, 0.4) 0%, transparent 100%),
-        radial-gradient(circle 2px at 85% 30%, rgba(34, 197, 94, 0.3) 0%, transparent 100%),
-        radial-gradient(circle 2px at 30% 75%, rgba(218, 165, 32, 0.5) 0%, transparent 100%),
-        radial-gradient(circle 1px at 55% 50%, rgba(34, 197, 94, 0.4) 0%, transparent 100%);
-    animation: elfFirefly 4s ease-in-out infinite;
+    z-index: 0;
+    animation: elfSnow 8s linear infinite;
+}
+.character-theme-elf::before {
+    content: '❄️';
+    position: fixed;
+    font-size: 12px;
+    top: 8%;
+    right: 25%;
+    pointer-events: none;
+    z-index: 0;
+    animation: elfSnow 10s linear infinite 2s;
 }
 
-/* ── Character badge on profile ─────────────────────────────────── */
-.character-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    margin-top: 6px;
-    backdrop-filter: blur(8px);
-}
-.character-theme-raya .character-badge {
-    background: rgba(218, 165, 32, 0.15);
-    color: #DAA520;
-    border: 1px solid rgba(218, 165, 32, 0.2);
-}
-.character-theme-minnie .character-badge {
-    background: rgba(239, 68, 68, 0.15);
-    color: #EF4444;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-}
-.character-theme-elf .character-badge {
-    background: rgba(34, 197, 94, 0.15);
-    color: #22C55E;
-    border: 1px solid rgba(34, 197, 94, 0.2);
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — Mobile adjustments
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .pp-hero-cinematic {
+        min-height: 220px !important;
+    }
+    .pp-hero-content {
+        padding: 20px !important;
+        min-height: 220px;
+        flex-direction: column;
+        text-align: center;
+    }
+    .pp-hero-portrait {
+        display: none !important;
+    }
+    .pp-scene-banner {
+        height: 80px;
+    }
+    .pp-power-row {
+        grid-template-columns: 100px 1fr 40px;
+        gap: 8px;
+    }
+    .pp-power-label { font-size: 11px; }
+    .pp-power-value { font-size: 18px; }
+    .pp-power-bar-wrap { height: 22px; }
+    .character-theme-raya .pp-name,
+    .character-theme-minnie .pp-name,
+    .character-theme-elf .pp-name {
+        font-size: 28px !important;
+    }
 }

@@ -46,6 +46,39 @@ window.FavoritesView = {
         }
     },
 
+    // ── Character Assets ─────────────────────
+    CHAR_ASSETS: {
+        raya: {
+            hero_bg:  '/img/characters/raya/raya-hero.jpg',
+            avatar:   '/img/characters/raya/raya-sword.jpg',
+            portrait: '/img/characters/raya/raya-portrait.png',
+            scene:    '/img/characters/raya/raya-sisu-banner.jpg',
+            poster:   '/img/characters/raya/raya-poster.jpg',
+        },
+        minnie: {
+            hero_bg:  '/img/characters/minnie/minnie-flowers.jpg',
+            avatar:   '/img/characters/minnie/minnie-pink.jpg',
+            portrait: null,
+            scene:    '/img/characters/minnie/minnie-pink.jpg',
+        },
+        elf: {
+            hero_bg:  '/img/characters/elf/elf-hero.jpg',
+            avatar:   '/img/characters/elf/elf-hero.jpg',
+            portrait: '/img/characters/elf/elf-hero.jpg',
+            scene:    '/img/characters/elf/elf-hero.jpg',
+        },
+    },
+    CHAR_LABELS: {
+        raya:   { label: '⚔️ Raya — Dragon Warrior', icon: '⚔️' },
+        minnie: { label: '🎀 Minnie Mouse', icon: '🎀' },
+        elf:    { label: '🎄 Buddy the Elf', icon: '🎄' },
+    },
+    CHAR_STAT_ICONS: {
+        raya:   ['⚔️', '⭐', '🏆', '🐉'],
+        minnie: ['🎀', '💖', '🏆', '🦋'],
+        elf:    ['🎄', '⭐', '🏆', '❄️'],
+    },
+
     // ── Per-Player Profile Page ─────────────
     _editMode: false,
 
@@ -82,32 +115,47 @@ window.FavoritesView = {
                 CustomizeView.applyConfig({ ...CustomizeView.DEFAULTS, ...p.preferences });
             }
 
-            // Character theme wrapper
+            // Character theme wrapper + assets
             const charTheme = p.character_theme || '';
             const charThemeClass = charTheme ? ` character-theme-${charTheme}` : '';
-            const CHAR_LABELS = { raya: '⚔️ Raya Princess', minnie: '🎀 Minnie', elf: '🍃 Woodland Elf' };
-            const charLabel = CHAR_LABELS[charTheme] || '';
+            const charInfo = this.CHAR_LABELS[charTheme] || null;
+            const charAssets = this.CHAR_ASSETS[charTheme] || null;
+            const charLabel = charInfo ? charInfo.label : '';
+            const charIcons = this.CHAR_STAT_ICONS[charTheme] || ['⭐', '⭐', '🏆', '🎖️'];
 
             let html = `<div class="player-profile${charThemeClass}">`;
 
-            // ── Hero Banner ──
+            // ── LEVEL 9 Hero Banner ──
+            const heroImgStyle = charAssets ? `style="--player-color: ${p.color}; --hero-bg: url('${charAssets.hero_bg}')"` : `style="--player-color: ${p.color}"`;
+            const avatarContent = charAssets
+                ? `<img src="${charAssets.avatar}" alt="${H.escHtml(p.name)}" class="pp-avatar-img" onerror="this.style.display='none';this.nextElementSibling.style.display=''">`
+                  + `<span class="pp-avatar-emoji" style="display:none">${p.emoji}</span>`
+                : p.emoji;
+            const portraitHtml = charAssets && charAssets.portrait
+                ? `<div class="pp-hero-portrait"><img src="${charAssets.portrait}" alt="" draggable="false"></div>`
+                : '';
+
             html += `
-                <div class="pp-hero" style="--player-color: ${p.color}">
+                <div class="pp-hero ${charAssets ? 'pp-hero-cinematic' : ''}" ${heroImgStyle}>
                     <div class="pp-hero-bg"></div>
-                    <div class="pp-avatar-wrap">
-                        <div class="pp-avatar" style="border-color:${p.color};box-shadow:0 0 30px ${p.color}44">${p.emoji}</div>
-                        <button class="pp-edit-btn" onclick="FavoritesView.editAvatar(${p.id})" title="Change avatar">✏️</button>
-                    </div>
-                    <div class="pp-hero-info">
-                        <h1 class="pp-name">${H.escHtml(p.name)}</h1>
-                        ${charLabel ? `<div class="character-badge">${charLabel}</div>` : ''}
-                        <div class="pp-edit-row">
-                            <button class="pp-inline-edit" onclick="FavoritesView.editName(${p.id}, '${H.escHtml(p.name).replace(/'/g, "\\'")}')">Edit Name</button>
-                            <button class="pp-inline-edit" onclick="FavoritesView.editColor(${p.id})">Change Color</button>
-                            <button class="pp-inline-edit" onclick="FavoritesView.editTheme(${p.id})">🎨 Theme</button>
-                            <button class="pp-inline-edit" onclick="FavoritesView.editCharacter(${p.id})">👸 Character</button>
-                            <button class="pp-inline-edit" onclick="FavoritesView.manageClan(${p.id})">🏰 Clan</button>
-                            <button class="pp-inline-edit ${editMode ? 'active' : ''}" onclick="FavoritesView.toggleEditMode(${playerId})">${editMode ? '✓ Done Editing' : '⚙️ Manage'}</button>
+                    <div class="pp-hero-overlay"></div>
+                    ${portraitHtml}
+                    <div class="pp-hero-content">
+                        <div class="pp-avatar-wrap">
+                            <div class="pp-avatar" style="border-color:${p.color};box-shadow:0 0 30px ${p.color}44">${avatarContent}</div>
+                            <button class="pp-edit-btn" onclick="FavoritesView.editAvatar(${p.id})" title="Change avatar">✏️</button>
+                        </div>
+                        <div class="pp-hero-info">
+                            <h1 class="pp-name">${H.escHtml(p.name)}</h1>
+                            ${charLabel ? `<div class="character-badge"><span class="cb-shine"></span>${charLabel}</div>` : ''}
+                            <div class="pp-edit-row">
+                                <button class="pp-inline-edit" onclick="FavoritesView.editName(${p.id}, '${H.escHtml(p.name).replace(/'/g, "\\'")}')">Edit Name</button>
+                                <button class="pp-inline-edit" onclick="FavoritesView.editColor(${p.id})">Change Color</button>
+                                <button class="pp-inline-edit" onclick="FavoritesView.editTheme(${p.id})">🎨 Theme</button>
+                                <button class="pp-inline-edit" onclick="FavoritesView.editCharacter(${p.id})">👸 Character</button>
+                                <button class="pp-inline-edit" onclick="FavoritesView.manageClan(${p.id})">🏰 Clan</button>
+                                <button class="pp-inline-edit ${editMode ? 'active' : ''}" onclick="FavoritesView.toggleEditMode(${playerId})">${editMode ? '✓ Done Editing' : '⚙️ Manage'}</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -115,7 +163,12 @@ window.FavoritesView = {
 
             html += this._renderQuickPlay(p);
 
-            html += this._renderStatsCards(p, stats);
+            // Scene banner between sections (character-themed)
+            if (charAssets && charAssets.scene) {
+                html += `<div class="pp-scene-banner"><img src="${charAssets.scene}" alt="" draggable="false"><div class="pp-scene-overlay"></div></div>`;
+            }
+
+            html += this._renderStatsCards(p, stats, charIcons);
             html += this._renderTopSystems(p, stats);
             html += this._renderFamilyAchievements(familyData);
             html += this._renderCustomization(playerId);
@@ -191,6 +244,37 @@ window.FavoritesView = {
             this._currentPlayerId = playerId;
             this._selectedForRemoval = new Set();
 
+            // ── Count-up animation for power stats ──
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.pp-power-value').forEach(el => {
+                    const target = parseInt(el.dataset.target) || 0;
+                    if (target === 0) { el.textContent = '0'; return; }
+                    const duration = 1200;
+                    const start = performance.now();
+                    const tick = (now) => {
+                        const progress = Math.min((now - start) / duration, 1);
+                        const ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+                        el.textContent = Math.round(ease * target);
+                        if (progress < 1) requestAnimationFrame(tick);
+                    };
+                    // Use IntersectionObserver to trigger on scroll into view
+                    const obs = new IntersectionObserver((entries) => {
+                        entries.forEach(e => {
+                            if (e.isIntersecting) {
+                                obs.disconnect();
+                                requestAnimationFrame(tick);
+                            }
+                        });
+                    }, { threshold: 0.3 });
+                    obs.observe(el);
+                });
+
+                // Trigger power bar fill animations
+                document.querySelectorAll('.pp-power-bar-fill').forEach(el => {
+                    el.style.width = el.style.getPropertyValue('--bar-pct');
+                });
+            });
+
             // Highlight active nav
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             const navLink = document.querySelector(`.nav-link[data-view="player-${playerId}"]`);
@@ -253,25 +337,30 @@ window.FavoritesView = {
         `;
     },
 
-    _renderStatsCards(p, stats) {
+    _renderStatsCards(p, stats, charIcons) {
+        charIcons = charIcons || ['⭐', '⭐', '🏆', '🎖️'];
+        const maxVal = Math.max(stats.favorites, stats.ratings, stats.scores, stats.achievements, 1);
+        const bars = [
+            { icon: charIcons[0], label: 'Favorites',    val: stats.favorites,    color: p.color },
+            { icon: charIcons[1], label: 'Ratings',       val: stats.ratings,      color: '#F59E0B' },
+            { icon: charIcons[2], label: 'High Scores',   val: stats.scores,       color: '#10B981' },
+            { icon: charIcons[3], label: 'Achievements',  val: stats.achievements, color: '#8B5CF6' },
+        ];
         return `
-            <div class="pp-stats-grid">
-                <div class="pp-stat" style="--stat-color: ${p.color}">
-                    <div class="pp-stat-value">${stats.favorites}</div>
-                    <div class="pp-stat-label">Favorites</div>
-                </div>
-                <div class="pp-stat" style="--stat-color: #F59E0B">
-                    <div class="pp-stat-value">${stats.ratings}</div>
-                    <div class="pp-stat-label">Ratings</div>
-                </div>
-                <div class="pp-stat" style="--stat-color: #10B981">
-                    <div class="pp-stat-value">${stats.scores}</div>
-                    <div class="pp-stat-label">Scores</div>
-                </div>
-                <div class="pp-stat" style="--stat-color: #8B5CF6">
-                    <div class="pp-stat-value">${stats.achievements}</div>
-                    <div class="pp-stat-label">Achievements</div>
-                </div>
+            <div class="pp-power-stats">
+                ${bars.map(b => {
+                    const pct = Math.max(Math.round((b.val / maxVal) * 100), 8);
+                    return `
+                    <div class="pp-power-row">
+                        <div class="pp-power-label"><span class="pp-power-icon">${b.icon}</span> ${b.label}</div>
+                        <div class="pp-power-bar-wrap">
+                            <div class="pp-power-bar-fill" style="--bar-pct:${pct}%;--bar-color:${b.color}">
+                                <span class="pp-power-shine"></span>
+                            </div>
+                        </div>
+                        <div class="pp-power-value" data-target="${b.val}">0</div>
+                    </div>`;
+                }).join('')}
             </div>
         `;
     },
@@ -803,7 +892,7 @@ window.FavoritesView = {
         const CHARS = [
             { id: 'raya',   label: 'Raya Princess',  icon: '⚔️', desc: 'Dragon warrior · Pink & gold', colors: ['#DB2777','#DAA520'] },
             { id: 'minnie', label: 'Minnie Mouse',   icon: '🎀', desc: 'Classic charm · Red polka dots', colors: ['#EF4444','#EC4899'] },
-            { id: 'elf',    label: 'Woodland Elf',    icon: '🍃', desc: 'Enchanted forest · Green & gold', colors: ['#22C55E','#DAA520'] },
+            { id: 'elf',    label: 'Buddy the Elf',   icon: '🎄', desc: 'Christmas magic · Green & red', colors: ['#22C55E','#EF4444'] },
         ];
         const picker = document.createElement('div');
         picker.className = 'emoji-picker-overlay';
@@ -841,7 +930,7 @@ window.FavoritesView = {
         document.querySelector('.emoji-picker-overlay')?.remove();
         try {
             await API.updatePlayer(playerId, { character_theme: charId || null });
-            const labels = { raya: '⚔️ Raya', minnie: '🎀 Minnie', elf: '🍃 Woodland Elf' };
+            const labels = { raya: '⚔️ Raya', minnie: '🎀 Minnie', elf: '🎄 Buddy the Elf' };
             H.toast(charId ? `${labels[charId]} theme activated!` : 'Character theme removed', 'success');
             this.renderPlayer({ id: playerId });
         } catch (e) { H.toast('Failed: ' + e.message, 'error'); }
