@@ -43,10 +43,10 @@
     inset: 0;
     border-radius: 24px;
     background: linear-gradient(to top,
-        rgba(0,0,0,0.92) 0%,
-        rgba(0,0,0,0.7) 35%,
-        rgba(0,0,0,0.4) 65%,
-        rgba(0,0,0,0.25) 100%
+        rgba(0,0,0,0.8) 0%,
+        rgba(0,0,0,0.5) 30%,
+        rgba(0,0,0,0.2) 60%,
+        rgba(0,0,0,0.1) 100%
     );
     z-index: 1;
 }
@@ -93,7 +93,13 @@
 
 /* Character portrait overlay (standing pose on right) */
 .pp-hero-portrait {
-    display: none;
+    position: absolute;
+    right: 16px;
+    bottom: 0;
+    height: 105%;
+    max-width: 40%;
+    pointer-events: none;
+    z-index: 2;
 }
 .pp-hero-cinematic .pp-hero-portrait {
     display: block;
@@ -122,19 +128,47 @@
 }
 .pp-avatar-emoji { font-size: 56px; }
 
-/* Per-character avatar + scene face framing — both eyes visible */
-.character-theme-raya .pp-avatar-img   { object-position: center 15%; }
-.character-theme-minnie .pp-avatar-img { object-position: center 30%; }
-.character-theme-elf .pp-avatar-img    { object-position: center 20%; }
-.character-theme-raya .pp-scene-banner img   { object-position: center 40%; }
-.character-theme-minnie .pp-scene-banner img { object-position: center 25%; }
-.character-theme-elf .pp-scene-banner img    { object-position: center 30%; }
+/* Per-character avatar — crop circle to show face with both eyes */
+.character-theme-raya .pp-avatar-img   { object-position: center 18%; }
+.character-theme-minnie .pp-avatar-img { object-position: center 22%; }
+.character-theme-elf .pp-avatar-img    { object-position: 50% 0%; object-fit: cover; transform: scale(2.2); transform-origin: 50% 15%; }
+
+/* Per-character scene banner — show face with both eyes visible */
+.character-theme-raya .pp-scene-banner img   { object-position: center 35%; }
+.character-theme-minnie .pp-scene-banner img { object-position: center 20%; }
+.character-theme-elf .pp-scene-banner img    { object-position: center 15%; }
+
+/* Per-character portrait tweaks */
+/* Raya: tall PNG portrait — works perfectly as-is */
+/* Minnie: square image — crop to upper portion showing face, hide white bg */
+.character-theme-minnie .pp-hero-portrait img {
+    object-fit: cover;
+    object-position: center 15%;
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+}
+/* Elf: landscape banner — show full Buddy with "elf" letters */
+.character-theme-elf .pp-hero-portrait {
+    right: 8px;
+    bottom: auto;
+    top: 8px;
+    height: auto;
+    max-width: 45%;
+    max-height: 90%;
+}
+.character-theme-elf .pp-hero-portrait img {
+    object-fit: cover;
+    object-position: center top;
+    width: 100%;
+    border-radius: 12px;
+}
 
 /* ── Scene banner between sections ──────────────────────────── */
 .pp-scene-banner {
     position: relative;
     width: 100%;
-    height: 120px;
+    height: 220px;
     border-radius: 16px;
     overflow: hidden;
     margin: 8px 0 24px;
@@ -149,9 +183,9 @@
     position: absolute;
     inset: 0;
     background: linear-gradient(90deg,
-        rgba(15,15,25,0.6) 0%,
-        rgba(15,15,25,0.2) 50%,
-        rgba(15,15,25,0.6) 100%
+        rgba(15,15,25,0.3) 0%,
+        rgba(15,15,25,0.05) 50%,
+        rgba(15,15,25,0.3) 100%
     );
     pointer-events: none;
 }

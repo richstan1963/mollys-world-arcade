@@ -56,9 +56,9 @@ window.FavoritesView = {
             poster:   '/img/characters/raya/raya-poster.jpg',
         },
         minnie: {
-            hero_bg:  '/img/characters/minnie/minnie-flowers.jpg',
-            avatar:   '/img/characters/minnie/minnie-pink.jpg',
-            portrait: null,
+            hero_bg:  '/img/characters/minnie/minnie-pink.jpg',
+            avatar:   '/img/characters/minnie/minnie-flowers.jpg',
+            portrait: '/img/characters/minnie/minnie-flowers.jpg',
             scene:    '/img/characters/minnie/minnie-pink.jpg',
         },
         elf: {
