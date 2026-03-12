@@ -3539,9 +3539,9 @@ select:focus-visible, input:focus-visible, button:focus-visible {
 .pp-hero-bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), transparent 60%),
-                linear-gradient(225deg, rgba(168, 85, 247, 0.06), transparent 40%);
-    border: 1px solid rgba(168, 85, 247, 0.18);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(10, 10, 30, 0.8) 60%),
+                linear-gradient(225deg, rgba(168, 85, 247, 0.08), rgba(10, 10, 30, 0.8) 40%);
+    border: 1px solid rgba(168, 85, 247, 0.22);
     border-radius: 20px;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -3655,11 +3655,12 @@ select:focus-visible, input:focus-visible, button:focus-visible {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+    margin-top: 6px;
 }
 .pp-inline-edit {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #9CA3AF;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #D1D5DB;
     font-size: 12px;
     padding: 6px 14px;
     border-radius: 8px;
@@ -3683,8 +3684,8 @@ select:focus-visible, input:focus-visible, button:focus-visible {
     margin-bottom: 28px;
 }
 .pp-stat {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 14px;
     padding: 20px 16px;
     text-align: center;
@@ -3753,7 +3754,7 @@ select:focus-visible, input:focus-visible, button:focus-visible {
     color: #E5E7EB;
     margin: 0 0 16px;
     padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
     letter-spacing: 0.5px;
 }
 

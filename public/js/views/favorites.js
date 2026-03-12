@@ -194,10 +194,26 @@ window.FavoritesView = {
                             <input type="text" class="pp-search" id="ppSearch" placeholder="Filter favorites..." oninput="FavoritesView.filterFavs(this.value)">
                             ${editMode ? `
                                 <button class="pp-bulk-remove-btn" onclick="FavoritesView.bulkRemoveSelected(${playerId})">🗑️ Remove Selected</button>
+                                <button class="pp-bulk-remove-btn" style="background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3)" onclick="FavoritesView.clearAllFavorites(${playerId})">🧹 Clear All</button>
+                                <button class="pp-bulk-remove-btn" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3)" onclick="FavoritesView.getStarterPack(${playerId})">🎁 + Starter Pack</button>
                             ` : ''}
                         </div>
                         <div class="game-grid" id="ppFavsGrid">
                             ${favsData.games.map(g => this._renderFavCard(g, playerId, editMode)).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="pp-section">
+                        <div class="empty-state" style="padding:40px 20px">
+                            <div class="empty-state-icon">🎁</div>
+                            <h3>No Favorites Yet</h3>
+                            <p style="margin-bottom:16px">Get a themed starter pack of 20 games or browse the library!</p>
+                            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                                <button class="btn btn-primary" onclick="FavoritesView.getStarterPack(${playerId})">🎁 Get Starter Pack</button>
+                                <button class="btn" onclick="Router.navigate('#/library')">Browse Library</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -585,6 +601,26 @@ window.FavoritesView = {
             await API.post(`/api/players/${playerId}/favorites/bulk-remove`, { rom_ids: ids });
             H.toast(`Removed ${ids.length} games!`, 'success');
             this._selectedForRemoval.clear();
+            this.renderPlayer({ id: playerId });
+        } catch (e) { H.toast('Failed: ' + e.message, 'error'); }
+    },
+
+    // ── Clear ALL favorites ─────────────────
+    async clearAllFavorites(playerId) {
+        if (!confirm('Clear ALL favorites for this player? This cannot be undone.')) return;
+        try {
+            const res = await API.del(`/api/players/${playerId}/favorites`);
+            H.toast(`Cleared ${res.cleared} favorites!`, 'success');
+            this._editMode = false;
+            this.renderPlayer({ id: playerId });
+        } catch (e) { H.toast('Failed: ' + e.message, 'error'); }
+    },
+
+    // ── Get Starter Pack (20 themed games) ───
+    async getStarterPack(playerId) {
+        try {
+            const res = await API.post(`/api/players/${playerId}/favorites/starter-pack`);
+            H.toast(`🎁 Added ${res.added} games! (${res.total_favorites} total)`, 'success');
             this.renderPlayer({ id: playerId });
         } catch (e) { H.toast('Failed: ' + e.message, 'error'); }
     },

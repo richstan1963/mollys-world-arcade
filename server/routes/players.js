@@ -51,6 +51,94 @@ router.get('/:id/favorites', (req, res) => {
     });
 });
 
+// Clear ALL favorites for a player
+router.delete('/:id/favorites', (req, res) => {
+    const db = getDB();
+    const playerId = parseInt(req.params.id);
+    const count = db.prepare('SELECT COUNT(*) as cnt FROM player_favorites WHERE player_id = ?').get(playerId);
+    db.prepare('DELETE FROM player_favorites WHERE player_id = ?').run(playerId);
+    res.json({ cleared: count.cnt });
+});
+
+// Give player a 20-game starter pack based on their theme
+// MUST be before /:id/favorites/:romId to avoid param matching
+router.post('/:id/favorites/starter-pack', (req, res) => {
+  try {
+    const db = getDB();
+    const playerId = parseInt(req.params.id);
+    const player = db.prepare('SELECT * FROM players WHERE id = ?').get(playerId);
+    if (!player) return res.status(404).json({ error: 'Player not found' });
+
+    const THEME_WEIGHTS = {
+        candy:     { 6: 4, 10: 4, 5: 3, 1: 3, 7: 2, 12: 2, 8: 2 },
+        fantasy:   { 12: 5, 10: 4, 6: 3, 1: 3, 5: 2, 11: 2, 9: 1 },
+        garden:    { 10: 4, 6: 4, 12: 3, 5: 3, 7: 2, 8: 2, 1: 2 },
+        lightning: { 1: 4, 11: 4, 9: 3, 7: 3, 8: 3, 10: 2, 12: 1 },
+        retro:     { 5: 4, 1: 3, 10: 3, 11: 3, 9: 2, 6: 2, 7: 2, 8: 1 },
+        fire:      { 1: 5, 9: 4, 11: 3, 7: 3, 8: 3, 10: 1, 12: 1 },
+        space:     { 11: 5, 1: 4, 7: 3, 6: 2, 10: 2, 5: 2, 12: 2 },
+        ocean:     { 12: 4, 10: 4, 6: 3, 5: 3, 1: 2, 11: 2, 8: 2 },
+        dinos:     { 1: 4, 10: 4, 9: 3, 11: 3, 12: 2, 7: 2, 5: 2 },
+        racing:    { 7: 5, 1: 4, 8: 3, 11: 3, 10: 2, 9: 2, 5: 1 },
+    };
+
+    const weights = THEME_WEIGHTS[player.theme] || THEME_WEIGHTS.retro;
+    const pool = [];
+    for (const [collId, weight] of Object.entries(weights)) {
+        for (let i = 0; i < weight; i++) pool.push(parseInt(collId));
+    }
+
+    const picked = new Set();
+    const existing = new Set(
+        db.prepare('SELECT rom_id FROM player_favorites WHERE player_id = ?').all(playerId).map(r => r.rom_id)
+    );
+
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    const collGames = {};
+    for (const collId of new Set(pool)) {
+        collGames[collId] = db.prepare(
+            'SELECT cg.rom_id FROM collection_games cg JOIN roms r ON r.id = cg.rom_id WHERE cg.collection_id = ? ORDER BY RANDOM() LIMIT 40'
+        ).all(collId).map(r => r.rom_id);
+    }
+
+    let attempts = 0, poolIdx = 0;
+    while (picked.size < 20 && attempts < 200) {
+        const collId = pool[poolIdx % pool.length];
+        poolIdx++; attempts++;
+        const games = collGames[collId] || [];
+        for (const romId of games) {
+            if (!picked.has(romId) && !existing.has(romId)) { picked.add(romId); break; }
+        }
+    }
+
+    const validIds = [...picked].filter(id => id != null);
+    if (validIds.length === 0) return res.json({ added: 0, total_favorites: 0 });
+
+    const insert = db.prepare('INSERT OR IGNORE INTO player_favorites (player_id, rom_id) VALUES (?, ?)');
+    db.transaction((ids) => { for (const id of ids) insert.run(playerId, id); })(validIds);
+
+    res.json({ added: validIds.length, total_favorites: db.prepare('SELECT COUNT(*) as cnt FROM player_favorites WHERE player_id = ?').get(playerId).cnt });
+  } catch (err) {
+    console.error('Starter pack error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bulk add favorites (for bulk-remove complement)
+router.post('/:id/favorites/bulk-remove', (req, res) => {
+    const db = getDB();
+    const playerId = parseInt(req.params.id);
+    const { rom_ids } = req.body;
+    if (!rom_ids || !Array.isArray(rom_ids)) return res.status(400).json({ error: 'rom_ids array required' });
+    const stmt = db.prepare('DELETE FROM player_favorites WHERE player_id = ? AND rom_id = ?');
+    db.transaction((ids) => { for (const id of ids) stmt.run(playerId, id); })(rom_ids);
+    res.json({ removed: rom_ids.length });
+});
+
 // Toggle a favorite for a player
 router.post('/:id/favorites/:romId', (req, res) => {
     const db = getDB();
@@ -427,21 +515,6 @@ router.delete('/:id', (req, res) => {
     db.prepare('DELETE FROM players WHERE id = ?').run(playerId);
 
     res.json({ deleted: true, player });
-});
-
-// Bulk remove favorites for a player
-router.post('/:id/favorites/bulk-remove', (req, res) => {
-    const db = getDB();
-    const playerId = parseInt(req.params.id);
-    const { rom_ids } = req.body;
-    if (!rom_ids || !Array.isArray(rom_ids)) return res.status(400).json({ error: 'rom_ids array required' });
-
-    const stmt = db.prepare('DELETE FROM player_favorites WHERE player_id = ? AND rom_id = ?');
-    const removeMany = db.transaction((ids) => {
-        for (const id of ids) stmt.run(playerId, id);
-    });
-    removeMany(rom_ids);
-    res.json({ removed: rom_ids.length });
 });
 
 export default router;

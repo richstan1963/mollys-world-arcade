@@ -1042,6 +1042,7 @@ function autoCategorizeCollections(db) {
         'necronomicon', 'slam tilt', 'psycho pinball', 'pinball challenge',
         'pinball of the dead', 'metroid prime pinball', 'pinball tycoon',
         'pinball advance', 'pinball party', 'pinball land', 'revenge of the gator',
+        'crue ball', 'battle pinball', 'family pinball', 'virtual pinball',
     ];
 
     const POOL_PATTERNS = [
@@ -1049,13 +1050,15 @@ function autoCategorizeCollections(db) {
         '~snooker', '~8 ball', '~8ball', '~nine ball', 'pool hustler',
         'lunch box', 'virtual pool', '~pool paradise', '~backstreet billiards',
         '~cue ball', '~chalk', 'jimmy white',
+        'championship pool', 'break time', 'lunar pool', 'pool legend',
     ];
 
     const BOWLING_PATTERNS = [
         'bowling', 'brunswick', 'big strike', 'strata bowl',
         'league bowling', 'nester\'s funky', 'virtual bowling',
         '~ten pin', '~tenpin', 'my bowling', 'super bowling',
-        'championship bowling',
+        'championship bowling', 'boogie woogie bowling', 'perfect bowling',
+        '10-pin bowling',
     ];
 
     const ODDITIES_PATTERNS = [
