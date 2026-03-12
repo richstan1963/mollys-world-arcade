@@ -51,7 +51,7 @@ window.FavoritesView = {
         raya: {
             hero_bg:  '/img/characters/raya/raya-hero.jpg',
             avatar:   '/img/characters/raya/raya-sword.jpg',
-            portrait: '/img/characters/raya/raya-portrait.png',
+            portrait: '/img/characters/raya/raya-poster.jpg',
             scene:    '/img/characters/raya/raya-sisu-banner.jpg',
             poster:   '/img/characters/raya/raya-poster.jpg',
         },
