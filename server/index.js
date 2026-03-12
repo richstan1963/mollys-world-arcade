@@ -85,6 +85,13 @@ app.use(coopCoep);
 app.use(express.json({ limit: '1mb' }));
 app.use(sanitizeBody); // Strip HTML + control chars from all request bodies
 
+// HTML = no-cache (so CSS/JS version busting works instantly)
+app.use('/', (req, res, next) => {
+    if (req.path === '/' || req.path.endsWith('.html')) {
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+    next();
+});
 // Static serving (with cache headers for assets)
 app.use('/', express.static(path.join(ROOT, 'public'), staticCache));
 app.use('/data', express.static(path.join(ROOT, 'data'), staticCache));

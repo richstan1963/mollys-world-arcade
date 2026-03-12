@@ -6,6 +6,17 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════════════
+   THEMED PROFILE — Dark background so all existing white text works
+   ══════════════════════════════════════════════════════════════ */
+.player-profile.character-theme-raya,
+.player-profile.character-theme-minnie,
+.player-profile.character-theme-elf {
+    background: linear-gradient(180deg, rgba(15,15,25,0.97) 0%, rgba(20,18,30,0.95) 100%);
+    border-radius: 24px;
+    padding: 24px;
+}
+
+/* ══════════════════════════════════════════════════════════════
    CINEMATIC HERO — shared structure for image-backed heroes
    ══════════════════════════════════════════════════════════════ */
 .pp-hero-cinematic {
@@ -107,9 +118,17 @@
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    object-position: center 20%;  /* Show face/eyes, not cropped at top */
+    object-position: center 25%;  /* Default: show face area */
 }
 .pp-avatar-emoji { font-size: 56px; }
+
+/* Per-character avatar + scene face framing — both eyes visible */
+.character-theme-raya .pp-avatar-img   { object-position: center 15%; }
+.character-theme-minnie .pp-avatar-img { object-position: center 30%; }
+.character-theme-elf .pp-avatar-img    { object-position: center 20%; }
+.character-theme-raya .pp-scene-banner img   { object-position: center 40%; }
+.character-theme-minnie .pp-scene-banner img { object-position: center 25%; }
+.character-theme-elf .pp-scene-banner img    { object-position: center 30%; }
 
 /* ── Scene banner between sections ──────────────────────────── */
 .pp-scene-banner {
@@ -145,8 +164,8 @@
     flex-direction: column;
     gap: 14px;
     padding: 24px;
-    background: rgba(0,0,0,0.04);
-    border: 1px solid rgba(0,0,0,0.08);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
     border-radius: 16px;
     margin-bottom: 28px;
 }
@@ -160,7 +179,7 @@
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    color: rgba(0,0,0,0.7);
+    color: rgba(255,255,255,0.85);
     white-space: nowrap;
 }
 .pp-power-icon {
@@ -168,11 +187,11 @@
 }
 .pp-power-bar-wrap {
     height: 28px;
-    background: rgba(0,0,0,0.06);
+    background: rgba(255,255,255,0.06);
     border-radius: 14px;
     overflow: hidden;
     position: relative;
-    border: 1px solid rgba(0,0,0,0.08);
+    border: 1px solid rgba(255,255,255,0.05);
 }
 .pp-power-bar-fill {
     height: 100%;
@@ -202,8 +221,8 @@
     font-size: 22px;
     font-weight: 900;
     text-align: right;
-    color: rgba(0,0,0,0.8);
-    text-shadow: none;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255,255,255,0.2);
 }
 
 /* ══════════════════════════════════════════════════════════════
