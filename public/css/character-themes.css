@@ -135,12 +135,31 @@
 
 /* Per-character scene banner — show face with both eyes visible */
 .character-theme-raya .pp-scene-banner img   { object-position: center 35%; }
-.character-theme-minnie .pp-scene-banner img { object-position: center 20%; }
-.character-theme-elf .pp-scene-banner img    { object-position: center 15%; }
+.character-theme-minnie .pp-scene-banner img { object-position: center 15%; }
+.character-theme-elf .pp-scene-banner img    { object-position: center 25%; transform: scale(1.8); transform-origin: center 25%; }
 
 /* Per-character portrait tweaks */
-/* Raya: tall PNG portrait — works perfectly as-is */
-/* Minnie: square image — crop to upper portion showing face, hide white bg */
+/* Raya: PNG with transparency — cover into rounded rect to hide transparent areas */
+.character-theme-raya .pp-hero-portrait {
+    overflow: hidden;
+    border-radius: 0;
+    max-width: 35%;
+    right: 0;
+    bottom: 0;
+    height: 105%;
+    background: transparent;
+}
+.character-theme-raya .pp-hero-portrait img {
+    height: 100%;
+    width: auto;
+    object-fit: contain;
+    /* Blend transparent PNG edges into the hero bg */
+    mix-blend-mode: normal;
+    filter: drop-shadow(0 4px 20px rgba(0,0,0,0.6));
+    -webkit-mask-image: linear-gradient(to left, black 60%, transparent 100%);
+    mask-image: linear-gradient(to left, black 60%, transparent 100%);
+}
+/* Minnie: square image — crop to upper portion showing face */
 .character-theme-minnie .pp-hero-portrait img {
     object-fit: cover;
     object-position: center 15%;
