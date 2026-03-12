@@ -1000,22 +1000,24 @@ function seedOriginalGames(database) {
 }
 
 function seedCollections(database) {
-    // Clear old generic collections and re-seed with themed ones
-    const existing = database.prepare('SELECT COUNT(*) as c FROM game_collections WHERE theme IS NOT NULL').get();
-    if (!existing || existing.c === 0) {
-        database.exec('DELETE FROM collection_games WHERE collection_id IN (SELECT id FROM game_collections WHERE is_system = 1)');
-        database.exec('DELETE FROM game_collections WHERE is_system = 1');
-    }
+    // Always wipe system collections and re-seed fresh
+    database.exec('DELETE FROM collection_games WHERE collection_id IN (SELECT id FROM game_collections WHERE is_system = 1)');
+    database.exec('DELETE FROM game_collections WHERE is_system = 1');
 
-    const insert = database.prepare('INSERT OR IGNORE INTO game_collections (id, name, description, icon, color, theme, is_system, sort_order) VALUES (?, ?, ?, ?, ?, ?, 1, ?)');
+    const insert = database.prepare('INSERT INTO game_collections (id, name, description, icon, color, theme, is_system, sort_order) VALUES (?, ?, ?, ?, ?, ?, 1, ?)');
     const collections = [
-        [1, 'Pinball Parlor',    'Step into the neon-lit parlor — every bumper, every flipper, every high score', '🎯', '#ffba00', 'pinball',  1],
-        [2, 'Pool Hall',         'Rack \'em up — billiards, pool, and cue sports under warm lights',             '🎱', '#1a4d2e', 'pool',     2],
-        [3, 'Bowling Alley',     'Lace up those shoes — strikes, spares, and gutter balls await',                '🎳', '#d4a857', 'bowling',  3],
-        [4, 'Arcade Oddities',   'The weird, the wild, and the wonderful — games that defy genre',               '🎪', '#ff6b9d', 'oddities', 4],
-        [5, 'Puzzle Arcade',     'Block by block, piece by piece — the greatest puzzle games ever made',          '🧩', '#06b6d4', 'puzzle',   5],
-        [6, 'Racing Pit',        'Engines roar, tires screech — from F-Zero to OutRun and beyond',               '🏎️', '#84cc16', 'racing',   6],
-        [7, 'Sports Bar',        'Pull up a stool — boxing, wrestling, golf, baseball, and more',                '🏟️', '#f97316', 'sports',   7],
+        [1,  'Retro Arcade',      'The full library — every ROM, every system, every era',                         '🕹️', '#a855f7', 'retro',      1],
+        [2,  'Pinball Parlor',    'Step into the neon-lit parlor — every bumper, every flipper, every high score', '🔮', '#ffba00', 'pinball',    2],
+        [3,  'Pool Hall',         'Rack \'em up — billiards, pool, and cue sports under warm lights',             '🎱', '#1a4d2e', 'pool',       3],
+        [4,  'Bowling Alley',     'Lace up those shoes — strikes, spares, and gutter balls await',                '🎳', '#d4a857', 'bowling',    4],
+        [5,  'Arcade Oddities',   'The weird, the wild, and the wonderful — games that defy genre',               '🎪', '#ff6b9d', 'oddities',   5],
+        [6,  'Puzzle Arcade',     'Block by block, piece by piece — the greatest puzzle games ever made',          '🧩', '#06b6d4', 'puzzle',     6],
+        [7,  'Racing Pit',        'Engines roar, tires screech — from F-Zero to OutRun and beyond',               '🏎️', '#84cc16', 'racing',     7],
+        [8,  'Sports Bar',        'Pull up a stool — boxing, wrestling, golf, baseball, and more',                '🏟️', '#f97316', 'sports',     8],
+        [9,  'Fighter\'s Ring',   'Round 1 — FIGHT! Street brawls, martial arts, and arena combat',              '🥊', '#ef4444', 'fighters',   9],
+        [10, 'Platform City',     'Run, jump, stomp — side-scrollers and platforming legends',                    '🍄', '#22c55e', 'platformers',10],
+        [11, 'Shoot \'Em Up',     'Bullet hell, space invaders, and trigger-happy action',                        '🚀', '#3b82f6', 'shmups',    11],
+        [12, 'Quest Log',         'Epic adventures, dungeon crawls, and legendary RPG journeys',                  '⚔️',  '#8b5cf6', 'adventure', 12],
     ];
     const tx = database.transaction(() => { for (const c of collections) insert.run(...c); });
     tx();
@@ -1036,17 +1038,24 @@ function autoCategorizeCollections(db) {
         'mario pinball', 'super pinball', 'jaki crush', 'dragon\'s fury',
         'dragon\'s revenge', 'dino land', 'pinball quest', 'pin bot', 'pin*bot',
         'high speed', 'rock \'n\' ball', 'rollerball', 'pinball action',
+        'flipper', 'time scanner', 'pinball dreams', 'last gladiators',
+        'necronomicon', 'slam tilt', 'psycho pinball', 'pinball challenge',
+        'pinball of the dead', 'metroid prime pinball', 'pinball tycoon',
+        'pinball advance', 'pinball party', 'pinball land', 'revenge of the gator',
     ];
 
     const POOL_PATTERNS = [
         'side pocket', '~billiard', 'minnesota fats', 'pocket gal',
         '~snooker', '~8 ball', '~8ball', '~nine ball', 'pool hustler',
-        'lunch box', 'virtual pool',
+        'lunch box', 'virtual pool', '~pool paradise', '~backstreet billiards',
+        '~cue ball', '~chalk', 'jimmy white',
     ];
 
     const BOWLING_PATTERNS = [
         'bowling', 'brunswick', 'big strike', 'strata bowl',
-        'league bowling', 'nester\'s funky',
+        'league bowling', 'nester\'s funky', 'virtual bowling',
+        '~ten pin', '~tenpin', 'my bowling', 'super bowling',
+        'championship bowling',
     ];
 
     const ODDITIES_PATTERNS = [
@@ -1059,6 +1068,10 @@ function autoCategorizeCollections(db) {
         'elevator action', 'ice climber', 'balloon fight', 'lode runner',
         'mappy', 'mr. do', 'mr do', 'robotron', 'sinistar', 'berzerk',
         'spy hunter', 'defender', 'tempest', 'asteroids', 'missile command',
+        'dance dance', 'beatmania', 'parappa', 'gitaroo', 'taiko',
+        'seaman', 'warioware', 'wario ware', 'cooking mama', 'brain age',
+        'electroplankton', 'chibi-robo', 'katamari', 'pikmin',
+        'animal crossing', 'harvest moon', 'crazy taxi', 'space channel',
     ];
 
     const PUZZLE_PATTERNS = [
@@ -1092,6 +1105,64 @@ function autoCategorizeCollections(db) {
         'track & field', 'track and field', 'decathlon', 'volleyball',
         'pro wrestling', 'fire pro', 'slam masters', 'ring king',
         'super spike', 'kings of the beach', 'arch rival',
+    ];
+
+    const FIGHTERS_PATTERNS = [
+        'street fighter', 'mortal kombat', 'fatal fury', 'king of fighters',
+        'art of fighting', 'samurai shodown', 'samurai spirits', 'tekken',
+        'soul calibur', 'soulcalibur', 'virtua fighter', 'darkstalkers',
+        'killer instinct', 'primal rage', 'world heroes', 'power instinct',
+        'guilty gear', 'blazblue', 'marvel vs', 'capcom vs', 'x-men vs',
+        'final fight', 'streets of rage', 'double dragon', 'golden axe',
+        'river city', 'kunio', 'teenage mutant ninja', 'tmnt', 'battletoads',
+        'captain commando', 'cadillacs and dinosaurs', 'knights of the round',
+        'warriors of fate', 'the punisher', 'alien vs predator',
+        'fighting', 'fighter', 'battle arena', 'clay fighter', 'clayfighter',
+        'last blade', 'garou', 'real bout', 'waku waku',
+    ];
+
+    const PLATFORMER_PATTERNS = [
+        'mario', 'sonic', 'mega man', 'megaman', 'castlevania', 'metroid',
+        'donkey kong', 'kirby', 'rayman', 'crash bandicoot', 'spyro',
+        'earthworm jim', 'jak and', 'ratchet', 'banjo', 'conker',
+        'yoshi', 'wario land', 'klonoa', 'ape escape', 'little samson',
+        'adventure island', 'bonk', 'kid icarus', 'ghosts \'n goblins',
+        'ghouls \'n ghosts', 'super ghouls', 'contra', 'metal slug',
+        'shinobi', 'ninja gaiden', 'strider', 'bionic commando',
+        'vectorman', 'ristar', 'sparkster', 'rocket knight',
+        'aladdin', 'lion king', 'duck tales', 'ducktales', 'chip \'n dale',
+        'shovel knight', 'celeste', 'hollow knight', 'ori ',
+        'wonder boy', 'alex kidd', 'bubsy', 'jazz jackrabbit',
+    ];
+
+    const SHMUP_PATTERNS = [
+        'gradius', 'r-type', 'r type', 'darius', 'thunder force',
+        'blazing star', 'pulstar', 'ikaruga', 'radiant silvergun',
+        'dodonpachi', 'donpachi', 'batsugun', 'esp ra.de', 'mushihime',
+        'deathsmiles', 'progear', 'giga wing', 'strikers 1945',
+        'aero fighters', 'raiden', 'xevious', 'galaga', 'galaxian',
+        '1942', '1943', '1941', '19xx', 'carrier air wing',
+        'space invaders', 'phoenix', 'zanac', 'gun.smoke', 'gunsmoke',
+        'truxton', 'twin cobra', 'toaplan', 'lifeforce', 'salamander',
+        'parodius', 'twinbee', 'fantasy zone', 'star soldier',
+        'soldier blade', 'super star soldier', 'gate of thunder',
+        'lords of thunder', 'axelay', 'macross', 'musha',
+        'shoot', 'shooter', 'gunbird', 'sonic wings',
+    ];
+
+    const ADVENTURE_PATTERNS = [
+        'zelda', 'final fantasy', 'chrono trigger', 'chrono cross',
+        'dragon quest', 'dragon warrior', 'earthbound', 'mother',
+        'secret of mana', 'seiken densetsu', 'breath of fire',
+        'phantasy star', 'shining force', 'shining in',
+        'lufia', 'illusion of gaia', 'terranigma', 'soul blazer',
+        'secret of evermore', 'tales of', 'star ocean',
+        'suikoden', 'wild arms', 'grandia', 'lunar',
+        'xenogears', 'vagrant story', 'valkyrie profile',
+        'fire emblem', 'advance wars', 'ogre battle', 'tactics ogre',
+        'final fantasy tactics', 'mario rpg', 'paper mario',
+        'pokemon', 'golden sun', 'kingdom hearts',
+        'mana', 'quest', 'rpg', 'adventure',
     ];
 
     // Fetch all ROMs once
@@ -1132,16 +1203,28 @@ function autoCategorizeCollections(db) {
     };
 
     const tx = db.transaction(() => {
-        matchAndInsert(1, PINBALL_PATTERNS);
-        matchAndInsert(2, POOL_PATTERNS);
-        matchAndInsert(3, BOWLING_PATTERNS);
-        matchAndInsert(4, ODDITIES_PATTERNS);
-        matchAndInsert(5, PUZZLE_PATTERNS);
-        matchByGenre(5, ['Puzzle']);
-        matchAndInsert(6, RACING_PATTERNS);
-        matchByGenre(6, ['Racing']);
-        matchAndInsert(7, SPORTS_PATTERNS);
-        matchByGenre(7, ['Sports', 'Boxing', 'Wrestling']);
+        // 1 = Retro Arcade — ALL roms
+        for (const rom of allRoms) insertGame.run(1, rom.id);
+        matchAndInsert(2, PINBALL_PATTERNS);
+        matchByGenre(2, ['Pinball']);
+        matchAndInsert(3, POOL_PATTERNS);
+        matchAndInsert(4, BOWLING_PATTERNS);
+        matchAndInsert(5, ODDITIES_PATTERNS);
+        matchByGenre(5, ['Weird & Wonderful', 'Simulation', 'Card Game', 'Light Gun', 'Party', 'Rhythm']);
+        matchAndInsert(6, PUZZLE_PATTERNS);
+        matchByGenre(6, ['Puzzle']);
+        matchAndInsert(7, RACING_PATTERNS);
+        matchByGenre(7, ['Racing']);
+        matchAndInsert(8, SPORTS_PATTERNS);
+        matchByGenre(8, ['Sports', 'Boxing', 'Wrestling']);
+        matchAndInsert(9, FIGHTERS_PATTERNS);
+        matchByGenre(9, ['Fighting', 'Beat em Up', 'Beat \'Em Up', 'Beat-Em-Up']);
+        matchAndInsert(10, PLATFORMER_PATTERNS);
+        matchByGenre(10, ['Platform', 'Platformer']);
+        matchAndInsert(11, SHMUP_PATTERNS);
+        matchByGenre(11, ['Shooter', 'Shoot-Em-Up', 'Shoot \'Em Up', 'FPS']);
+        matchAndInsert(12, ADVENTURE_PATTERNS);
+        matchByGenre(12, ['RPG', 'Role-Playing', 'Adventure', 'Action RPG', 'Strategy RPG', 'Strategy', 'Stealth', 'Survival Horror']);
     });
     tx();
 }

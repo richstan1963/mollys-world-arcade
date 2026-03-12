@@ -12,43 +12,39 @@ window.CollectionsView = {
             const themed = collections.filter(c => c.is_system && c.theme);
             const custom = collections.filter(c => !c.is_system);
 
-            let html = `<div class="collections-hero">
-                <div class="collections-hero-text">
-                    <h1 class="collections-title">🎰 The Arcade</h1>
-                    <p class="collections-subtitle">Step inside — every corner has its own vibe</p>
+            let html = `
+                <div class="page-header" style="text-align:center;">
+                    <h1 class="page-title">🎰 The Arcade</h1>
+                    <p class="page-subtitle">Step inside — every corner has its own vibe</p>
                 </div>
-            </div>
-            <div class="collections-grid">`;
+                <div class="coll-overview-grid">`;
 
             for (const c of themed) {
                 const theme = c.theme || 'default';
                 const count = c.game_count || 0;
                 html += `
-                    <div class="collection-card collection-theme-${theme}" onclick="Router.navigate('/collections/${c.id}')">
-                        <div class="collection-card-glow"></div>
-                        <div class="collection-card-icon">${c.icon || '🎮'}</div>
-                        <div class="collection-card-body">
-                            <h3 class="collection-card-name">${H.escHtml(c.name)}</h3>
-                            <p class="collection-card-desc">${H.escHtml(c.description || '')}</p>
-                            <div class="collection-card-count">${count} game${count !== 1 ? 's' : ''}</div>
+                    <div class="coll-overview-card coll-theme-${theme}" onclick="Router.navigate('/collections/${c.id}')">
+                        <div class="coll-overview-accent"></div>
+                        <div class="coll-overview-top">
+                            <span class="coll-overview-icon">${c.icon || '🎮'}</span>
+                            <span class="coll-overview-count">${count}</span>
                         </div>
+                        <h3 class="coll-overview-name">${H.escHtml(c.name)}</h3>
+                        <p class="coll-overview-desc">${H.escHtml(c.description || '')}</p>
                     </div>`;
             }
             html += '</div>';
 
-            // Custom user collections (if any)
             if (custom.length > 0) {
                 html += `<div class="section-header" style="margin-top:32px;">
                     <span class="section-title">📁 My Collections</span>
-                </div><div class="collections-grid collections-grid-sm">`;
+                </div><div class="coll-overview-grid coll-overview-sm">`;
                 for (const c of custom) {
                     html += `
-                        <div class="collection-card collection-theme-default" onclick="CollectionsView.renderDetail(${c.id})" style="--coll-accent:${c.color || '#A855F7'}">
-                            <div class="collection-card-icon">${c.icon || '🎮'}</div>
-                            <div class="collection-card-body">
-                                <h3 class="collection-card-name">${H.escHtml(c.name)}</h3>
-                                <div class="collection-card-count">${c.game_count || 0} games</div>
-                            </div>
+                        <div class="coll-overview-card coll-theme-default" onclick="Router.navigate('/collections/${c.id}')" style="--coll-accent:${c.color || '#A855F7'}">
+                            <span class="coll-overview-icon">${c.icon || '🎮'}</span>
+                            <h3 class="coll-overview-name">${H.escHtml(c.name)}</h3>
+                            <span class="coll-overview-count">${c.game_count || 0} games</span>
                         </div>`;
                 }
                 html += '</div>';
@@ -78,28 +74,27 @@ window.CollectionsView = {
         const games = data.games || [];
         const sort = this.currentSort;
 
-        let html = `<div class="collection-detail collection-theme-${theme}">
-            <div class="collection-detail-hero">
-                <button class="btn btn-ghost collection-back" onclick="Router.navigate('/collections')">← Back</button>
-                <div class="collection-detail-icon">${data.icon || '🎮'}</div>
-                <h1 class="collection-detail-name">${H.escHtml(data.name)}</h1>
-                <p class="collection-detail-desc">${H.escHtml(data.description || '')}</p>
-                <div class="collection-detail-stats">${games.length} game${games.length !== 1 ? 's' : ''}</div>
+        let html = `
+            <div class="coll-detail-header coll-theme-${theme}">
+                <button class="btn btn-ghost" onclick="Router.navigate('/collections')" style="position:absolute;left:12px;top:12px;font-size:0.85rem;">← Back</button>
+                <span class="coll-detail-icon">${data.icon || '🎮'}</span>
+                <h1 class="coll-detail-title">${H.escHtml(data.name)}</h1>
+                <p class="coll-detail-desc">${H.escHtml(data.description || '')}</p>
+                <span class="coll-detail-count">${games.length} game${games.length !== 1 ? 's' : ''}</span>
             </div>
 
-            <div class="collection-sort-bar">
-                <span class="collection-sort-label">Sort:</span>
+            <div class="coll-sort-bar">
+                <span class="coll-sort-label">SORT:</span>
                 ${['name', 'system', 'most_played', 'favorites', 'newest'].map(s =>
-                    `<button class="collection-sort-btn ${sort === s ? 'active' : ''}" onclick="CollectionsView._changeSort(${data.id}, '${s}')">${
+                    `<button class="coll-sort-btn${sort === s ? ' active' : ''} coll-theme-${theme}" onclick="CollectionsView._changeSort(${data.id}, '${s}')">${
                         {name:'A-Z', system:'System', most_played:'Most Played', favorites:'Favorites', newest:'Newest'}[s]
                     }</button>`
                 ).join('')}
             </div>`;
 
         if (games.length > 0) {
-            html += '<div class="game-grid collection-game-grid">';
+            html += '<div class="game-grid">';
             for (const g of games) {
-                // Adapt fields for GameCard
                 const cardData = { ...g, id: g.id || g.rom_id };
                 html += typeof GameCard !== 'undefined' ? GameCard.render(cardData) : `
                     <div class="game-card" onclick="Router.navigate('/game/${cardData.id}')">
@@ -119,7 +114,6 @@ window.CollectionsView = {
                 <h3>No Games Yet</h3><p>Games matching this collection will appear once they're in your library.</p></div>`;
         }
 
-        html += '</div>';
         app.innerHTML = html;
     },
 

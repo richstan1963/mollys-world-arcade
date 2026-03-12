@@ -26,11 +26,7 @@
     font-size: 11px; color: #888; letter-spacing: 3px;
     text-transform: uppercase; margin: 2px 0 0;
 }
-.rs-header-nav {
-    display: flex; gap: 24px; font-size: 13px; color: #aaa;
-}
-.rs-header-nav span { cursor: pointer; transition: color .2s; }
-.rs-header-nav span:hover { color: #fff; }
+
 
 /* ── Intro / Filters ──────────────────────────────────── */
 .rs-intro { padding: 40px 32px 24px; }
@@ -204,7 +200,6 @@
     .rs-intro { padding: 24px 16px 16px; }
     .rs-intro-title { font-size: 28px; }
     .rs-header { padding: 16px; flex-wrap: wrap; }
-    .rs-header-nav { display: none; }
 }
 @media (max-width: 480px) {
     .rs-card-name { font-size: 22px; }

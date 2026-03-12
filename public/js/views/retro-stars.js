@@ -37,9 +37,6 @@ window.RetroStarsView = {
                     <h1 class="rs-title">RETRO STARS</h1>
                     <p class="rs-subtitle">CLASSIC GAME ICONS · SPOTLIGHT ARCHIVE</p>
                 </div>
-                <nav class="rs-header-nav">
-                    <span>Stars</span><span>Franchises</span><span>Legend Status</span><span>About</span>
-                </nav>
             </header>
 
             <section class="rs-intro">

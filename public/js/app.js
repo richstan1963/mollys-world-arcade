@@ -88,7 +88,7 @@ window.arcade = {
         // V2: Initialize Arcade Engine (XP, achievements, attract mode)
         if (window.ArcadeEngine) ArcadeEngine.init();
 
-        // V8: Initialize Cabinet Mode + Operator Menu
+        // V8: Cabinet mode removed — clear any lingering state
         if (window.CabinetMode) CabinetMode.init();
 
         // V5: Initialize notifications if active player exists

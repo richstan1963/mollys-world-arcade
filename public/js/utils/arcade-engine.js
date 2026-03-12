@@ -244,7 +244,15 @@ window.ArcadeEngine = (() => {
         overlay.innerHTML = `
             <div class="attract-content">
                 <div class="attract-marquee">🕹️ ${(() => { const p = getActivePlayer(); if (!p) return 'YOUR WORLD ARCADE'; const n = p.name.toUpperCase(); return (n.endsWith('S') ? n + "'" : n + "'S") + ' WORLD ARCADE'; })()} 🕹️</div>
-                <div class="attract-artwork" id="attractArtwork"></div>
+                <div class="attract-timer-ring" id="attractTimerRing">
+                    <svg viewBox="0 0 120 120" class="attract-ring-svg">
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4"/>
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="#a855f7" stroke-width="4" id="attractRingFill"
+                            stroke-dasharray="${2 * Math.PI * 52}" stroke-dashoffset="0"
+                            stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                    </svg>
+                    <div class="attract-timer-num" id="attractTimerNum">15</div>
+                </div>
                 <div class="attract-trivia" id="attractTrivia">
                     <div class="trivia-question" id="triviaQ"></div>
                     <div class="trivia-options" id="triviaOpts"></div>
@@ -308,6 +316,8 @@ window.ArcadeEngine = (() => {
 
                         // Reset timer — show answer for 8 seconds then advance
                         clearTimeout(triviaTimer);
+                        clearInterval(countdownInterval);
+                        startCountdown(8);
                         triviaTimer = setTimeout(() => { triviaIdx++; showTrivia(); scheduleNext(); }, 8000);
                     });
                 });
@@ -315,42 +325,75 @@ window.ArcadeEngine = (() => {
         }
 
         let triviaTimer;
+        const TRIVIA_INTERVAL = 15; // seconds between auto-advance
+        const circumference = 2 * Math.PI * 52;
+        const ringFill = overlay.querySelector('#attractRingFill');
+        const timerNum = overlay.querySelector('#attractTimerNum');
+        let countdownLeft = TRIVIA_INTERVAL;
+        let countdownInterval = null;
+
+        function startCountdown(seconds) {
+            countdownLeft = seconds;
+            if (timerNum) timerNum.textContent = countdownLeft;
+            if (ringFill) ringFill.style.strokeDashoffset = '0';
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                countdownLeft--;
+                if (timerNum) timerNum.textContent = Math.max(0, countdownLeft);
+                if (ringFill) {
+                    const progress = 1 - (countdownLeft / seconds);
+                    ringFill.style.strokeDashoffset = (circumference * progress).toFixed(1);
+                }
+                if (countdownLeft <= 3 && timerNum) timerNum.classList.add('attract-timer-urgent');
+                if (countdownLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    if (timerNum) timerNum.classList.remove('attract-timer-urgent');
+                }
+            }, 1000);
+        }
+
         function scheduleNext() {
             clearTimeout(triviaTimer);
-            triviaTimer = setTimeout(() => { triviaIdx++; showTrivia(); scheduleNext(); }, 15000);
+            startCountdown(TRIVIA_INTERVAL);
+            triviaTimer = setTimeout(() => { triviaIdx++; showTrivia(); scheduleNext(); }, TRIVIA_INTERVAL * 1000);
         }
         showTrivia();
         scheduleNext();
 
-        // Load random artwork
-        loadAttractArtwork(overlay.querySelector('#attractArtwork'));
-        const artInterval = setInterval(() => {
-            loadAttractArtwork(overlay.querySelector('#attractArtwork'));
-        }, 5000);
+        // Artwork removed — clean wait screen
 
         // Dismiss on any interaction
         function dismiss() {
             clearTimeout(triviaTimer);
-            clearInterval(artInterval);
+            clearInterval(countdownInterval);
             overlay.classList.remove('active');
             setTimeout(() => overlay.remove(), 500);
             attractActive = false;
             resetIdleTimer();
             document.removeEventListener('keydown', dismiss);
-            document.removeEventListener('click', dismiss);
+            document.removeEventListener('click', dismissOnClick);
             document.removeEventListener('mousemove', dismissOnMove);
-            document.removeEventListener('touchstart', dismiss);
+            document.removeEventListener('touchstart', dismissOnTouch);
         }
         let moveCount = 0;
         function dismissOnMove() {
             moveCount++;
             if (moveCount > 3) dismiss(); // need deliberate movement
         }
+        function dismissOnClick(e) {
+            // Don't dismiss if clicking trivia buttons or trivia area
+            if (e.target.closest('.trivia-btn, .attract-trivia')) return;
+            dismiss();
+        }
+        function dismissOnTouch(e) {
+            if (e.target.closest('.trivia-btn, .attract-trivia')) return;
+            dismiss();
+        }
         setTimeout(() => {
             document.addEventListener('keydown', dismiss, { once: true });
-            document.addEventListener('click', dismiss, { once: true });
+            document.addEventListener('click', dismissOnClick);
             document.addEventListener('mousemove', dismissOnMove);
-            document.addEventListener('touchstart', dismiss, { once: true });
+            document.addEventListener('touchstart', dismissOnTouch);
         }, 500);
     }
 

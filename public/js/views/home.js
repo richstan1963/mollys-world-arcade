@@ -17,7 +17,7 @@ window.HomeView = {
         `;
 
         try {
-            const [systemsData, historyData, libraryData, favData, potdData, feedData, newArrivals, genreRooms, forYouData, weekData] = await Promise.all([
+            const [systemsData, historyData, libraryData, favData, potdData, feedData, newArrivals, genreRooms, forYouData, weekData, collectionsData, originalsData] = await Promise.all([
                 API.systems(),
                 API.recentHistory(16),
                 API.library({ limit: 1 }),
@@ -28,12 +28,14 @@ window.HomeView = {
                 API.get('/api/library/genres').catch(() => []),
                 API.get('/api/recommendations/for-you?limit=16').catch(() => ({ games: [] })),
                 API.get('/api/stats/weekly').catch(() => null),
+                API.get('/api/collections').catch(() => []),
+                API.get('/api/originals').catch(() => []),
             ]);
 
             const totalRoms     = libraryData.total || 0;
             const totalSystems  = systemsData.filter(s => s.rom_count > 0).length;
             const totalFavorites = favData.total || favData.games?.length || 0;
-            const totalSessions = historyData.length;
+            const totalOriginals = Array.isArray(originalsData) ? originalsData.length : 0;
 
 
             let html = '';
@@ -61,56 +63,53 @@ window.HomeView = {
                         <p class="mollypop-hero-sub">${totalRoms.toLocaleString()} games across ${totalSystems} systems</p>
                     </div>
                     <div class="mollypop-quick-actions">
-                        <button class="quick-action-card" onclick="window.arcade.playRandomGame()">
-                            <span class="quick-action-icon" style="color:#a855f7"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></span>
-                            <span class="quick-action-label">Surprise Me</span>
-                        </button>
-                        <button class="quick-action-card" onclick="Router.navigate('#/library')">
-                            <span class="quick-action-icon" style="color:#3b82f6"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></span>
-                            <span class="quick-action-label">Library</span>
-                        </button>
-                        <button class="quick-action-card" onclick="Router.navigate('#/favorites')">
-                            <span class="quick-action-icon" style="color:#f59e0b"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>
-                            <span class="quick-action-label">Favorites</span>
-                        </button>
-                        <button class="quick-action-card" onclick="Router.navigate('#/completion')">
-                            <span class="quick-action-icon" style="color:#22d3ee"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></span>
-                            <span class="quick-action-label">Progress</span>
-                        </button>
-                        <button class="quick-action-card" onclick="Router.navigate('#/recommendations')">
-                            <span class="quick-action-icon" style="color:#f43f5e"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0012 17.5a2 2 0 002.063-2M12 2v2"/><path d="M4.6 9a8 8 0 0014.8 0"/><path d="M12 4a5 5 0 00-5 5c0 4 5 7 5 7s5-3 5-7a5 5 0 00-5-5z"/></svg></span>
-                            <span class="quick-action-label">For You</span>
-                        </button>
-                        <button class="quick-action-card" onclick="Router.navigate('#/weekly')">
-                            <span class="quick-action-icon" style="color:#4ade80"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 010-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 000-5C17 4 17 7 17 7"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 1012 0V2z"/></svg></span>
-                            <span class="quick-action-label">This Week</span>
-                        </button>
+                        ${(() => {
+                            const collections = Array.isArray(collectionsData) ? collectionsData : (collectionsData.collections || []);
+                            const themed = collections.filter(c => c.is_system && c.theme);
+                            if (themed.length > 0) {
+                                return themed.map(c => {
+                                    const href = c.theme === 'retro' ? '#/library' : '#/collections/' + c.id;
+                                    const label = c.theme === 'shmups' ? 'Shooters' : c.name.split(' ')[0];
+                                    return `<button class="quick-action-card" onclick="Router.navigate('${href}')" style="border-color:${c.color}33">
+                                        <span class="quick-action-icon">${c.icon || '🎮'}</span>
+                                        <span class="quick-action-label">${H.escHtml(label)}</span>
+                                        <span class="quick-action-count">${c.game_count || 0}</span>
+                                    </button>`;
+                                }).join('');
+                            }
+                            return `
+                                <button class="quick-action-card" onclick="window.arcade.playRandomGame()">
+                                    <span class="quick-action-icon">🎲</span>
+                                    <span class="quick-action-label">Surprise</span>
+                                </button>
+                            `;
+                        })()}
                     </div>
                 </div>
             `;
 
-            // ── Stats Row ─────────────────────────────────────────────────────────
+            // ── Stats Row (clickable navigation) ─────────────────────────────────
             html += `
                 <div class="home-stats">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" onclick="Router.navigate('#/library')">
                         <div class="stat-icon" style="color:#a855f7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="3"/><line x1="6" y1="11" x2="6" y2="11.01"/><line x1="10" y1="11" x2="10" y2="11.01"/><circle cx="17" cy="11" r="1.5"/><line x1="8" y1="18" x2="8" y2="21"/><line x1="16" y1="18" x2="16" y2="21"/></svg></div>
                         <div class="stat-value purple" data-count="${totalRoms}">0</div>
                         <div class="stat-label">Total Games</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" onclick="Router.navigate('#/systems')">
                         <div class="stat-icon" style="color:#eab308"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="14" x2="21" y2="14"/><circle cx="8" cy="9" r="1.5"/><circle cx="16" cy="9" r="1.5"/><line x1="10" y1="18" x2="14" y2="18"/></svg></div>
                         <div class="stat-value yellow" data-count="${totalSystems}">0</div>
                         <div class="stat-label">Systems</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" onclick="Router.navigate('#/favorites')">
                         <div class="stat-icon" style="color:#ec4899"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg></div>
                         <div class="stat-value pink" data-count="${totalFavorites}">0</div>
                         <div class="stat-label">Favorites</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="color:#14b8a6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></div>
-                        <div class="stat-value teal" data-count="${totalSessions}">0</div>
-                        <div class="stat-label">Sessions</div>
+                    <div class="stat-card stat-card-link" onclick="Router.navigate('#/originals')">
+                        <div class="stat-icon" style="color:#14b8a6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+                        <div class="stat-value teal" data-count="${totalOriginals}">0</div>
+                        <div class="stat-label">Originals</div>
                     </div>
 
                 </div>

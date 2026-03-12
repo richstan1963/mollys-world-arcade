@@ -1,0 +1,445 @@
+/* ═══ PLAYER SELECT SCREEN — "CHOOSE YOUR PLAYER" ═══ */
+/* Arcade cabinet style player selection after splash, before home */
+
+.player-select-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99998; /* just below splash */
+    background: var(--bg-primary, #0A0A1A);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    overflow-y: auto;
+    padding: 40px 20px 40px;
+}
+.player-select-screen.visible {
+    opacity: 1;
+}
+.player-select-screen.fade-out {
+    animation: playerSelectFadeOut 0.6s ease forwards;
+}
+
+@keyframes playerSelectFadeOut {
+    0% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+/* ── Header ── */
+.ps-header {
+    text-align: center;
+    margin-bottom: 32px;
+    animation: psSlideDown 0.6s ease 0.2s both;
+}
+
+@keyframes psSlideDown {
+    from { opacity: 0; transform: translateY(-30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ps-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 20px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 20px rgba(168, 85, 247, 0.6), 0 0 40px rgba(168, 85, 247, 0.3);
+}
+
+.ps-subtitle {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--text-muted, #888);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+/* Blinking "INSERT COIN" style prompt */
+.ps-prompt {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #fbbf24;
+    letter-spacing: 2px;
+    animation: psBlink 1.2s ease-in-out infinite;
+    margin-top: 10px;
+}
+
+@keyframes psBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+}
+
+/* ── Clan Sections ── */
+.ps-clans-container {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    max-width: 900px;
+    width: 100%;
+}
+
+.ps-clan-group {
+    animation: psClanReveal 0.5s ease both;
+}
+.ps-clan-group:nth-child(1) { animation-delay: 0.3s; }
+.ps-clan-group:nth-child(2) { animation-delay: 0.45s; }
+.ps-clan-group:nth-child(3) { animation-delay: 0.6s; }
+.ps-clan-group:nth-child(4) { animation-delay: 0.75s; }
+
+@keyframes psClanReveal {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ps-clan-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+    padding-left: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ps-clan-emoji {
+    font-size: 16px;
+}
+
+.ps-clan-name {
+    opacity: 0.7;
+}
+
+/* ── Player Cards Grid ── */
+.ps-players-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.ps-player-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 12px 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    min-width: 90px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ps-player-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+}
+
+.ps-player-card:hover {
+    transform: translateY(-4px) scale(1.04);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.ps-player-card:hover::before {
+    opacity: 1;
+}
+
+.ps-player-card:active {
+    transform: translateY(-1px) scale(0.98);
+}
+
+/* Selected state */
+.ps-player-card.selected {
+    border-color: var(--card-color, #a855f7);
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.3), 0 0 40px rgba(168, 85, 247, 0.15);
+    transform: translateY(-4px) scale(1.06);
+}
+
+.ps-player-card.selected::after {
+    content: '▶';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 10px;
+    color: var(--card-color, #a855f7);
+    animation: psArrowPulse 0.8s ease infinite;
+}
+
+@keyframes psArrowPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* ── Player Avatar ── */
+.ps-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+}
+
+.ps-player-card:hover .ps-avatar,
+.ps-player-card.selected .ps-avatar {
+    border-color: var(--card-color, #a855f7);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+}
+
+.ps-player-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── New Player Card ── */
+.ps-new-player {
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.1);
+    opacity: 0.6;
+    transition: all 0.3s ease;
+}
+
+.ps-new-player:hover {
+    opacity: 1;
+    border-color: rgba(168, 85, 247, 0.4);
+}
+
+.ps-new-player .ps-avatar {
+    font-size: 24px;
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.2);
+}
+
+/* ── New Player Input Mode ── */
+.ps-new-player-form {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    border-radius: 16px;
+    background: rgba(168, 85, 247, 0.06);
+    border: 2px solid rgba(168, 85, 247, 0.2);
+    min-width: 200px;
+    animation: psFormAppear 0.3s ease;
+}
+
+.ps-new-player-form.active {
+    display: flex;
+}
+
+@keyframes psFormAppear {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.ps-form-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: #a855f7;
+    letter-spacing: 1px;
+}
+
+.ps-name-input {
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(168, 85, 247, 0.3);
+    border-radius: 10px;
+    padding: 10px 16px;
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+    width: 180px;
+    transition: border-color 0.3s;
+}
+
+.ps-name-input:focus {
+    border-color: #a855f7;
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+}
+
+.ps-name-input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 11px;
+}
+
+.ps-form-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.ps-form-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+}
+
+.ps-form-btn-go {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(168, 85, 247, 0.3);
+}
+
+.ps-form-btn-go:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+}
+
+.ps-form-btn-cancel {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted, #888);
+}
+
+.ps-form-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+/* ── Guest / Skip ── */
+.ps-guest-btn {
+    margin-top: 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted, #888);
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 8px 20px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    animation: psClanReveal 0.5s ease 0.9s both;
+}
+
+.ps-guest-btn:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Scanline overlay on select screen ── */
+.ps-scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.08) 2px,
+        rgba(0, 0, 0, 0.08) 4px
+    );
+    z-index: 10;
+}
+
+/* ── CRT glow line at top ── */
+.ps-glow-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #a855f7, transparent);
+    opacity: 0.4;
+    animation: psGlowSweep 4s ease-in-out infinite;
+}
+
+@keyframes psGlowSweep {
+    0% { transform: translateY(0); opacity: 0.4; }
+    50% { transform: translateY(100vh); opacity: 0.1; }
+    100% { transform: translateY(0); opacity: 0.4; }
+}
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 768px) {
+    .ps-title {
+        font-size: 14px;
+        letter-spacing: 2px;
+    }
+    .ps-subtitle {
+        font-size: 9px;
+    }
+    .ps-players-row {
+        justify-content: center;
+    }
+    .ps-player-card {
+        min-width: 76px;
+        padding: 12px 8px 10px;
+    }
+    .ps-avatar {
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+    }
+    .ps-player-name {
+        font-size: 9px;
+    }
+    .ps-clan-label {
+        font-size: 9px;
+        justify-content: center;
+    }
+    .ps-clans-container {
+        align-items: center;
+    }
+    .ps-players-row {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .ps-title {
+        font-size: 11px;
+    }
+    .ps-player-card {
+        min-width: 68px;
+        padding: 10px 6px 8px;
+    }
+    .ps-avatar {
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+    }
+    .ps-player-name {
+        font-size: 8px;
+    }
+}

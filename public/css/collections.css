@@ -1,383 +1,156 @@
 /* ═══════════════════════════════════════════════════════════════════
-   GENRE COLLECTIONS — Themed Browsing (Pinball, Pool, Bowling, etc.)
+   GENRE COLLECTIONS — Clean cards with themed accent colors
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Hero Banner ───────────────────────────────────────────────── */
-.collections-hero {
-    text-align: center;
-    padding: 48px 20px 32px;
-    background: radial-gradient(ellipse at center, rgba(255,186,0,0.08) 0%, transparent 70%);
-}
-.collections-title {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 1.6rem;
-    color: var(--text);
-    margin: 0 0 8px;
-    text-shadow: 0 0 20px rgba(255,186,0,0.3);
-}
-.collections-subtitle {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    margin: 0;
-    font-style: italic;
-}
-
-/* ── Collection Card Grid (overview) ───────────────────────────── */
-.collections-grid {
+/* ── Overview Grid ─────────────────────────────────────────────── */
+.coll-overview-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
     padding: 0 20px 32px;
     max-width: 1200px;
     margin: 0 auto;
 }
-.collections-grid-sm { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.coll-overview-sm { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 
-.collection-card {
+/* ── Overview Card ─────────────────────────────────────────────── */
+.coll-overview-card {
+    --coll-accent: #A855F7;
     position: relative;
-    border-radius: 16px;
-    padding: 24px;
+    background: var(--surface, rgba(255,255,255,0.05));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 20px;
     cursor: pointer;
-    transition: transform 0.25s, box-shadow 0.25s;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
     overflow: hidden;
-    min-height: 160px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
 }
-.collection-card:hover {
-    transform: translateY(-4px) scale(1.02);
+.coll-overview-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--coll-accent);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 20px color-mix(in srgb, var(--coll-accent) 20%, transparent);
 }
-.collection-card-glow {
+.coll-overview-accent {
     position: absolute;
-    top: -50%;
-    right: -30%;
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    opacity: 0.15;
-    pointer-events: none;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--coll-accent);
+    border-radius: 12px 12px 0 0;
 }
-.collection-card-icon {
-    font-size: 2.8rem;
+.coll-overview-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 12px;
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
 }
-.collection-card-name {
+.coll-overview-icon { font-size: 2.4rem; }
+.coll-overview-count {
     font-family: 'Press Start 2P', monospace;
-    font-size: 0.85rem;
-    margin: 0 0 6px;
-    line-height: 1.4;
+    font-size: 1.4rem;
+    color: var(--coll-accent);
+    opacity: 0.9;
 }
-.collection-card-desc {
-    font-size: 0.78rem;
+.coll-overview-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.75rem;
+    color: var(--text, #fff);
     margin: 0 0 8px;
-    opacity: 0.8;
-    line-height: 1.4;
+    line-height: 1.5;
 }
-.collection-card-count {
+.coll-overview-desc {
+    font-size: 0.78rem;
+    color: var(--text-secondary, rgba(255,255,255,0.6));
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ── Detail Header ─────────────────────────────────────────────── */
+.coll-detail-header {
+    position: relative;
+    text-align: center;
+    padding: 32px 20px 20px;
+    border-bottom: 2px solid rgba(255,255,255,0.06);
+    margin-bottom: 8px;
+}
+.coll-detail-icon { font-size: 3rem; display: block; margin-bottom: 8px; }
+.coll-detail-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 1.1rem;
+    color: var(--coll-accent, var(--text));
+    margin: 0 0 8px;
+    line-height: 1.4;
+    text-shadow: 0 0 20px color-mix(in srgb, var(--coll-accent) 30%, transparent);
+}
+.coll-detail-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary, rgba(255,255,255,0.6));
+    margin: 0 0 6px;
+    font-style: italic;
+}
+.coll-detail-count {
     font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    opacity: 0.7;
-}
-
-/* ── Detail Page ───────────────────────────────────────────────── */
-.collection-detail { min-height: 100vh; }
-.collection-detail-hero {
-    text-align: center;
-    padding: 40px 20px 24px;
-    position: relative;
-}
-.collection-back {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    font-size: 0.85rem;
-}
-.collection-detail-icon { font-size: 3.5rem; margin-bottom: 12px; }
-.collection-detail-name {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 1.3rem;
-    margin: 0 0 8px;
-    line-height: 1.4;
-}
-.collection-detail-desc {
-    font-size: 0.9rem;
-    opacity: 0.8;
-    margin: 0 0 8px;
-    font-style: italic;
-}
-.collection-detail-stats {
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 1px;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 /* ── Sort Bar ──────────────────────────────────────────────────── */
-.collection-sort-bar {
+.coll-sort-bar {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 12px 20px;
-    margin: 0 auto 16px;
     max-width: 1200px;
+    margin: 0 auto;
     flex-wrap: wrap;
 }
-.collection-sort-label {
-    font-size: 0.75rem;
+.coll-sort-label {
+    font-size: 0.7rem;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
-    opacity: 0.6;
+    opacity: 0.5;
+    margin-right: 4px;
 }
-.collection-sort-btn {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.12);
-    color: var(--text-secondary);
-    padding: 6px 14px;
+.coll-sort-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-secondary, rgba(255,255,255,0.6));
+    padding: 5px 14px;
     border-radius: 20px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
 }
-.collection-sort-btn:hover { background: rgba(255,255,255,0.15); }
-.collection-sort-btn.active {
-    color: #fff;
-    border-color: var(--coll-accent, #ffba00);
-    background: var(--coll-accent, #ffba00);
-}
-.collection-game-grid {
-    padding: 0 20px 32px;
-    max-width: 1200px;
-    margin: 0 auto;
+.coll-sort-btn:hover { background: rgba(255,255,255,0.12); color: var(--text, #fff); }
+.coll-sort-btn.active {
+    background: var(--coll-accent, var(--purple, #A855F7));
+    color: #000;
+    border-color: var(--coll-accent, var(--purple, #A855F7));
+    font-weight: 700;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   THEME: PINBALL PARLOR — Dark + Neon Gold
+   PER-THEME ACCENT COLORS — just the accent, no heavy backgrounds
    ═══════════════════════════════════════════════════════════════════ */
-.collection-theme-pinball {
-    --coll-accent: #ffba00;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    color: #e8e8e8;
-    border: 1px solid rgba(255,186,0,0.2);
-    box-shadow: 0 4px 24px rgba(255,186,0,0.1), inset 0 1px 0 rgba(255,186,0,0.1);
-}
-.collection-theme-pinball:hover {
-    box-shadow: 0 8px 32px rgba(255,186,0,0.25), 0 0 40px rgba(255,186,0,0.1);
-}
-.collection-theme-pinball .collection-card-glow { background: radial-gradient(circle, #ffba00, transparent); }
-.collection-theme-pinball .collection-card-name { color: #ffba00; }
-.collection-theme-pinball .collection-card-count { color: #ffd700; }
-.collection-theme-pinball .collection-sort-btn.active { background: #ffba00; color: #1a1a2e; border-color: #ffba00; }
-
-.collection-detail.collection-theme-pinball {
-    background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 100%);
-}
-.collection-detail.collection-theme-pinball .collection-detail-hero {
-    background: radial-gradient(ellipse at center, rgba(255,186,0,0.12) 0%, transparent 70%);
-}
-.collection-detail.collection-theme-pinball .collection-detail-name {
-    color: #ffba00;
-    text-shadow: 0 0 20px rgba(255,186,0,0.4);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   THEME: POOL HALL — Dark Green Felt + Brass
-   ═══════════════════════════════════════════════════════════════════ */
-.collection-theme-pool {
-    --coll-accent: #c9a84c;
-    background: linear-gradient(135deg, #0d2818 0%, #1a4d2e 100%);
-    color: #e8dcc8;
-    border: 1px solid rgba(201,168,76,0.2);
-    box-shadow: 0 4px 24px rgba(26,77,46,0.3), inset 0 1px 0 rgba(201,168,76,0.1);
-}
-.collection-theme-pool:hover {
-    box-shadow: 0 8px 32px rgba(201,168,76,0.2), 0 0 40px rgba(26,77,46,0.2);
-}
-.collection-theme-pool .collection-card-glow { background: radial-gradient(circle, #c9a84c, transparent); }
-.collection-theme-pool .collection-card-name { color: #c9a84c; }
-.collection-theme-pool .collection-card-count { color: #d4b864; }
-.collection-theme-pool .collection-sort-btn.active { background: #1a4d2e; color: #c9a84c; border-color: #c9a84c; }
-
-.collection-detail.collection-theme-pool {
-    background: linear-gradient(180deg, #0d2818 0%, #091a10 100%);
-}
-.collection-detail.collection-theme-pool .collection-detail-hero {
-    background: radial-gradient(ellipse at center, rgba(26,77,46,0.3) 0%, transparent 70%);
-}
-.collection-detail.collection-theme-pool .collection-detail-name {
-    color: #c9a84c;
-    text-shadow: 0 0 20px rgba(201,168,76,0.3);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   THEME: BOWLING ALLEY — Polished Wood + Red
-   ═══════════════════════════════════════════════════════════════════ */
-.collection-theme-bowling {
-    --coll-accent: #ff4444;
-    background: linear-gradient(135deg, #1a1410 0%, #2d2418 100%);
-    color: #f0e6d3;
-    border: 1px solid rgba(212,168,87,0.2);
-    box-shadow: 0 4px 24px rgba(45,36,24,0.4), inset 0 1px 0 rgba(212,168,87,0.15);
-}
-.collection-theme-bowling:hover {
-    box-shadow: 0 8px 32px rgba(255,68,68,0.15), 0 0 40px rgba(212,168,87,0.1);
-}
-.collection-theme-bowling .collection-card-glow { background: radial-gradient(circle, #d4a857, transparent); }
-.collection-theme-bowling .collection-card-name { color: #d4a857; }
-.collection-theme-bowling .collection-card-count { color: #ff4444; }
-.collection-theme-bowling .collection-sort-btn.active { background: #ff4444; color: #fff; border-color: #ff4444; }
-
-.collection-detail.collection-theme-bowling {
-    background: linear-gradient(180deg, #1a1410 0%, #0f0c08 100%);
-}
-.collection-detail.collection-theme-bowling .collection-detail-hero {
-    background: radial-gradient(ellipse at center, rgba(212,168,87,0.1) 0%, transparent 70%);
-    border-bottom: 3px solid rgba(212,168,87,0.2);
-}
-.collection-detail.collection-theme-bowling .collection-detail-name {
-    color: #d4a857;
-    text-shadow: 0 0 20px rgba(212,168,87,0.3);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   THEME: ARCADE ODDITIES — Neon Carnival
-   ═══════════════════════════════════════════════════════════════════ */
-.collection-theme-oddities {
-    --coll-accent: #ff6b9d;
-    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
-    color: #ffffff;
-    border: 1px solid rgba(255,107,157,0.2);
-    box-shadow: 0 4px 24px rgba(15,15,35,0.4), inset 0 1px 0 rgba(255,107,157,0.1);
-}
-.collection-theme-oddities:hover {
-    box-shadow: 0 8px 32px rgba(255,107,157,0.2), 0 0 40px rgba(0,212,255,0.1);
-}
-.collection-theme-oddities .collection-card-glow { background: radial-gradient(circle, #00d4ff, transparent); }
-.collection-theme-oddities .collection-card-name { color: #ff6b9d; }
-.collection-theme-oddities .collection-card-count { color: #00d4ff; }
-.collection-theme-oddities .collection-sort-btn.active { background: #ff6b9d; color: #0f0f23; border-color: #ff6b9d; }
-
-.collection-detail.collection-theme-oddities {
-    background: linear-gradient(180deg, #0f0f23 0%, #080816 100%);
-}
-.collection-detail.collection-theme-oddities .collection-detail-hero {
-    background: radial-gradient(ellipse at 30% 50%, rgba(255,107,157,0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 50%, rgba(0,212,255,0.08) 0%, transparent 50%);
-}
-.collection-detail.collection-theme-oddities .collection-detail-name {
-    color: #ff6b9d;
-    text-shadow: 0 0 20px rgba(255,107,157,0.4);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   THEME: PUZZLE ARCADE — Colorful Blocks
-   ═══════════════════════════════════════════════════════════════════ */
-.collection-theme-puzzle {
-    --coll-accent: #06b6d4;
-    background: linear-gradient(135deg, #0c1929 0%, #132f4c 100%);
-    color: #e0f2fe;
-    border: 1px solid rgba(6,182,212,0.2);
-    box-shadow: 0 4px 24px rgba(6,182,212,0.1), inset 0 1px 0 rgba(6,182,212,0.1);
-}
-.collection-theme-puzzle:hover {
-    box-shadow: 0 8px 32px rgba(6,182,212,0.2), 0 0 40px rgba(6,182,212,0.1);
-}
-.collection-theme-puzzle .collection-card-glow { background: radial-gradient(circle, #06b6d4, transparent); }
-.collection-theme-puzzle .collection-card-name { color: #22d3ee; }
-.collection-theme-puzzle .collection-card-count { color: #67e8f9; }
-.collection-theme-puzzle .collection-sort-btn.active { background: #06b6d4; color: #0c1929; border-color: #06b6d4; }
-
-.collection-detail.collection-theme-puzzle {
-    background: linear-gradient(180deg, #0c1929 0%, #060e18 100%);
-}
-.collection-detail.collection-theme-puzzle .collection-detail-hero {
-    background: radial-gradient(ellipse at center, rgba(6,182,212,0.1) 0%, transparent 70%);
-}
-.collection-detail.collection-theme-puzzle .collection-detail-name {
-    color: #22d3ee;
-    text-shadow: 0 0 20px rgba(6,182,212,0.4);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   THEME: RACING PIT — Checkered Flag + Green
-   ═══════════════════════════════════════════════════════════════════ */
-.collection-theme-racing {
-    --coll-accent: #84cc16;
-    background: linear-gradient(135deg, #0f1a0a 0%, #1a2e10 100%);
-    color: #e8f5e0;
-    border: 1px solid rgba(132,204,22,0.2);
-    box-shadow: 0 4px 24px rgba(26,46,16,0.4), inset 0 1px 0 rgba(132,204,22,0.1);
-}
-.collection-theme-racing:hover {
-    box-shadow: 0 8px 32px rgba(132,204,22,0.2), 0 0 40px rgba(132,204,22,0.1);
-}
-.collection-theme-racing .collection-card-glow { background: radial-gradient(circle, #84cc16, transparent); }
-.collection-theme-racing .collection-card-name { color: #a3e635; }
-.collection-theme-racing .collection-card-count { color: #bef264; }
-.collection-theme-racing .collection-sort-btn.active { background: #84cc16; color: #0f1a0a; border-color: #84cc16; }
-
-.collection-detail.collection-theme-racing {
-    background: linear-gradient(180deg, #0f1a0a 0%, #080e05 100%);
-}
-.collection-detail.collection-theme-racing .collection-detail-hero {
-    background: radial-gradient(ellipse at center, rgba(132,204,22,0.1) 0%, transparent 70%);
-}
-.collection-detail.collection-theme-racing .collection-detail-name {
-    color: #a3e635;
-    text-shadow: 0 0 20px rgba(132,204,22,0.4);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   THEME: SPORTS BAR — Warm Wood + Orange
-   ═══════════════════════════════════════════════════════════════════ */
-.collection-theme-sports {
-    --coll-accent: #f97316;
-    background: linear-gradient(135deg, #1a1008 0%, #2d1e0e 100%);
-    color: #fde8cd;
-    border: 1px solid rgba(249,115,22,0.2);
-    box-shadow: 0 4px 24px rgba(45,30,14,0.4), inset 0 1px 0 rgba(249,115,22,0.1);
-}
-.collection-theme-sports:hover {
-    box-shadow: 0 8px 32px rgba(249,115,22,0.2), 0 0 40px rgba(249,115,22,0.1);
-}
-.collection-theme-sports .collection-card-glow { background: radial-gradient(circle, #f97316, transparent); }
-.collection-theme-sports .collection-card-name { color: #fb923c; }
-.collection-theme-sports .collection-card-count { color: #fdba74; }
-.collection-theme-sports .collection-sort-btn.active { background: #f97316; color: #1a1008; border-color: #f97316; }
-
-.collection-detail.collection-theme-sports {
-    background: linear-gradient(180deg, #1a1008 0%, #0e0904 100%);
-}
-.collection-detail.collection-theme-sports .collection-detail-hero {
-    background: radial-gradient(ellipse at center, rgba(249,115,22,0.1) 0%, transparent 70%);
-}
-.collection-detail.collection-theme-sports .collection-detail-name {
-    color: #fb923c;
-    text-shadow: 0 0 20px rgba(249,115,22,0.4);
-}
-
-/* ── Default theme (user-created collections) ──────────────────── */
-.collection-theme-default {
-    --coll-accent: var(--coll-color, #A855F7);
-    background: var(--surface, #1e1e2e);
-    color: var(--text, #e8e8e8);
-    border: 1px solid rgba(168,85,247,0.2);
-}
+.coll-theme-pinball  { --coll-accent: #ffba00; }
+.coll-theme-pool     { --coll-accent: #4ade80; }
+.coll-theme-bowling  { --coll-accent: #f87171; }
+.coll-theme-oddities { --coll-accent: #ff6bcd; }
+.coll-theme-puzzle   { --coll-accent: #22d3ee; }
+.coll-theme-racing   { --coll-accent: #a3e635; }
+.coll-theme-sports   { --coll-accent: #fb923c; }
+.coll-theme-default  { --coll-accent: #A855F7; }
 
 /* ── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-    .collections-grid { grid-template-columns: 1fr; gap: 12px; padding: 0 12px 24px; }
-    .collections-title { font-size: 1.1rem; }
-    .collection-card { min-height: 120px; padding: 16px; }
-    .collection-card-icon { font-size: 2rem; }
-    .collection-card-name { font-size: 0.72rem; }
-    .collection-detail-name { font-size: 1rem; }
-    .collection-sort-bar { padding: 8px 12px; }
-    .collection-game-grid { padding: 0 12px 24px; }
+    .coll-overview-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 0 12px 20px; }
+    .coll-overview-card { padding: 14px; }
+    .coll-overview-icon { font-size: 1.8rem; }
+    .coll-overview-count { font-size: 1rem; }
+    .coll-overview-name { font-size: 0.65rem; }
+    .coll-overview-desc { display: none; }
+    .coll-detail-title { font-size: 0.9rem; }
+    .coll-sort-bar { padding: 8px 12px; }
 }

@@ -40,7 +40,7 @@ window.SystemsView = {
         const color = s.color || '#7B2D8E';
         return `
             <div class="system-card">
-                <div class="system-icon" style="background:${color}15;color:${color}">
+                <div class="system-icon">
                     <img src="${H.systemImg(s.id)}" alt="${H.escHtml(s.name)}" loading="lazy"
                          onerror="this.style.display='none';this.nextElementSibling.style.display=''"
                          class="system-photo">

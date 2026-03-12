@@ -11,17 +11,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Cinzel:wght@400;500;600;700;800;900&family=Cinzel+Decorative:wght@400;700;900&family=Russo+One&family=Bangers&family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&family=Righteous&family=Share+Tech+Mono&family=Oswald:wght@400;500;600;700&family=Zen+Dots&family=Merriweather:wght@400;700;900&family=EB+Garamond:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/arcade.css?v=26">
-    <link rel="stylesheet" href="/css/themes.css?v=26">
-    <link rel="stylesheet" href="/css/command-center.css?v=26">
-    <link rel="stylesheet" href="/css/originals.css?v=26">
-    <link rel="stylesheet" href="/css/clan-battles.css?v=26">
-    <link rel="stylesheet" href="/css/pro-features.css?v=26">
-    <link rel="stylesheet" href="/css/intel-hub.css?v=26">
-    <link rel="stylesheet" href="/css/character-themes.css?v=1">
-    <link rel="stylesheet" href="/css/arcade-gallery.css?v=1">
-    <link rel="stylesheet" href="/css/collections.css?v=1">
-    <link rel="stylesheet" href="/css/retro-stars.css?v=1">
+    <link rel="stylesheet" href="/css/arcade.css?v=38">
+    <link rel="stylesheet" href="/css/themes.css?v=38">
+    <link rel="stylesheet" href="/css/command-center.css?v=38">
+    <link rel="stylesheet" href="/css/originals.css?v=38">
+    <link rel="stylesheet" href="/css/clan-battles.css?v=38">
+    <link rel="stylesheet" href="/css/pro-features.css?v=38">
+    <link rel="stylesheet" href="/css/intel-hub.css?v=38">
+    <link rel="stylesheet" href="/css/character-themes.css?v=38">
+    <link rel="stylesheet" href="/css/arcade-gallery.css?v=38">
+    <link rel="stylesheet" href="/css/collections.css?v=38">
+    <link rel="stylesheet" href="/css/retro-stars.css?v=38">
+    <link rel="stylesheet" href="/css/player-select.css?v=38">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
@@ -51,6 +52,7 @@
     </script>
 </head>
 <body>
+    <script>/* Kill cabinet mode immediately before any CSS applies */localStorage.removeItem('cabinet_mode');document.body.classList.remove('cabinet-mode');</script>
     <!-- ══ Startup Splash Screen (personalized per player) ══ -->
     <div id="splashScreen" class="splash-screen">
         <canvas id="staticCanvas" class="splash-static"></canvas>
@@ -72,6 +74,22 @@
         </div>
         <div class="splash-scanlines"></div>
     </div>
+
+    <!-- ══ Player Select Screen — "CHOOSE YOUR PLAYER" ══ -->
+    <div id="playerSelectScreen" class="player-select-screen" style="display:none;">
+        <div class="ps-glow-line"></div>
+        <div class="ps-header">
+            <div class="ps-title">🕹️ Choose Your Player 🕹️</div>
+            <div class="ps-subtitle">Select a profile to personalize your arcade</div>
+            <div class="ps-prompt">— PRESS START —</div>
+        </div>
+        <div class="ps-clans-container" id="psClansContainer">
+            <!-- Populated by JS -->
+        </div>
+        <button class="ps-guest-btn" id="psGuestBtn">CONTINUE AS GUEST →</button>
+        <div class="ps-scanlines"></div>
+    </div>
+
     <!-- Personalize splash from saved prefs -->
     <script>
     (function() {
@@ -158,7 +176,7 @@
         <div class="sidebar-header">
             <div class="logo">
                 <span class="logo-icon">🕹️</span>
-                <span class="logo-text"><span id="logoWorldName">Your World</span><br><span class="logo-sub">ARCADE</span></span>
+                <span class="logo-text"><span id="logoWorldName">Your World</span><br><span class="logo-sub">ARCADE</span> <span class="logo-version">v8.2</span></span>
             </div>
         </div>
         <div class="nav-links">
@@ -228,7 +246,6 @@
             <a href="#/retro-stars" class="nav-link" data-view="retro-stars">
                 <span class="nav-icon">⭐</span><span class="nav-label">Retro Stars</span>
             </a>
-
             <div class="nav-section-label">Social</div>
             <a href="#/social" class="nav-link" data-view="social">
                 <span class="nav-icon">👥</span><span class="nav-label">Player Hub</span>
@@ -271,6 +288,9 @@
             </a>
             <a href="#/settings" class="nav-link" data-view="settings">
                 <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+            </a>
+            <a href="javascript:void(0)" class="nav-link" onclick="window.showPlayerSelect && window.showPlayerSelect()">
+                <span class="nav-icon">👤</span><span class="nav-label">Switch Player</span>
             </a>
         </div>
         <!-- V2: Sidebar XP Bar -->
@@ -348,10 +368,6 @@
             <div class="scan-btn" id="scanBtn" onclick="window.arcade.startScan()">
                 <span class="nav-icon">🔍</span><span class="nav-label">Scan ROMs</span>
             </div>
-            <!-- V8: Cabinet mode toggle -->
-            <button class="cabinet-sidebar-btn" onclick="CabinetMode.toggle()" title="Toggle Cabinet Mode (Ctrl+K)">
-                <span>🕹️</span><span>Cabinet Mode</span>
-            </button>
             <div class="sidebar-stats" id="sidebarStats"></div>
         </div>
     </nav>
@@ -390,113 +406,78 @@
         </div>
     </div>
 
-    <!-- ── V8: Cabinet Mode UI ──────────────────────────────────────── -->
-    <!-- Marquee banner (hidden unless cabinet-mode active) -->
-    <div id="cabinetMarquee" class="cabinet-marquee">
-        <span class="cabinet-marquee-text" id="cabinetMarqueeText">🕹️ YOUR WORLD ARCADE  ●  INSERT COIN TO PLAY  ●  PRESS C FOR CREDIT  ●  🕹️ YOUR WORLD ARCADE  ●  INSERT COIN TO PLAY  ●  PRESS C FOR CREDIT  ●</span>
-    </div>
-    <!-- Coin credit display (hidden unless cabinet-mode active) -->
-    <div id="coinDisplay" class="coin-display">
-        <div class="coin-display-label">CREDITS</div>
-        <div class="coin-display-count" id="coinCredits">3</div>
-        <div id="insertCoinBanner" class="insert-coin-banner">INSERT COIN</div>
-    </div>
 
-    <!-- ── V8: Operator Menu (Ctrl+Alt+O) ──────────────────────────── -->
-    <div id="operatorOverlay" class="operator-overlay" onclick="if(event.target===this)OperatorMenu.hide()">
-        <div class="operator-panel">
-            <div class="operator-header">
-                <span>⚙️ OPERATOR MENU</span>
-                <button onclick="OperatorMenu.hide()">✕</button>
-            </div>
-            <div class="operator-stats">
-                <div class="op-stat"><span id="opStatGames">—</span><label>ROMS</label></div>
-                <div class="op-stat"><span id="opStatSessions">—</span><label>SESSIONS</label></div>
-                <div class="op-stat"><span id="opStatPlayers">—</span><label>PLAYERS</label></div>
-                <div class="op-stat"><span id="opStatTime">—</span><label>TIME</label></div>
-            </div>
-            <div class="operator-leader" id="opLeader">Loading leaderboard...</div>
-            <div class="operator-actions">
-                <button onclick="window.arcade.startScan(); OperatorMenu.hide()">🔍<br>Scan ROMs</button>
-                <button onclick="Router.navigate('#/cc'); OperatorMenu.hide()">📊<br>Command Center</button>
-                <button onclick="Router.navigate('#/weekly'); OperatorMenu.hide()">🏆<br>Weekly Board</button>
-                <button onclick="CabinetMode.toggle(); OperatorMenu.hide()">🕹️<br>Toggle Cabinet</button>
-            </div>
-            <div class="operator-shortcut">CTRL+ALT+O TO CLOSE</div>
-        </div>
-    </div>
-
-    <script src="/js/utils/api.js?v=26"></script>
-    <script src="/js/utils/router.js?v=26"></script>
-    <script src="/js/utils/helpers.js?v=26"></script>
-    <script src="/js/utils/sound.js?v=26"></script>
-    <script src="/js/utils/confetti.js?v=26"></script>
-    <script src="/js/utils/arcade-engine.js?v=26"></script>
-    <script src="/js/utils/themes.js?v=26"></script>
-    <script src="/js/components/game-card.js?v=26"></script>
-    <script src="/js/components/search-bar.js?v=26"></script>
-    <script src="/js/components/pagination.js?v=26"></script>
-    <script src="/js/views/home.js?v=26"></script>
-    <script src="/js/views/library.js?v=26"></script>
-    <script src="/js/views/systems.js?v=26"></script>
-    <script src="/js/views/system-detail.js?v=26"></script>
-    <script src="/js/views/game.js?v=26"></script>
-    <script src="/js/views/archive.js?v=26"></script>
-    <script src="/js/views/mamedev.js?v=26"></script>
-    <script src="/js/views/downloads.js?v=26"></script>
-    <script src="/js/views/settings.js?v=26"></script>
-    <script src="/js/views/favorites.js?v=26"></script>
-    <script src="/js/views/challenge.js?v=26"></script>
-    <script src="/js/views/scores.js?v=26"></script>
-    <script src="/js/views/quiz.js?v=26"></script>
-    <script src="/js/views/customize.js?v=26"></script>
-    <script src="/js/views/command-center.js?v=26"></script>
-    <script src="/js/views/originals.js?v=26"></script>
-    <script src="/js/views/clans.js?v=26"></script>
-    <script src="/js/views/clan-battles.js?v=26"></script>
+    <script src="/js/utils/api.js?v=38"></script>
+    <script src="/js/utils/router.js?v=38"></script>
+    <script src="/js/utils/helpers.js?v=38"></script>
+    <script src="/js/utils/sound.js?v=38"></script>
+    <script src="/js/utils/confetti.js?v=38"></script>
+    <script src="/js/utils/arcade-engine.js?v=38"></script>
+    <script src="/js/utils/themes.js?v=38"></script>
+    <script src="/js/components/game-card.js?v=38"></script>
+    <script src="/js/components/search-bar.js?v=38"></script>
+    <script src="/js/components/pagination.js?v=38"></script>
+    <script src="/js/views/home.js?v=38"></script>
+    <script src="/js/views/library.js?v=38"></script>
+    <script src="/js/views/systems.js?v=38"></script>
+    <script src="/js/views/system-detail.js?v=38"></script>
+    <script src="/js/views/game.js?v=38"></script>
+    <script src="/js/views/archive.js?v=38"></script>
+    <script src="/js/views/mamedev.js?v=38"></script>
+    <script src="/js/views/downloads.js?v=38"></script>
+    <script src="/js/views/settings.js?v=38"></script>
+    <script src="/js/views/favorites.js?v=38"></script>
+    <script src="/js/views/challenge.js?v=38"></script>
+    <script src="/js/views/scores.js?v=38"></script>
+    <script src="/js/views/quiz.js?v=38"></script>
+    <script src="/js/views/customize.js?v=38"></script>
+    <script src="/js/views/command-center.js?v=38"></script>
+    <script src="/js/views/originals.js?v=38"></script>
+    <script src="/js/views/clans.js?v=38"></script>
+    <script src="/js/views/clan-battles.js?v=38"></script>
     <!-- V5 New Views -->
-    <script src="/js/views/hall-of-fame.js?v=26"></script>
-    <script src="/js/views/stats.js?v=26"></script>
-    <script src="/js/views/trophies.js?v=26"></script>
-    <script src="/js/views/completion.js?v=26"></script>
-    <script src="/js/views/recommendations.js?v=26"></script>
-    <script src="/js/views/weekly.js?v=26"></script>
-    <script src="/js/views/daily.js?v=26"></script>
-    <script src="/js/views/tournaments.js?v=26"></script>
-    <script src="/js/views/collections.js?v=26"></script>
-    <script src="/js/views/friends.js?v=26"></script>
-    <script src="/js/views/speedrun.js?v=26"></script>
-    <script src="/js/views/player-card.js?v=26"></script>
-    <script src="/js/utils/notifications.js?v=26"></script>
-    <script src="/js/utils/sound-mixer.js?v=26"></script>
+    <script src="/js/views/hall-of-fame.js?v=38"></script>
+    <script src="/js/views/stats.js?v=38"></script>
+    <script src="/js/views/trophies.js?v=38"></script>
+    <script src="/js/views/completion.js?v=38"></script>
+    <script src="/js/views/recommendations.js?v=38"></script>
+    <script src="/js/views/weekly.js?v=38"></script>
+    <script src="/js/views/daily.js?v=38"></script>
+    <script src="/js/views/tournaments.js?v=38"></script>
+    <script src="/js/views/collections.js?v=38"></script>
+    <script src="/js/views/friends.js?v=38"></script>
+    <script src="/js/views/speedrun.js?v=38"></script>
+    <script src="/js/views/player-card.js?v=38"></script>
+    <script src="/js/utils/notifications.js?v=38"></script>
+    <script src="/js/utils/sound-mixer.js?v=38"></script>
     <!-- Games -->
-    <script src="/js/games/mollypop.js?v=26"></script>
-    <script src="/js/games/tictacmae.js?v=26"></script>
-    <script src="/js/games/maetris.js?v=26"></script>
-    <script src="/js/games/maeteoroids.js?v=26"></script>
-    <script src="/js/games/maekout.js?v=26"></script>
-    <script src="/js/games/flappymae.js?v=26"></script>
-    <script src="/js/games/pacmae.js?v=26"></script>
-    <script src="/js/games/mollypong.js?v=26"></script>
-    <script src="/js/games/molliped.js?v=26"></script>
-    <script src="/js/games/mollycontrol.js?v=26"></script>
-    <script src="/js/utils/mollypops-reward.js?v=26"></script>
-    <script src="/js/utils/postgame.js?v=26"></script>
+    <script src="/js/games/mollypop.js?v=38"></script>
+    <script src="/js/games/tictacmae.js?v=38"></script>
+    <script src="/js/games/maetris.js?v=38"></script>
+    <script src="/js/games/maeteoroids.js?v=38"></script>
+    <script src="/js/games/maekout.js?v=38"></script>
+    <script src="/js/games/flappymae.js?v=38"></script>
+    <script src="/js/games/pacmae.js?v=38"></script>
+    <script src="/js/games/mollypong.js?v=38"></script>
+    <script src="/js/games/molliped.js?v=38"></script>
+    <script src="/js/games/mollycontrol.js?v=38"></script>
+    <script src="/js/utils/mollypops-reward.js?v=38"></script>
+    <script src="/js/utils/postgame.js?v=38"></script>
     <!-- V6: Social Arcade -->
-    <script src="/js/views/chat.js?v=26"></script>
-    <script src="/js/views/messages.js?v=26"></script>
-    <script src="/js/views/game-requests.js?v=26"></script>
-    <script src="/js/views/ai-search.js?v=26"></script>
-    <script src="/js/views/social-hub.js?v=26"></script>
+    <script src="/js/views/chat.js?v=38"></script>
+    <script src="/js/views/messages.js?v=38"></script>
+    <script src="/js/views/game-requests.js?v=38"></script>
+    <script src="/js/views/ai-search.js?v=38"></script>
+    <script src="/js/views/social-hub.js?v=38"></script>
     <!-- Intel Hub -->
-    <script src="/js/views/intel-hub.js?v=26"></script>
+    <script src="/js/views/intel-hub.js?v=38"></script>
     <!-- Arcade Gallery -->
-    <script src="/js/views/arcade-gallery.js?v=1"></script>
+    <script src="/js/views/arcade-gallery.js?v=38"></script>
     <!-- Retro Stars -->
-    <script src="/js/views/retro-stars.js?v=1"></script>
+    <script src="/js/views/retro-stars.js?v=38"></script>
     <!-- V8: Arcade OS -->
-    <script src="/js/utils/cabinet.js?v=26"></script>
-    <script src="/js/app.js?v=26"></script>
+    <script src="/js/utils/cabinet.js?v=38"></script>
+    <script src="/js/app.js?v=38"></script>
     <script>
     /* Mobile Nav Toggle */
     function toggleMobileNav() {
@@ -639,14 +620,250 @@
         }, 2800);
 
         setTimeout(() => {
-            // Phase 5: Splash fades out, reveal arcade
+            // Phase 5: Splash fades out → reveal player select (or home if player already set)
             splash.classList.add('fade-out');
+            // Show player select screen after splash fades
+            const psScreen = document.getElementById('playerSelectScreen');
+            const hasActivePlayer = localStorage.getItem('arcade_active_player_info');
+            if (psScreen && !hasActivePlayer) {
+                psScreen.style.display = 'flex';
+                setTimeout(() => psScreen.classList.add('visible'), 50);
+            }
         }, 3200);
 
         setTimeout(() => {
             // Phase 6: Remove splash from DOM entirely
             splash.remove();
         }, 4100);
+    })();
+    </script>
+
+    <!-- Player Select Screen Logic -->
+    <script>
+    (function() {
+        const screen = document.getElementById('playerSelectScreen');
+        if (!screen) return;
+
+        const container = document.getElementById('psClansContainer');
+        const guestBtn = document.getElementById('psGuestBtn');
+
+        // Expose global function for "Switch Player" nav link
+        window.showPlayerSelect = function() {
+            screen.style.display = 'flex';
+            screen.classList.remove('fade-out');
+            // Reset visibility in case it was hidden
+            setTimeout(() => screen.classList.add('visible'), 50);
+            loadPlayers();
+        };
+
+        // Skip on boot if player already selected
+        const existing = localStorage.getItem('arcade_active_player_info');
+        if (existing) {
+            screen.style.display = 'none';
+            return;
+        }
+
+        // Fetch clans (which includes grouped players) and build the UI
+        async function loadPlayers() {
+            try {
+                const clansRes = await fetch('/api/clans').then(r => r.json());
+
+                // /api/clans returns { clans: [...], players: [...] }
+                const clans = clansRes.clans || clansRes || [];
+                let html = '';
+
+                for (const clan of clans) {
+                    if (!clan.players || clan.players.length === 0) continue;
+                    // Skip the "Unassigned" group (id=0) — we handle it separately if needed
+                    const clanPlayers = clan.players.filter(p => p.name !== 'Guest');
+                    if (clanPlayers.length === 0) continue;
+
+                    const label = clan.id === 0 ? 'Free Agents' : clan.name;
+                    html += `
+                        <div class="ps-clan-group">
+                            <div class="ps-clan-label" style="color: ${clan.color || '#888'}">
+                                <span class="ps-clan-emoji">${clan.emoji || '🎮'}</span>
+                                <span class="ps-clan-name">${label}</span>
+                            </div>
+                            <div class="ps-players-row">
+                                ${clanPlayers.map(p => playerCard(p)).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // New player card
+                html += `
+                    <div class="ps-clan-group">
+                        <div class="ps-players-row" style="justify-content:center;">
+                            <div class="ps-player-card ps-new-player" id="psNewPlayerBtn" style="--card-color: #a855f7">
+                                <div class="ps-avatar">➕</div>
+                                <div class="ps-player-name">New Player</div>
+                            </div>
+                            <div class="ps-new-player-form" id="psNewForm">
+                                <div class="ps-form-title">ENTER YOUR NAME</div>
+                                <input type="text" class="ps-name-input" id="psNameInput"
+                                       placeholder="Player name..." maxlength="30" autocomplete="off">
+                                <div class="ps-form-actions">
+                                    <button class="ps-form-btn ps-form-btn-go" id="psFormGo">JOIN</button>
+                                    <button class="ps-form-btn ps-form-btn-cancel" id="psFormCancel">BACK</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML = html;
+                bindEvents();
+            } catch (err) {
+                console.error('Player select load error:', err);
+                // If fetch fails, just proceed as guest
+                selectGuest();
+            }
+        }
+
+        function playerCard(p) {
+            return `
+                <div class="ps-player-card" data-player-id="${p.id}"
+                     data-player='${JSON.stringify({ id: p.id, name: p.name, emoji: p.emoji, color: p.color }).replace(/'/g, '&#39;')}'
+                     style="--card-color: ${p.color || '#a855f7'}">
+                    <div class="ps-avatar" style="border-color: ${p.color || '#a855f7'}20">${p.emoji || '🎮'}</div>
+                    <div class="ps-player-name">${p.name}</div>
+                </div>
+            `;
+        }
+
+        function bindEvents() {
+            // Player card clicks
+            container.querySelectorAll('.ps-player-card:not(.ps-new-player)').forEach(card => {
+                card.addEventListener('click', () => {
+                    // Deselect all
+                    container.querySelectorAll('.ps-player-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+
+                    // Brief delay for visual feedback then select
+                    setTimeout(() => {
+                        try {
+                            const data = JSON.parse(card.dataset.player);
+                            selectPlayer(data);
+                        } catch {}
+                    }, 400);
+                });
+            });
+
+            // New player button
+            const newBtn = document.getElementById('psNewPlayerBtn');
+            const newForm = document.getElementById('psNewForm');
+            const nameInput = document.getElementById('psNameInput');
+            const formGo = document.getElementById('psFormGo');
+            const formCancel = document.getElementById('psFormCancel');
+
+            if (newBtn) {
+                newBtn.addEventListener('click', () => {
+                    newBtn.style.display = 'none';
+                    newForm.classList.add('active');
+                    setTimeout(() => nameInput.focus(), 100);
+                });
+            }
+
+            if (formCancel) {
+                formCancel.addEventListener('click', () => {
+                    newForm.classList.remove('active');
+                    newBtn.style.display = '';
+                    nameInput.value = '';
+                });
+            }
+
+            if (formGo) {
+                formGo.addEventListener('click', () => createNewPlayer());
+            }
+
+            if (nameInput) {
+                nameInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') createNewPlayer();
+                    if (e.key === 'Escape') {
+                        newForm.classList.remove('active');
+                        newBtn.style.display = '';
+                        nameInput.value = '';
+                    }
+                });
+            }
+
+            // Guest button
+            if (guestBtn) {
+                guestBtn.addEventListener('click', selectGuest);
+            }
+        }
+
+        async function createNewPlayer() {
+            const input = document.getElementById('psNameInput');
+            const name = input?.value?.trim();
+            if (!name) { input.focus(); return; }
+
+            const emojis = ['🎮', '🌟', '⚡', '🔥', '💎', '🎯', '🚀', '🎪', '🎸', '🎤'];
+            const colors = ['#A855F7', '#38BDF8', '#F472B6', '#34D399', '#F59E0B', '#EF4444', '#22C55E', '#EC4899'];
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+
+            try {
+                const res = await fetch('/api/players', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, emoji, color })
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert(err.error || 'Could not create player');
+                    return;
+                }
+                const player = await res.json();
+                selectPlayer({ id: player.id, name: player.name, emoji: player.emoji, color: player.color });
+            } catch (err) {
+                alert('Error creating player');
+            }
+        }
+
+        function selectPlayer(data) {
+            // Save active player
+            localStorage.setItem('arcade_active_player', String(data.id));
+            localStorage.setItem('arcade_active_player_info', JSON.stringify(data));
+
+            // Personalize the page immediately
+            const possessive = data.name.endsWith('s') ? data.name + "'" : data.name + "'s";
+            const worldName = possessive + ' World';
+
+            // Sidebar logo
+            const logoName = document.getElementById('logoWorldName');
+            if (logoName) logoName.textContent = worldName;
+
+            // Browser tab
+            document.title = worldName + ' Arcade';
+
+            // Fade out player select
+            screen.classList.add('fade-out');
+            setTimeout(() => screen.remove(), 700);
+
+            // Init notifications for selected player
+            if (window.NotificationManager) {
+                NotificationManager.init(data.id);
+            }
+        }
+
+        function selectGuest() {
+            // Clear any active player
+            localStorage.removeItem('arcade_active_player');
+            localStorage.removeItem('arcade_active_player_info');
+
+            const logoName = document.getElementById('logoWorldName');
+            if (logoName) logoName.textContent = 'Your World';
+            document.title = 'Your World Arcade';
+
+            screen.classList.add('fade-out');
+            setTimeout(() => screen.remove(), 700);
+        }
+
+        // Kick off loading after splash starts
+        setTimeout(loadPlayers, 2000);
     })();
     </script>
 
