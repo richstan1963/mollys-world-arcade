@@ -1006,7 +1006,7 @@ function seedCollections(database) {
 
     const insert = database.prepare('INSERT INTO game_collections (id, name, description, icon, color, theme, is_system, sort_order) VALUES (?, ?, ?, ?, ?, ?, 1, ?)');
     const collections = [
-        [1,  'Retro Arcade',      'The full library — every ROM, every system, every era',                         '🕹️', '#a855f7', 'retro',      1],
+        [1,  'Action Arena',      'High-octane thrills — beat \'em ups, hack & slash, and pure action',           '💥', '#ef4444', 'action',     1],
         [2,  'Pinball Parlor',    'Step into the neon-lit parlor — every bumper, every flipper, every high score', '🔮', '#ffba00', 'pinball',    2],
         [3,  'Pool Hall',         'Rack \'em up — billiards, pool, and cue sports under warm lights',             '🎱', '#1a4d2e', 'pool',       3],
         [4,  'Bowling Alley',     'Lace up those shoes — strikes, spares, and gutter balls await',                '🎳', '#d4a857', 'bowling',    4],
@@ -1202,9 +1202,32 @@ function autoCategorizeCollections(db) {
         }
     };
 
+    const ACTION_PATTERNS = [
+        'action', 'batman', 'spider-man', 'spiderman', 'iron man', 'x-men', 'xmen',
+        'ninja', 'samurai', 'warrior', 'battle', 'combat', 'assault', 'strike',
+        'commando', 'rambo', 'robocop', 'predator', 'terminator', 'die hard',
+        'god of war', 'devil may cry', 'bayonetta', 'ninja gaiden',
+        'dynasty warriors', 'power rangers', 'thundercats', 'he-man',
+        'transformers', 'gundam', 'voltron', 'godzilla',
+        'castlevania', 'ghosts \'n', 'ghouls \'n', 'super ghouls',
+        'shinobi', 'strider', 'bionic commando', 'mega man', 'megaman',
+        'contra', 'metal slug', 'mission', 'force', 'blade',
+        'doom', 'quake', 'duke nukem', 'turok', 'resident evil',
+        'tomb raider', 'prince of persia', 'indiana jones',
+        'star wars', 'alien', 'aliens', 'predator',
+        'max payne', 'hitman', 'splinter cell', 'syphon filter',
+        'jak ', 'ratchet', 'sly cooper', 'onimusha',
+        'gauntlet', 'magic sword', 'black tiger', 'trojan',
+        'rygar', 'actraiser', 'act raiser', 'astyanax',
+        'vice', 'vigilante', 'vendetta', 'violent storm',
+        'sunset riders', 'wild guns', 'gunstar heroes', 'dynamite headdy',
+        'treasure', 'guardian heroes', 'alien soldier',
+    ];
+
     const tx = db.transaction(() => {
-        // 1 = Retro Arcade — ALL roms
-        for (const rom of allRoms) insertGame.run(1, rom.id);
+        // 1 = Action Arena — action, beat 'em up, hack & slash
+        matchAndInsert(1, ACTION_PATTERNS);
+        matchByGenre(1, ['Action', 'Action-Adventure', 'Beat em Up', 'Beat \'Em Up', 'Beat-Em-Up', 'Hack and Slash', 'Run and Gun']);
         matchAndInsert(2, PINBALL_PATTERNS);
         matchByGenre(2, ['Pinball']);
         matchAndInsert(3, POOL_PATTERNS);

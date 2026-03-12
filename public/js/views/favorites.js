@@ -51,21 +51,21 @@ window.FavoritesView = {
         raya: {
             hero_bg:  '/img/characters/raya/raya-hero.jpg',
             avatar:   '/img/characters/raya/raya-sword.jpg',
-            portrait: '/img/characters/raya/raya-poster.jpg',
-            scene:    '/img/characters/raya/raya-sisu-banner.jpg',
+            portrait: null,
+            scene:    null,
             poster:   '/img/characters/raya/raya-poster.jpg',
         },
         minnie: {
             hero_bg:  '/img/characters/minnie/minnie-pink.jpg',
             avatar:   '/img/characters/minnie/minnie-flowers.jpg',
-            portrait: '/img/characters/minnie/minnie-flowers.jpg',
-            scene:    '/img/characters/minnie/minnie-pink.jpg',
+            portrait: null,
+            scene:    null,
         },
         elf: {
             hero_bg:  '/img/characters/elf/elf-hero.jpg',
             avatar:   '/img/characters/elf/elf-hero.jpg',
-            portrait: '/img/characters/elf/elf-hero.jpg',
-            scene:    '/img/characters/elf/elf-hero.jpg',
+            portrait: null,
+            scene:    null,
         },
     },
     CHAR_LABELS: {

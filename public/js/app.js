@@ -73,6 +73,7 @@ window.arcade = {
         Router.start();
         this.loadSidebarStats();
         this.loadPlayers();
+        this.loadSystemsNav();
         this.bindSounds();
 
         // Prevent arrow key / space scrolling when game overlay is open
@@ -159,6 +160,23 @@ window.arcade = {
                 `).join('');
             } catch (e2) { /* silent */ }
         }
+    },
+
+    async loadSystemsNav() {
+        try {
+            const systems = await API.systems();
+            const container = document.getElementById('systemsNavLinks');
+            if (!container || !systems || systems.length === 0) return;
+            // Sort by rom_count descending, show systems with roms
+            const active = systems.filter(s => s.rom_count > 0).sort((a, b) => b.rom_count - a.rom_count);
+            container.innerHTML = active.map(s => `
+                <a href="#/system/${s.id}" class="nav-link nav-link-sub" data-view="system-${s.id}">
+                    <span class="nav-icon" style="font-size:10px;color:${s.color}">●</span>
+                    <span class="nav-label">${H.escHtml(s.short_name || s.name)}</span>
+                    <span class="nav-badge" style="background:${s.color}22;color:${s.color}">${s.rom_count}</span>
+                </a>
+            `).join('');
+        } catch (e) { /* silent */ }
     },
 
     async loadSidebarStats() {

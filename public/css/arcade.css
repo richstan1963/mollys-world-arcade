@@ -442,6 +442,14 @@ body::before {
     border-left: 3px solid transparent;
     position: relative;
 }
+.nav-link-sub {
+    padding: 6px 18px 6px 28px;
+    font-size: 12px;
+}
+.nav-link-sub .nav-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+}
 
 .nav-link:hover {
     color: var(--text);
@@ -3646,6 +3654,7 @@ select:focus-visible, input:focus-visible, button:focus-visible {
 .pp-edit-row {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
 }
 .pp-inline-edit {
     background: rgba(255, 255, 255, 0.06);

@@ -131,7 +131,8 @@
 /* Per-character avatar — crop circle to show face with both eyes */
 .character-theme-raya .pp-avatar-img   { object-position: center 18%; }
 .character-theme-minnie .pp-avatar-img { object-position: center 22%; }
-.character-theme-elf .pp-avatar-img    { object-position: 50% 0%; object-fit: cover; transform: scale(2.2); transform-origin: 50% 15%; }
+.character-theme-elf .pp-avatar { overflow: hidden; }
+.character-theme-elf .pp-avatar-img    { object-position: 50% 0%; object-fit: cover; transform: scale(2.8); transform-origin: 50% 8%; border-radius: 0; }
 
 /* Per-character scene banner — show face with both eyes visible */
 .character-theme-raya .pp-scene-banner img   { object-position: center 35%; }
@@ -157,13 +158,25 @@
     filter: none;
     border-radius: 14px;
 }
-/* Minnie: square image — crop to upper portion showing face */
+/* Minnie: square image — crop to upper portion showing face; blend to hide white bg */
 .character-theme-minnie .pp-hero-portrait img {
     object-fit: cover;
     object-position: center 15%;
     width: 100%;
     height: 100%;
     border-radius: 12px;
+    mix-blend-mode: luminosity;
+    opacity: 0.85;
+}
+.character-theme-minnie .pp-hero-portrait {
+    overflow: hidden;
+    border-radius: 14px;
+    max-width: 35%;
+    right: 12px;
+    bottom: 12px;
+    top: 12px;
+    height: auto;
+    background: linear-gradient(135deg, #3D1B2E, #5A1540, #8B2260);
 }
 /* Elf: landscape banner — show full Buddy with "elf" letters */
 .character-theme-elf .pp-hero-portrait {
