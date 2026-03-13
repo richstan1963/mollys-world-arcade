@@ -22,6 +22,7 @@ const PROVIDERS = {
         url:   'https://api.sambanova.ai/v1/chat/completions',
         key:   () => process.env.SAMBANOVA_API_KEY,
         maxTokens: 4096,
+        disabled: true, // 410 error as of 2026-03
     },
     'openrouter-hermes': {
         slot: 2, name: 'OpenRouter/Hermes',
@@ -44,9 +45,9 @@ const PROVIDERS = {
         key:   () => process.env.DEEPSEEK_API_KEY,
         maxTokens: 4096,
     },
-    'openrouter-mimo': {
-        slot: 5, name: 'OpenRouter/MiMo',
-        model: 'xiaomi/mimo-v2-flash:free',
+    'openrouter-nemotron': {
+        slot: 5, name: 'OpenRouter/Nemotron-120B',
+        model: 'nvidia/nemotron-3-super-120b-a12b:free',
         url:   'https://openrouter.ai/api/v1/chat/completions',
         key:   () => process.env.OPENROUTER_API_KEY,
         maxTokens: 4096,
@@ -71,6 +72,14 @@ const PROVIDERS = {
         url:   'https://api.cerebras.ai/v1/chat/completions',
         key:   () => process.env.CEREBRAS_API_KEY,
         maxTokens: 8192,
+        disabled: true, // 404 error as of 2026-03
+    },
+    'openrouter-llama70b': {
+        slot: 10, name: 'OpenRouter/Llama-3.3-70B',
+        model: 'meta-llama/llama-3.3-70b-instruct:free',
+        url:   'https://openrouter.ai/api/v1/chat/completions',
+        key:   () => process.env.OPENROUTER_API_KEY,
+        maxTokens: 4096,
     },
     groq: {
         slot: 9, name: 'Groq',
@@ -87,10 +96,10 @@ const PROVIDERS = {
 // reasoning: chain-of-thought — trivia, fact-checking (DeepSeek R1 671B)
 // context:   biggest context windows — cross-game analysis (Gemini 1M)
 const CHAINS = {
-    quality:   ['sambanova', 'openrouter-hermes', 'openrouter-qwen3', 'openrouter-mimo', 'cerebras', 'groq', 'mistral', 'google'],
-    speed:     ['cerebras', 'groq', 'sambanova', 'openrouter-hermes', 'openrouter-mimo', 'mistral'],
-    reasoning: ['deepseek', 'openrouter-qwen3', 'sambanova', 'openrouter-hermes', 'cerebras'],
-    context:   ['google', 'openrouter-qwen3', 'mistral', 'sambanova', 'cerebras'],
+    quality:   ['openrouter-hermes', 'openrouter-qwen3', 'openrouter-nemotron', 'openrouter-llama70b', 'groq', 'mistral', 'google'],
+    speed:     ['groq', 'openrouter-llama70b', 'openrouter-nemotron', 'openrouter-hermes', 'mistral', 'google'],
+    reasoning: ['deepseek', 'openrouter-qwen3', 'openrouter-hermes', 'openrouter-nemotron', 'groq'],
+    context:   ['google', 'openrouter-qwen3', 'mistral', 'openrouter-nemotron', 'groq'],
 };
 
 // ── Rate-limit cooldowns ──────────────────────────────────────────────────────
@@ -98,7 +107,7 @@ const cooldowns = {};  // providerKey → expiresAt (epoch ms)
 
 function isAvailable(key) {
     const p = PROVIDERS[key];
-    if (!p || !p.key()) return false;
+    if (!p || !p.key() || p.disabled) return false;
     if (cooldowns[key] && Date.now() < cooldowns[key]) return false;
     return true;
 }

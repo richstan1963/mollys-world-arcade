@@ -244,6 +244,55 @@ router.get('/manuals/status', (req, res) => {
 
 // ─── Enrichment Orchestrator ──────────────────────────────────────────────
 
+// ── POST /api/metadata/backfill-descriptions — Extract descriptions from game_intel bios ──
+router.post('/backfill-descriptions', (req, res) => {
+    const db = getDB();
+
+    // Find ROMs that have a bio in game_intel but no description in metadata
+    const rows = db.prepare(`
+        SELECT m.rom_id, r.clean_name, gi.content_md
+        FROM metadata m
+        JOIN roms r ON r.id = m.rom_id
+        JOIN game_intel gi ON gi.game_title = r.clean_name AND gi.doc_type = 'bio'
+        WHERE m.description IS NULL OR length(m.description) = 0
+    `).all();
+
+    if (rows.length === 0) {
+        return res.json({ ok: true, updated: 0, message: 'All games with bios already have descriptions' });
+    }
+
+    const update = db.prepare('UPDATE metadata SET description = ? WHERE rom_id = ?');
+    let updated = 0;
+
+    db.transaction(() => {
+        for (const row of rows) {
+            // Extract first meaningful paragraph from the bio markdown
+            const lines = row.content_md.split('\n').filter(l => {
+                const t = l.trim();
+                return t.length > 30
+                    && !t.startsWith('#')
+                    && !t.startsWith('|')
+                    && !t.startsWith('>')
+                    && !t.startsWith('*Genre')
+                    && !t.startsWith('*Platform')
+                    && !t.startsWith('*Player')
+                    && !t.startsWith('---')
+                    && !t.startsWith('```');
+            });
+
+            if (lines.length > 0) {
+                // Take first 1-2 sentences, max ~300 chars
+                let desc = lines[0].trim().replace(/^\*\*|\*\*$/g, '').replace(/^\*|\*$/g, '');
+                if (desc.length > 300) desc = desc.slice(0, 297) + '...';
+                update.run(desc, row.rom_id);
+                updated++;
+            }
+        }
+    })();
+
+    res.json({ ok: true, updated, total_with_bios: rows.length });
+});
+
 router.post('/enrich', async (req, res) => {
     const db = getDB();
     const prog = getEnrichProgress();

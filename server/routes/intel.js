@@ -11,6 +11,41 @@ const batch = {
     current: null, startedAt: null, finishedAt: null,
 };
 
+// ── Helper: backfill metadata.description from game_intel bios ───────────────
+function backfillDescriptions(db) {
+    try {
+        const rows = db.prepare(`
+            SELECT m.rom_id, r.clean_name, gi.content_md
+            FROM metadata m
+            JOIN roms r ON r.id = m.rom_id
+            JOIN game_intel gi ON gi.game_title = r.clean_name AND gi.doc_type = 'bio'
+            WHERE m.description IS NULL OR length(m.description) = 0
+        `).all();
+
+        if (rows.length === 0) return;
+
+        const update = db.prepare('UPDATE metadata SET description = ? WHERE rom_id = ?');
+        let count = 0;
+        db.transaction(() => {
+            for (const row of rows) {
+                const lines = row.content_md.split('\n').filter(l => {
+                    const t = l.trim();
+                    return t.length > 30 && !t.startsWith('#') && !t.startsWith('|')
+                        && !t.startsWith('>') && !t.startsWith('*Genre') && !t.startsWith('*Platform')
+                        && !t.startsWith('*Player') && !t.startsWith('---') && !t.startsWith('```');
+                });
+                if (lines.length > 0) {
+                    let desc = lines[0].trim().replace(/^\*\*|\*\*$/g, '').replace(/^\*|\*$/g, '');
+                    if (desc.length > 300) desc = desc.slice(0, 297) + '...';
+                    update.run(desc, row.rom_id);
+                    count++;
+                }
+            }
+        })();
+        if (count > 0) console.log(`[Intel Batch] Backfilled ${count} descriptions`);
+    } catch (e) { console.error('[Backfill] Error:', e.message); }
+}
+
 // ── Helper: normalize game title for matching ────────────────────────────────
 function normalizeTitle(game) {
     return (game.title || game.clean_name || game.filename.replace(/\.[^.]+$/, '')).trim();
@@ -226,8 +261,17 @@ router.post('/batch', async (req, res) => {
             }
 
             batch.done++;
+
+            // Every 50 bios, backfill descriptions into metadata table
+            if (type === 'bio' && batch.done % 50 === 0) {
+                backfillDescriptions(db);
+            }
+
             if (delay > 0) await new Promise(r => setTimeout(r, delay));
         }
+
+        // Final backfill at end of batch
+        backfillDescriptions(db);
 
         batch.running    = false;
         batch.current    = null;
