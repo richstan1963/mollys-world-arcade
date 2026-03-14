@@ -21,7 +21,7 @@ window.HomeView = {
                 API.systems(),
                 API.recentHistory(16),
                 API.library({ limit: 1 }),
-                API.favorites ? API.favorites(12).catch(() => ({ games: [] })) : Promise.resolve({ games: [] }),
+                (() => { const pid = parseInt(localStorage.getItem('arcade_active_player')); return pid ? API.playerFavorites(pid, 12).catch(() => ({ games: [] })) : API.favorites ? API.favorites(12).catch(() => ({ games: [] })) : Promise.resolve({ games: [] }); })(),
                 API.playerOfTheDay().catch(() => null),
                 API.activityFeed(10).catch(() => []),
                 API.get('/api/library/new-arrivals?limit=20').catch(() => []),

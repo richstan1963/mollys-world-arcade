@@ -82,12 +82,36 @@ export async function searchByHash(md5, systemId) {
 }
 
 /**
+ * Search ScreenScraper by ROM filename (fallback when MD5 doesn't match).
+ */
+export async function searchByName(filename, systemId) {
+    const ssSystemId = SS_SYSTEM_MAP[systemId];
+    if (!ssSystemId) return null;
+
+    const params = { romnom: filename, systemeid: String(ssSystemId) };
+
+    try {
+        const data = await ssRequest('jeuInfos.php', params);
+        return data?.response?.jeu || null;
+    } catch (err) {
+        if (err.message.includes('rate limited')) throw err;
+        return null;
+    }
+}
+
+/**
  * Fetch game data from ScreenScraper and update metadata.
  */
 export async function fetchGameData(db, rom) {
-    if (!rom.md5) return { ok: false, error: 'No MD5 hash' };
+    let jeu = null;
 
-    const jeu = await searchByHash(rom.md5, rom.system_id);
+    // Try MD5 hash first, then fall back to filename search
+    if (rom.md5) {
+        jeu = await searchByHash(rom.md5, rom.system_id);
+    }
+    if (!jeu && rom.filename) {
+        jeu = await searchByName(rom.filename, rom.system_id);
+    }
     if (!jeu) return { ok: false, error: 'Not found on ScreenScraper' };
 
     // Extract metadata

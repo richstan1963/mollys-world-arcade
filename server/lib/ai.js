@@ -1,6 +1,6 @@
 /* server/lib/ai.js — Multi-provider AI engine with auto-fallback
  *
- * 9 cloud slots + Ollama local fallback.
+ * 12 cloud slots + Ollama local fallback.
  * Automatic cascade: if primary hits 429 / 500 / timeout / missing key,
  * tries next provider in the chain before giving up.
  *
@@ -88,6 +88,20 @@ const PROVIDERS = {
         key:   () => process.env.GROQ_API_KEY,
         maxTokens: 32768,
     },
+    cloudflare: {
+        slot: 11, name: 'Cloudflare/Llama-70B',
+        model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+        url:   `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID || 'none'}/ai/v1/chat/completions`,
+        key:   () => process.env.CLOUDFLARE_AI_TOKEN,
+        maxTokens: 4096,
+    },
+    'openrouter-gemma3': {
+        slot: 12, name: 'OpenRouter/Gemma-3-27B',
+        model: 'google/gemma-3-27b-it:free',
+        url:   'https://openrouter.ai/api/v1/chat/completions',
+        key:   () => process.env.OPENROUTER_API_KEY,
+        maxTokens: 4096,
+    },
 };
 
 // ── Fallback Chains by Strategy ───────────────────────────────────────────────
@@ -96,10 +110,10 @@ const PROVIDERS = {
 // reasoning: chain-of-thought — trivia, fact-checking (DeepSeek R1 671B)
 // context:   biggest context windows — cross-game analysis (Gemini 1M)
 const CHAINS = {
-    quality:   ['openrouter-hermes', 'openrouter-qwen3', 'openrouter-nemotron', 'openrouter-llama70b', 'groq', 'mistral', 'google'],
-    speed:     ['groq', 'openrouter-llama70b', 'openrouter-nemotron', 'openrouter-hermes', 'mistral', 'google'],
-    reasoning: ['deepseek', 'openrouter-qwen3', 'openrouter-hermes', 'openrouter-nemotron', 'groq'],
-    context:   ['google', 'openrouter-qwen3', 'mistral', 'openrouter-nemotron', 'groq'],
+    quality:   ['openrouter-hermes', 'openrouter-qwen3', 'openrouter-nemotron', 'openrouter-llama70b', 'cloudflare', 'openrouter-gemma3', 'groq', 'mistral', 'google'],
+    speed:     ['groq', 'cloudflare', 'openrouter-llama70b', 'openrouter-nemotron', 'openrouter-gemma3', 'openrouter-hermes', 'mistral', 'google'],
+    reasoning: ['deepseek', 'openrouter-qwen3', 'openrouter-hermes', 'openrouter-nemotron', 'cloudflare', 'groq'],
+    context:   ['google', 'openrouter-qwen3', 'mistral', 'openrouter-nemotron', 'cloudflare', 'groq'],
 };
 
 // ── Rate-limit cooldowns ──────────────────────────────────────────────────────
