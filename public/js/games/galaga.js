@@ -24,11 +24,11 @@ window.Galaga = (() => {
     const PLAYER_W = 32, PLAYER_H = 28;
     const BULLET_W = 6, BULLET_H = 20;
     const BULLET_SPEED = 8;
-    const PLAYER_SPEED = 4;
+    const PLAYER_SPEED = 5.5;
     const FIRE_COOLDOWN = 200;
     const INITIAL_LIVES = 3;
     const BONUS_LIFE_SCORE = 30000;
-    const ENEMY_BULLET_SPEED = 2.5;
+    const ENEMY_BULLET_SPEED = 3.5;
     const FORMATION_TOP = 60;
     const FORMATION_COLS = 10;
     const FORMATION_ROWS = 5;
@@ -539,7 +539,7 @@ window.Galaga = (() => {
                 { x: rand(40, GAME_W - 40), y: GAME_H + 40 }
             ];
         }
-        e.diveSpeed = 0.006 + level * 0.0008;
+        e.diveSpeed = 0.005 + level * 0.0006;
     }
 
     function startGroupDive() {
@@ -566,7 +566,7 @@ window.Galaga = (() => {
                 { x: px + offset, y: GAME_H - 60 },
                 { x: rand(40, GAME_W - 40), y: GAME_H + 40 }
             ];
-            e.diveSpeed = 0.007 + level * 0.0007;
+            e.diveSpeed = 0.006 + level * 0.0006;
         });
         sfxDive();
     }
@@ -1258,7 +1258,7 @@ window.Galaga = (() => {
                         { x: playerX + side * rand(10, 50), y: GAME_H - 60 },
                         { x: rand(40, GAME_W - 40), y: GAME_H + 40 }
                     ],
-                    diveT: 0, diveSpeed: 0.007 + level * 0.0008,
+                    diveT: 0, diveSpeed: 0.006 + level * 0.0007,
                     entryPath: null, entryT: 0, entering: false,
                     hasCaptured: false, hitFlash: 0,
                     idx: enemies.length, pulsePhase: rand(0, Math.PI * 2)
@@ -1456,17 +1456,14 @@ window.Galaga = (() => {
             }
         }
 
-        // Formation sway
-        formationTimer += dt * 1000;
-        const swaySpeed = 800 - level * 30;
-        if (formationTimer > Math.max(swaySpeed, 200)) {
-            formationTimer = 0;
-            formationOfsX += formationDir * 4;
-            if (Math.abs(formationOfsX) > 30) formationDir *= -1;
-        }
+        // Formation sway — smooth sinusoidal motion
+        formationTimer += dt;
+        const swayPeriod = Math.max(3.0 - level * 0.1, 1.5); // seconds per full cycle
+        const swayAmplitude = Math.min(25 + level * 1.5, 40);
+        formationOfsX = Math.sin(formationTimer * Math.PI * 2 / swayPeriod) * swayAmplitude;
 
         // Entry animation with fire trails
-        const entrySpeed = 0.015 + level * 0.002;
+        const entrySpeed = 0.012 + level * 0.001;
         entryQueue.forEach(e => {
             if (!e.alive) return;
             if (e.entering) {
@@ -1503,7 +1500,7 @@ window.Galaga = (() => {
         // Dive attacks
         if (state === ST_PLAYING) {
             diveTimer += dt * 1000;
-            const diveRate = Math.max(3500 - level * 200, 1200);
+            const diveRate = Math.max(3500 - level * 150, 1800);
             if (diveTimer > diveRate) {
                 diveTimer = 0;
                 const formationEnemies = enemies.filter(e => e.alive && e.inFormation && !e.diving);
@@ -1523,7 +1520,7 @@ window.Galaga = (() => {
         // Dive movement
         enemies.forEach(e => {
             if (!e.alive || !e.diving) return;
-            e.diveT += (e.diveSpeed || 0.007) * dt * 60;
+            e.diveT += (e.diveSpeed || 0.005) * dt * 60;
             if (e.tractorIntent && e.diveT >= 1 && !tractorBeam) {
                 e.diveT = 1; e.diving = false;
                 tractorBeam = { bossIdx: enemies.indexOf(e), timer: 0 };
@@ -1531,12 +1528,11 @@ window.Galaga = (() => {
                 return;
             }
             if (e.diveT >= 1) {
-                if (e.y > GAME_H + 30) {
+                // Keep moving past bezier endpoint until off-screen
+                e.y += 3 * dt * 60;
+                if (e.y > GAME_H + 40) {
                     if (e.type === E_MINIBOSS) { e.alive = false; }
                     else { e.y = -30; e.diving = false; e.inFormation = true; e.divePath = null; }
-                } else if (e.divePath) {
-                    const pos = bezierPoint(e.divePath, Math.min(e.diveT, 1));
-                    e.x = pos.x; e.y = pos.y;
                 }
             } else if (e.divePath) {
                 const pos = bezierPoint(e.divePath, Math.max(e.diveT, 0));
@@ -1614,7 +1610,7 @@ window.Galaga = (() => {
         if (state === ST_PLAYING || state === ST_CHALLENGE) {
             enemies.forEach(e => {
                 if (!e.alive || !e.inFormation || e.diving) return;
-                if (Math.random() < (0.001 + level * 0.0005) * dt * 60) {
+                if (Math.random() < (0.0004 + level * 0.0002) * dt * 60) {
                     enemyBullets.push({ x: e.x, y: e.y + (ENEMY_H[e.type] || 24) / 2 });
                 }
             });
@@ -1963,12 +1959,16 @@ window.Galaga = (() => {
             const rect = canvas.getBoundingClientRect();
             const tx = (t.clientX - rect.left) / rect.width;
             const ty = (t.clientY - rect.top) / rect.height;
-            if (ty > 0.75) {
-                if (tx < 0.25) touchLeft = true;
-                else if (tx > 0.75) touchFire = true;
-                else if (tx > 0.55 && tx <= 0.75) touchBomb = true;
-                else touchRight = true;
-            } else { touchFire = true; }
+            if (ty > 0.7) {
+                // Bottom zone: left third = left, middle third = right, right third = fire/bomb
+                if (tx < 0.33) touchLeft = true;
+                else if (tx < 0.55) touchRight = true;
+                else if (tx > 0.82) touchBomb = true;
+                else touchFire = true;
+            } else {
+                // Upper screen tap = fire
+                touchFire = true;
+            }
         }
     }
 

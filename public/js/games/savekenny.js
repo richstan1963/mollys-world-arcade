@@ -24,16 +24,20 @@ window.SaveKenny = (() => {
     const KENNY_W = 22, KENNY_H = 28;
     const DRONE_W = 40, DRONE_H = 12;
     const MISSILE_SPEED = 5;
-    const EXPLOSION_MAX_R = 34;
+    const EXPLOSION_MAX_R = 38;
     const MAX_AMMO = 15;
     const SHIELD_DURATION = 300; // frames
     const MAX_HP = 3;
 
     // Flappy-style drone physics
-    const FLAP_VEL = -4.5;   // upward impulse on tap/space
-    const GRAVITY = 0.18;    // downward pull
-    const MAX_FALL = 5;      // terminal velocity
+    const FLAP_VEL = -4.2;   // upward impulse on tap/space
+    const GRAVITY = 0.16;    // downward pull — slightly floaty
+    const MAX_FALL = 4.5;    // terminal velocity
+    const DRIFT_SPEED = 1.8; // horizontal drift from arrow keys
+    const DRIFT_FRICTION = 0.92; // how quickly drift slows
+    const DRONE_START_X = 140;
     const DRONE_START_Y = GAME_H * 0.38;
+    const AMMO_REGEN_RATE = 90; // frames between auto-regen of 1 ammo
 
     // States
     const ST_SPLASH = 0, ST_PLAYING = 1, ST_DYING = 2, ST_GAMEOVER = 3;
@@ -58,11 +62,12 @@ window.SaveKenny = (() => {
     let environment, envTimer;
 
     // Kenny + Drone (player-controlled flight, no weapons for Kenny)
-    let droneX, droneY, droneVY, droneTilt;
+    let droneX, droneY, droneVY, droneVX, droneTilt;
     let kennyAlive;
     let wobblePhase;
     let kennyAlertTimer;
     let kennyShakeTimer;
+    let ammoRegenTimer;
 
     // Threats
     let threats = [];
@@ -166,6 +171,7 @@ window.SaveKenny = (() => {
     function sfxBomb() { playNoise(0.5, 0.15); playTone(80, 0.4, 'sawtooth', 0.08, 20); }
     function sfxHit() { playTone(200, 0.1, 'sawtooth', 0.09, 60); playNoise(0.12, 0.08); }
     function sfxLaunch() { playTone(300, 0.15, 'sine', 0.06, 600); }
+    function sfxFlap() { playTone(440, 0.04, 'sine', 0.03, 520); }
 
     // ── Helpers ──
     const gs = v => v * SCALE;
@@ -221,45 +227,64 @@ window.SaveKenny = (() => {
 
     // ── Spawn Helpers ──
     function spawnThreat() {
-        const types = [TH_BIRD, TH_BASEBALL];
-        if (difficulty > 2) types.push(TH_LIGHTNING);
-        if (difficulty > 3) types.push(TH_AIRPLANE);
-        if (difficulty > 5) types.push(TH_UFO);
-        if (difficulty > 4) types.push(TH_CAT);
+        // Threats from ALL sides — birds from right, baseballs from below,
+        // lightning from above, airplanes from left AND right, UFOs tracking, cats from below
+        const types = [TH_BIRD, TH_BASEBALL, TH_BIRD];
+        if (difficulty > 1) types.push(TH_LIGHTNING);
+        if (difficulty > 2) types.push(TH_AIRPLANE, TH_CAT);
+        if (difficulty > 4) types.push(TH_UFO);
+        if (difficulty > 3) types.push(TH_LIGHTNING, TH_CAT); // more from above/below
         const type = pick(types);
         const t = { type, x: 0, y: 0, vx: 0, vy: 0, w: 16, h: 16, alive: true, frame: 0 };
 
         switch (type) {
             case TH_BIRD:
-                t.x = GAME_W + 20; t.y = rng(30, GAME_H - 80);
-                t.vx = -rng(1.8, 3.2); t.vy = rng(-0.3, 0.3);
+                // Birds come from right OR left
+                if (Math.random() < 0.7) {
+                    t.x = GAME_W + 20; t.y = rng(30, GAME_H - 80);
+                    t.vx = -rng(1.5, 2.8); t.vy = rng(-0.3, 0.3);
+                } else {
+                    t.x = -20; t.y = rng(30, GAME_H - 80);
+                    t.vx = rng(1.5, 2.8); t.vy = rng(-0.3, 0.3);
+                }
                 t.w = 18; t.h = 14;
                 break;
             case TH_BASEBALL:
-                t.x = rng(GAME_W * 0.2, GAME_W * 0.85); t.y = GAME_H + 10;
-                t.vx = rng(-0.8, 0.8); t.vy = -rng(3, 5);
+                // Baseballs from below, aimed upward
+                t.x = rng(GAME_W * 0.1, GAME_W * 0.9); t.y = GAME_H + 10;
+                t.vx = rng(-0.8, 0.8); t.vy = -rng(2.5, 4.5);
                 t.w = 10; t.h = 10;
                 break;
             case TH_LIGHTNING:
-                t.x = droneX + rng(-80, 80); t.y = -10;
-                t.vx = 0; t.vy = rng(2.5, 4.5);
+                // Lightning from above, targeting near drone
+                t.x = droneX + rng(-100, 100); t.y = -10;
+                t.vx = rng(-0.3, 0.3); t.vy = rng(2.0, 3.5);
                 t.w = 8; t.h = 24;
                 break;
             case TH_AIRPLANE:
-                t.x = GAME_W + 40; t.y = rng(20, 140);
-                t.vx = -rng(3.5, 6); t.vy = 0;
+                // Airplanes from either side
+                if (Math.random() < 0.5) {
+                    t.x = GAME_W + 40; t.y = rng(20, 160);
+                    t.vx = -rng(2.5, 4.5); t.vy = rng(-0.3, 0.3);
+                } else {
+                    t.x = -40; t.y = rng(20, 160);
+                    t.vx = rng(2.5, 4.5); t.vy = rng(-0.3, 0.3);
+                }
                 t.w = 36; t.h = 14;
                 break;
             case TH_UFO:
-                // UFOs come from behind (left)
-                t.x = -30; t.y = rng(30, 150);
-                t.vx = rng(1, 2); t.vy = 0;
+                // UFOs appear from edges and track Kenny
+                const side = Math.random();
+                if (side < 0.33) { t.x = -30; t.y = rng(30, 150); t.vx = rng(0.8, 1.5); }
+                else if (side < 0.66) { t.x = GAME_W + 30; t.y = rng(30, 150); t.vx = -rng(0.8, 1.5); }
+                else { t.x = rng(50, GAME_W - 50); t.y = -20; t.vy = rng(0.5, 1.0); }
                 t.w = 24; t.h = 14;
                 t.tracking = true;
                 break;
             case TH_CAT:
-                t.x = GAME_W * 0.6 + rng(0, 120); t.y = GAME_H + 10;
-                t.vx = rng(-1.5, 0.5); t.vy = -rng(3.5, 5.5);
+                // Cats flung from below
+                t.x = rng(GAME_W * 0.1, GAME_W * 0.9); t.y = GAME_H + 10;
+                t.vx = rng(-1.5, 1.5); t.vy = -rng(3.0, 5.0);
                 t.w = 14; t.h = 14;
                 t.spin = 0;
                 break;
@@ -1058,12 +1083,16 @@ window.SaveKenny = (() => {
         ctx.fillStyle = '#FFF';
         const blink = Math.sin(frameCount * 0.06) > 0;
         if (blink) {
-            ctx.fillText('CLICK to shoot down threats!', gs(GAME_W / 2), gs(GAME_H - 80));
+            ctx.fillText(HAS_TOUCH ? 'TAP LEFT = Fly   TAP RIGHT = Shoot' : 'SPACE = Fly   CLICK = Shoot', gs(GAME_W / 2), gs(GAME_H - 90));
         }
 
         ctx.font = `${gs(9)}px monospace`;
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.fillText('He always dies. How long can you keep him alive?', gs(GAME_W / 2), gs(GAME_H - 62));
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText(HAS_TOUCH ? 'Arrows to drift. Fly the drone AND shoot threats!' : 'Arrow keys to drift. Fly the drone AND shoot threats!', gs(GAME_W / 2), gs(GAME_H - 74));
+
+        ctx.font = `${gs(8)}px monospace`;
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillText('He always dies. How long can you keep him alive?', gs(GAME_W / 2), gs(GAME_H - 60));
 
         if (frameCount % 120 === 60) showMmph();
 
@@ -1115,21 +1144,57 @@ window.SaveKenny = (() => {
     function drawLaunchBase() {
         ctx.save();
         const baseY = GAME_H - 50;
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+
+        // Launch platform — triangular bunker
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
         ctx.beginPath();
-        ctx.moveTo(gs(GAME_W / 2 - 30), gs(baseY));
-        ctx.lineTo(gs(GAME_W / 2), gs(baseY - 10));
-        ctx.lineTo(gs(GAME_W / 2 + 30), gs(baseY));
+        ctx.moveTo(gs(GAME_W / 2 - 35), gs(baseY));
+        ctx.lineTo(gs(GAME_W / 2), gs(baseY - 14));
+        ctx.lineTo(gs(GAME_W / 2 + 35), gs(baseY));
         ctx.closePath();
         ctx.fill();
+
+        // Missile silo glow
+        ctx.fillStyle = ammo > 0 ? (accentColor || '#FF4444') : 'rgba(100,100,100,0.3)';
+        ctx.globalAlpha = 0.4 + Math.sin(frameCount * 0.1) * 0.15;
+        ctx.beginPath();
+        ctx.arc(gs(GAME_W / 2), gs(baseY - 6), gs(4), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
         // Ammo display dots on the base
         for (let i = 0; i < MAX_AMMO; i++) {
             const dotX = GAME_W / 2 - 28 + i * (56 / MAX_AMMO);
-            ctx.fillStyle = i < ammo ? (accentColor || '#FF4444') : 'rgba(255,255,255,0.1)';
+            ctx.fillStyle = i < ammo ? (accentColor || '#FF4444') : 'rgba(255,255,255,0.08)';
             ctx.beginPath();
             ctx.arc(gs(dotX + 2), gs(baseY - 2), gs(1.5), 0, Math.PI * 2);
             ctx.fill();
         }
+
+        ctx.restore();
+    }
+
+    // ── Touch zone indicators (mobile) ──
+    function drawTouchZones() {
+        if (!HAS_TOUCH || state !== ST_PLAYING) return;
+        ctx.save();
+        ctx.globalAlpha = 0.04;
+        // Left half — fly zone
+        ctx.fillStyle = '#00AAFF';
+        ctx.fillRect(0, 0, gs(GAME_W / 2), H);
+        // Right half — shoot zone
+        ctx.fillStyle = '#FF4444';
+        ctx.fillRect(gs(GAME_W / 2), 0, gs(GAME_W / 2), H);
+        ctx.globalAlpha = 1;
+
+        // Subtle labels at bottom
+        ctx.globalAlpha = 0.15;
+        ctx.font = `bold ${gs(10)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#FFF';
+        ctx.fillText('FLY', gs(GAME_W * 0.25), gs(GAME_H - 55));
+        ctx.fillText('SHOOT', gs(GAME_W * 0.75), gs(GAME_H - 55));
+        ctx.globalAlpha = 1;
         ctx.restore();
     }
 
@@ -1137,8 +1202,9 @@ window.SaveKenny = (() => {
     function resetGame() {
         score = 0; coins = 0; hp = MAX_HP; ammo = MAX_AMMO;
         shieldTimer = 0;
-        droneX = 100; droneY = DRONE_START_Y; droneVY = 0;
+        droneX = DRONE_START_X; droneY = DRONE_START_Y; droneVY = 0; droneVX = 0;
         droneTilt = 0;
+        ammoRegenTimer = 0;
         kennyAlive = true;
         kennyAlertTimer = 0; kennyShakeTimer = 0;
         wobblePhase = 0;
@@ -1240,9 +1306,9 @@ window.SaveKenny = (() => {
         scrollX += scrollSpeed;
         envTimer++;
 
-        // Difficulty ramp
-        difficulty = 1 + Math.floor(score / 400);
-        scrollSpeed = SCROLL_SPEED_BASE + difficulty * 0.1;
+        // Difficulty ramp — gradual, gives player time to learn both controls
+        difficulty = 1 + Math.floor(score / 500);
+        scrollSpeed = SCROLL_SPEED_BASE + difficulty * 0.08;
 
         // Environment cycling
         if (envTimer > 1200) {
@@ -1257,13 +1323,31 @@ window.SaveKenny = (() => {
         droneVY += GRAVITY;
         if (droneVY > MAX_FALL) droneVY = MAX_FALL;
         droneY += droneVY;
+
+        // Arrow keys for horizontal drift
+        if (keys['ArrowLeft'] || keys['a'] || keys['A']) droneVX -= DRIFT_SPEED * 0.15;
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) droneVX += DRIFT_SPEED * 0.15;
+        // ArrowDown / S = quick dive (useful for dodging)
+        if (keys['ArrowDown'] || keys['s'] || keys['S']) droneVY += 0.35;
+        droneVX *= DRIFT_FRICTION;
+        droneVX = clamp(droneVX, -DRIFT_SPEED, DRIFT_SPEED);
+        droneX += droneVX;
+
         // Clamp to screen
         if (droneY < 20) { droneY = 20; droneVY = 0; }
-        if (droneY > GAME_H - 40) { droneY = GAME_H - 40; droneVY = 0; }
-        // Drone drifts right slowly
-        droneX = 100 + Math.sin(frameCount * 0.003) * 60;
-        // Tilt follows vertical velocity
-        droneTilt = clamp(droneVY * 0.06, -0.3, 0.3);
+        if (droneY > GAME_H - 60) { droneY = GAME_H - 60; droneVY = 0; }
+        if (droneX < 25) { droneX = 25; droneVX = 0; }
+        if (droneX > GAME_W - 25) { droneX = GAME_W - 25; droneVX = 0; }
+
+        // Tilt follows velocity — both horizontal and vertical
+        droneTilt = clamp(droneVY * 0.05 + droneVX * 0.08, -0.35, 0.35);
+
+        // Ammo auto-regenerates slowly
+        ammoRegenTimer++;
+        if (ammoRegenTimer >= AMMO_REGEN_RATE && ammo < MAX_AMMO) {
+            ammo++;
+            ammoRegenTimer = 0;
+        }
 
         // Gentle thrust particles
         if (frameCount % 4 === 0) spawnThrustParticle();
@@ -1288,10 +1372,14 @@ window.SaveKenny = (() => {
         threatTimer--;
         if (threatTimer <= 0) {
             spawnThreat();
-            threatTimer = Math.max(25, 90 - difficulty * 8);
-            // Spawn doubles at higher difficulty
-            if (difficulty > 3 && Math.random() < 0.3) {
-                setTimeout(() => { if (state === ST_PLAYING) spawnThreat(); }, 200);
+            // Manageable pace: starts generous, ramps up
+            threatTimer = Math.max(30, 110 - difficulty * 10);
+            // Spawn doubles at higher difficulty for more chaos
+            if (difficulty > 3 && Math.random() < 0.25) {
+                setTimeout(() => { if (state === ST_PLAYING) spawnThreat(); }, 300);
+            }
+            if (difficulty > 6 && Math.random() < 0.2) {
+                setTimeout(() => { if (state === ST_PLAYING) spawnThreat(); }, 600);
             }
         }
         threats.forEach(t => {
@@ -1509,6 +1597,7 @@ window.SaveKenny = (() => {
                 drawSky();
                 drawParallax();
                 drawGround();
+                drawTouchZones();
                 drawLaunchBase();
                 drawCoins();
                 drawPowerups();
@@ -1557,19 +1646,25 @@ window.SaveKenny = (() => {
     // ── Input Handling ──
     function onKeyDown(e) {
         keys[e.key] = true;
+        // Space or Enter = flap (Flappy Bird boost)
         if (e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
             if (state === ST_SPLASH || state === ST_GAMEOVER) {
                 startGame();
             } else if (state === ST_PLAYING) {
-                // Flap the drone!
                 droneVY = FLAP_VEL;
+                sfxFlap();
             }
         }
-        // W or ArrowUp also flaps
+        // W or ArrowUp = also flap
         if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') && state === ST_PLAYING) {
             e.preventDefault();
             droneVY = FLAP_VEL;
+            sfxFlap();
+        }
+        // Arrow keys for drift are handled in updatePlaying via keys{}
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
         }
     }
     function onKeyUp(e) {
@@ -1588,6 +1683,7 @@ window.SaveKenny = (() => {
         const sx = (e.clientX - rect.left) / rect.width * GAME_W;
         const sy = (e.clientY - rect.top) / rect.height * GAME_H;
 
+        // Click anywhere fires a missile to that point (Missile Command)
         shoot(sx, sy);
     }
 
@@ -1599,16 +1695,21 @@ window.SaveKenny = (() => {
         }
         if (state !== ST_PLAYING) return;
 
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const sx = (touch.clientX - rect.left) / rect.width * GAME_W;
-        const sy = (touch.clientY - rect.top) / rect.height * GAME_H;
+        // Support multi-touch: process all touches
+        for (let i = 0; i < e.touches.length; i++) {
+            const touch = e.touches[i];
+            const rect = canvas.getBoundingClientRect();
+            const sx = (touch.clientX - rect.left) / rect.width * GAME_W;
+            const sy = (touch.clientY - rect.top) / rect.height * GAME_H;
 
-        // Upper half = flap drone, lower half = shoot missile
-        if (sy < GAME_H * 0.4) {
-            droneVY = FLAP_VEL;
-        } else {
-            shoot(sx, sy);
+            // LEFT half of screen = flap drone (Flappy Bird)
+            // RIGHT half of screen = fire missile to that point (Missile Command)
+            if (sx < GAME_W * 0.5) {
+                droneVY = FLAP_VEL;
+                sfxFlap();
+            } else {
+                shoot(sx, sy);
+            }
         }
     }
 

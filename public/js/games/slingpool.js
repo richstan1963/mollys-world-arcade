@@ -1,7 +1,7 @@
-/* SlingPool — Slingshot Pool: Peggle meets Pool
+/* SlingPool — Turret Pool: Cannon meets Pool
  * Theme-aware canvas game for Your World Arcade
- * Pull back the cue ball like Angry Birds, release into a table full of
- * bumpers, targets, and pockets. 10 levels, 3 shots each, star ratings. */
+ * Aim a fixed turret at the bottom rail, set power, fire the cue ball into
+ * a table full of bumpers, targets, and pockets. 10 levels, 3 shots each, star ratings. */
 window.SlingPool = (() => {
 
     // -- roundRect polyfill (Safari <16, older browsers) --
@@ -28,9 +28,10 @@ window.SlingPool = (() => {
     const POCKET_R = 16;                 // pocket radius
     const BALL_R = 8;                    // ball radius
     const CUE_R = 8;                     // cue ball radius
-    const MAX_PULL = 120;                // max slingshot pull distance
-    const MIN_PULL = 15;                 // minimum pull to fire
+    const MAX_POWER = 120;               // max turret power
+    const MIN_POWER = 8;                 // minimum power to fire
     const TRAJ_DOTS = 18;               // trajectory preview dots
+    const POWER_CYCLE_SPEED = 0.04;      // power meter oscillation speed
     const FRICTION_FELT = 0.992;
     const FRICTION_ICE = 0.999;
     const FRICTION_SAND = 0.95;
@@ -41,7 +42,11 @@ window.SlingPool = (() => {
     const SHOTS_PER_LEVEL = 3;
     const TOTAL_LEVELS = 10;
     const POWER_SCALE = 0.12;            // pull distance -> velocity
-    const SCREEN_SHAKE_POWER = 40;       // pull distance that triggers shake
+    const SCREEN_SHAKE_POWER = 40;       // power that triggers shake
+    const TURRET_BARREL_LEN = 28;        // cannon barrel length
+    const TURRET_BARREL_W = 10;          // cannon barrel width
+    const TURRET_BASE_W = 28;            // wooden base width
+    const TURRET_BASE_H = 16;            // wooden base height
 
     // Ball colors (pool style)
     const BALL_COLORS = [
@@ -114,10 +119,13 @@ window.SlingPool = (() => {
     let levelStars;  // stars earned per level
     let totalStars;
 
-    // Aiming
-    let dragging, dragStartX, dragStartY;
-    let cueRestX, cueRestY;   // where cue ball rests for aiming
-    let pullX, pullY;          // current pull position
+    // Turret aiming
+    let turretAngle;            // angle turret is pointing (radians, 0 = right)
+    let turretPower;            // current oscillating power (0..MAX_POWER)
+    let powerDirection;         // 1 = rising, -1 = falling
+    let turretLocked;           // true when player has clicked to lock aim
+    let mouseX, mouseY;         // current mouse position in game coords
+    let cueRestX, cueRestY;    // where cue ball / turret sits (bottom-center)
 
     // Sprites
     const sprites = {};
@@ -194,14 +202,26 @@ window.SlingPool = (() => {
                     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
                     osc.start(t); osc.stop(t + 0.05);
                     break;
-                case 'release':
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(500, t);
-                    osc.frequency.exponentialRampToValueAtTime(200, t + 0.15);
-                    gain.gain.setValueAtTime(0.15, t);
-                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-                    osc.start(t); osc.stop(t + 0.15);
+                case 'release': {
+                    // Cannon boom: low thud + whoosh
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, t);
+                    osc.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+                    gain.gain.setValueAtTime(0.18, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                    osc.start(t); osc.stop(t + 0.25);
+                    // High whoosh overtone
+                    const wh = ac.createOscillator();
+                    const wg = ac.createGain();
+                    wh.connect(wg); wg.connect(ac.destination);
+                    wh.type = 'triangle';
+                    wh.frequency.setValueAtTime(600, t);
+                    wh.frequency.exponentialRampToValueAtTime(200, t + 0.12);
+                    wg.gain.setValueAtTime(0.07, t);
+                    wg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                    wh.start(t); wh.stop(t + 0.12);
                     break;
+                }
                 case 'click': {
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(800, t);
@@ -385,14 +405,14 @@ window.SlingPool = (() => {
         const midX = W / 2;
         const midY = H / 2;
 
-        // Cue ball rest position (left-center)
-        cueRestX = tableL + 60;
-        cueRestY = midY;
+        // Cue ball rest position (bottom-center, just above bottom rail)
+        cueRestX = midX;
+        cueRestY = tableB - 10;
 
-        // Place target balls in a rough triangle on right side
+        // Place target balls in a rough triangle in upper half of table
         const numBalls = Math.min(3 + lvl, 15);
-        const startX = midX + 60;
-        const startY = midY;
+        const startX = midX;
+        const startY = midY - 40;
         const spacing = BALL_R * 2.5;
 
         let placed = 0;
@@ -954,7 +974,7 @@ window.SlingPool = (() => {
             }
         }
 
-        // Cue ball potting (scratch)
+        // Cue ball potting (scratch) - reset to turret position
         if (cueBall.potting) {
             cueBall.pottingTimer--;
             cueBall.x += (cueBall.pocketTarget.x - cueBall.x) * 0.2;
@@ -965,6 +985,8 @@ window.SlingPool = (() => {
                 cueBall.y = cueRestY;
                 cueBall.vx = 0;
                 cueBall.vy = 0;
+                turretLocked = false;
+                turretPower = 0;
             }
         }
 
@@ -993,7 +1015,9 @@ window.SlingPool = (() => {
     // ═══════════════════════════════════════════════════════════════
     //  SHOT LOGIC
     // ═══════════════════════════════════════════════════════════════
-    function fireShot(power, dirX, dirY) {
+    function fireShot(power, angle) {
+        const dirX = Math.cos(angle);
+        const dirY = Math.sin(angle);
         cueBall.vx = dirX * power * POWER_SCALE;
         cueBall.vy = dirY * power * POWER_SCALE;
         state = ST_ROLLING;
@@ -1001,11 +1025,18 @@ window.SlingPool = (() => {
         combo = 0;
         comboTimer = 0;
         shotsLeft--;
+        turretLocked = false;
 
         if (power > SCREEN_SHAKE_POWER) {
             triggerShake(3 + power / 30);
         }
+        // Cannon fire sound
         playSound('release');
+        spawnParticles(
+            cueRestX + Math.cos(angle) * TURRET_BARREL_LEN,
+            cueRestY + Math.sin(angle) * TURRET_BARREL_LEN,
+            10, '#ffaa00', 3
+        );
     }
 
     function onShotSettled() {
@@ -1038,12 +1069,15 @@ window.SlingPool = (() => {
             return;
         }
 
-        // More shots available - reset cue
+        // More shots available - reset cue and turret
         state = ST_AIMING;
         cueBall.x = cueRestX;
         cueBall.y = cueRestY;
         cueBall.vx = 0;
         cueBall.vy = 0;
+        turretLocked = false;
+        turretPower = 0;
+        powerDirection = 1;
     }
 
     function nextLevel() {
@@ -1059,6 +1093,10 @@ window.SlingPool = (() => {
         generateLevel(level);
         state = ST_AIMING;
         levelTransTimer = 60;
+        turretLocked = false;
+        turretPower = 0;
+        powerDirection = 1;
+        turretAngle = -Math.PI / 2;
         playSound('star', 1);
     }
 
@@ -1081,6 +1119,12 @@ window.SlingPool = (() => {
         windmillAngle = 0;
         wallPhase = 0;
         levelTransTimer = 60;
+        turretAngle = -Math.PI / 2;  // default: aim straight up
+        turretPower = 0;
+        powerDirection = 1;
+        turretLocked = false;
+        mouseX = BASE_W / 2;
+        mouseY = BASE_H / 2;
 
         generateLevel(level);
         state = ST_AIMING;
@@ -1258,13 +1302,13 @@ window.SlingPool = (() => {
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
         ctx.fill();
 
-        // Head string (line where cue ball goes)
+        // Head string (horizontal line above turret zone)
         ctx.setLineDash([4, 4]);
         ctx.strokeStyle = 'rgba(255,255,255,0.08)';
         ctx.lineWidth = 0.5;
         ctx.beginPath();
-        ctx.moveTo(cueRestX + 30, RAIL_W);
-        ctx.lineTo(cueRestX + 30, H - RAIL_W);
+        ctx.moveTo(RAIL_W, cueRestY - 20);
+        ctx.lineTo(W - RAIL_W, cueRestY - 20);
         ctx.stroke();
         ctx.setLineDash([]);
     }
@@ -1585,6 +1629,14 @@ window.SlingPool = (() => {
     function drawCueBall() {
         if (!cueBall.active && !cueBall.potting) return;
 
+        // During aiming, show the cue ball at the muzzle of the turret
+        let drawX = cueBall.x;
+        let drawY = cueBall.y;
+        if (state === ST_AIMING && !cueBall.potting) {
+            drawX = cueRestX + Math.cos(turretAngle) * (TURRET_BARREL_LEN + CUE_R + 2);
+            drawY = cueRestY + Math.sin(turretAngle) * (TURRET_BARREL_LEN + CUE_R + 2);
+        }
+
         const alpha = cueBall.potting ? Math.max(0, cueBall.pottingTimer / 20) : 1;
         const r = cueBall.potting ? CUE_R * (cueBall.pottingTimer / 20) : CUE_R;
 
@@ -1593,114 +1645,193 @@ window.SlingPool = (() => {
 
         // Shadow
         ctx.beginPath();
-        ctx.arc(cueBall.x + 1.5, cueBall.y + 1.5, r, 0, Math.PI * 2);
+        ctx.arc(drawX + 1.5, drawY + 1.5, r, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0,0,0,0.35)';
         ctx.fill();
 
         // Main ball
         const grad = ctx.createRadialGradient(
-            cueBall.x - r * 0.3, cueBall.y - r * 0.3, r * 0.1,
-            cueBall.x, cueBall.y, r
+            drawX - r * 0.3, drawY - r * 0.3, r * 0.1,
+            drawX, drawY, r
         );
         grad.addColorStop(0, '#ffffff');
         grad.addColorStop(0.6, '#e8e8e8');
         grad.addColorStop(1, '#b0b0b0');
 
         ctx.beginPath();
-        ctx.arc(cueBall.x, cueBall.y, r, 0, Math.PI * 2);
+        ctx.arc(drawX, drawY, r, 0, Math.PI * 2);
         ctx.fillStyle = grad;
         ctx.fill();
 
         // Shine
         ctx.beginPath();
-        ctx.arc(cueBall.x - r * 0.25, cueBall.y - r * 0.3, r * 0.3, 0, Math.PI * 2);
+        ctx.arc(drawX - r * 0.25, drawY - r * 0.3, r * 0.3, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
         ctx.fill();
 
         ctx.restore();
     }
 
-    function drawSlingshot() {
-        if (state !== ST_AIMING || !dragging) return;
+    function drawTurret() {
+        if (state !== ST_AIMING) return;
 
-        const dx = cueBall.x - pullX;
-        const dy = cueBall.y - pullY;
-        const pullDist = Math.min(Math.sqrt(dx * dx + dy * dy), MAX_PULL);
+        const tx = cueRestX;
+        const ty = cueRestY;
 
-        if (pullDist < MIN_PULL) return;
-
-        // Slingshot band anchor points (offset from cue ball)
-        const perpX = -dy / (pullDist || 1) * 6;
-        const perpY = dx / (pullDist || 1) * 6;
-
-        const anchorL = { x: cueBall.x + perpX, y: cueBall.y + perpY };
-        const anchorR = { x: cueBall.x - perpX, y: cueBall.y - perpY };
-
-        // Band color based on power
-        const powerFrac = pullDist / MAX_PULL;
-        const r = Math.round(100 + powerFrac * 155);
-        const g = Math.round(80 - powerFrac * 80);
-        const bandColor = `rgb(${r}, ${g}, 20)`;
-
-        // Draw elastic bands
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = bandColor;
-        ctx.lineCap = 'round';
-
-        // Left band
+        // ── Wooden base ──
+        const baseX = tx - TURRET_BASE_W / 2;
+        const baseY = ty - TURRET_BASE_H / 4;
+        const baseGrad = ctx.createLinearGradient(baseX, baseY, baseX, baseY + TURRET_BASE_H);
+        baseGrad.addColorStop(0, '#c4903a');
+        baseGrad.addColorStop(0.3, '#a07030');
+        baseGrad.addColorStop(0.7, '#7a5020');
+        baseGrad.addColorStop(1, '#5a3818');
+        ctx.fillStyle = baseGrad;
         ctx.beginPath();
-        ctx.moveTo(anchorL.x, anchorL.y);
-        ctx.lineTo(pullX + perpX * 0.5, pullY + perpY * 0.5);
-        ctx.stroke();
-
-        // Right band
-        ctx.beginPath();
-        ctx.moveTo(anchorR.x, anchorR.y);
-        ctx.lineTo(pullX - perpX * 0.5, pullY - perpY * 0.5);
-        ctx.stroke();
-
-        // Pull handle dot
-        ctx.beginPath();
-        ctx.arc(pullX, pullY, 4, 0, Math.PI * 2);
-        ctx.fillStyle = bandColor;
+        ctx.roundRect(baseX, baseY, TURRET_BASE_W, TURRET_BASE_H, [3, 3, 0, 0]);
         ctx.fill();
-
-        // Anchor dots
-        ctx.fillStyle = '#888';
-        ctx.beginPath();
-        ctx.arc(anchorL.x, anchorL.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(anchorR.x, anchorR.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Power indicator bar
-        const barW = 60;
-        const barH = 5;
-        const barX = cueBall.x - barW / 2;
-        const barY = cueBall.y + CUE_R + 12;
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-        const powerGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
-        powerGrad.addColorStop(0, '#00cc00');
-        powerGrad.addColorStop(0.5, '#ffcc00');
-        powerGrad.addColorStop(1, '#ff2200');
-        ctx.fillStyle = powerGrad;
-        ctx.fillRect(barX, barY, barW * powerFrac, barH);
-
-        // Trajectory dots
-        const normDx = dx / (pullDist || 1);
-        const normDy = dy / (pullDist || 1);
-        const power = pullDist * POWER_SCALE;
-        const dots = computeTrajectory(cueBall.x, cueBall.y, normDx * power, normDy * power, TRAJ_DOTS);
-
-        for (let i = 0; i < dots.length; i++) {
-            const alpha = 0.6 * (1 - i / dots.length);
-            const dotR = 1.5 * (1 - i / dots.length * 0.5);
+        // Wood grain lines
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < 3; i++) {
+            const gy = baseY + 3 + i * 4;
             ctx.beginPath();
-            ctx.arc(dots[i].x, dots[i].y, dotR, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.moveTo(baseX + 2, gy);
+            ctx.lineTo(baseX + TURRET_BASE_W - 2, gy);
+            ctx.stroke();
+        }
+        // Base edge highlight
+        ctx.strokeStyle = 'rgba(255,220,150,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(baseX + 1, baseY);
+        ctx.lineTo(baseX + TURRET_BASE_W - 1, baseY);
+        ctx.stroke();
+
+        // ── Metal barrel ──
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(turretAngle);
+
+        // Barrel shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(2, -TURRET_BARREL_W / 2 + 2, TURRET_BARREL_LEN, TURRET_BARREL_W);
+
+        // Barrel body (metal gradient)
+        const barrelGrad = ctx.createLinearGradient(0, -TURRET_BARREL_W / 2, 0, TURRET_BARREL_W / 2);
+        barrelGrad.addColorStop(0, '#c0c0c0');
+        barrelGrad.addColorStop(0.2, '#e0e0e0');
+        barrelGrad.addColorStop(0.5, '#a8a8a8');
+        barrelGrad.addColorStop(0.8, '#888');
+        barrelGrad.addColorStop(1, '#666');
+        ctx.fillStyle = barrelGrad;
+        ctx.fillRect(0, -TURRET_BARREL_W / 2, TURRET_BARREL_LEN, TURRET_BARREL_W);
+
+        // Barrel outline
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0, -TURRET_BARREL_W / 2, TURRET_BARREL_LEN, TURRET_BARREL_W);
+
+        // Barrel muzzle ring
+        ctx.strokeStyle = '#777';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(TURRET_BARREL_LEN - 1, -TURRET_BARREL_W / 2 - 1);
+        ctx.lineTo(TURRET_BARREL_LEN - 1, TURRET_BARREL_W / 2 + 1);
+        ctx.stroke();
+
+        // Barrel rivet dots
+        ctx.fillStyle = '#999';
+        for (let i = 0; i < 3; i++) {
+            const rx = 5 + i * 8;
+            ctx.beginPath();
+            ctx.arc(rx, -TURRET_BARREL_W / 2 + 1.5, 1.2, 0, Math.PI * 2);
             ctx.fill();
+            ctx.beginPath();
+            ctx.arc(rx, TURRET_BARREL_W / 2 - 1.5, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Barrel shine strip
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(2, -TURRET_BARREL_W / 2 + 1, TURRET_BARREL_LEN - 4, 2);
+
+        ctx.restore();
+
+        // ── Turret pivot hub ──
+        const hubGrad = ctx.createRadialGradient(tx - 2, ty - 2, 1, tx, ty, 7);
+        hubGrad.addColorStop(0, '#e0e0e0');
+        hubGrad.addColorStop(0.6, '#999');
+        hubGrad.addColorStop(1, '#555');
+        ctx.beginPath();
+        ctx.arc(tx, ty, 7, 0, Math.PI * 2);
+        ctx.fillStyle = hubGrad;
+        ctx.fill();
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // ── Aim line (subtle) ──
+        const aimEndX = tx + Math.cos(turretAngle) * 200;
+        const aimEndY = ty + Math.sin(turretAngle) * 200;
+        ctx.setLineDash([2, 6]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(tx + Math.cos(turretAngle) * TURRET_BARREL_LEN, ty + Math.sin(turretAngle) * TURRET_BARREL_LEN);
+        ctx.lineTo(aimEndX, aimEndY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // ── Power meter (vertical bar on right side) ──
+        const powerFrac = turretPower / MAX_POWER;
+        const barH = 80;
+        const barW = 8;
+        const barX = W - RAIL_W - 22;
+        const barY = H / 2 - barH / 2;
+
+        // Bar background
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+        // Bar fill (bottom-up)
+        const pmGrad = ctx.createLinearGradient(0, barY + barH, 0, barY);
+        pmGrad.addColorStop(0, '#00cc00');
+        pmGrad.addColorStop(0.5, '#ffcc00');
+        pmGrad.addColorStop(1, '#ff2200');
+        ctx.fillStyle = pmGrad;
+        const fillH = barH * powerFrac;
+        ctx.fillRect(barX, barY + barH - fillH, barW, fillH);
+
+        // Bar border
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, barY, barW, barH);
+
+        // Power label
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('PWR', barX + barW / 2, barY + barH + 4);
+
+        // ── Trajectory dots from barrel tip ──
+        if (turretPower > MIN_POWER) {
+            const muzzleX = tx + Math.cos(turretAngle) * TURRET_BARREL_LEN;
+            const muzzleY = ty + Math.sin(turretAngle) * TURRET_BARREL_LEN;
+            const power = turretPower * POWER_SCALE;
+            const vx = Math.cos(turretAngle) * power;
+            const vy = Math.sin(turretAngle) * power;
+            const dots = computeTrajectory(muzzleX, muzzleY, vx, vy, TRAJ_DOTS);
+
+            for (let i = 0; i < dots.length; i++) {
+                const alpha = 0.6 * (1 - i / dots.length);
+                const dotR = 1.5 * (1 - i / dots.length * 0.5);
+                ctx.beginPath();
+                ctx.arc(dots[i].x, dots[i].y, dotR, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.fill();
+            }
         }
     }
 
@@ -1754,6 +1885,18 @@ window.SlingPool = (() => {
         const starSize = 10;
         for (let i = 0; i < totalStars && i < 30; i++) {
             drawStar(W - 60 - i * 12, starY + 7, starSize / 2, '#FFD700');
+        }
+
+        // Turret aim instruction
+        if (state === ST_AIMING && levelTransTimer <= 0) {
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '9px sans-serif';
+            ctx.textAlign = 'center';
+            if (!turretLocked) {
+                ctx.fillText('Move to aim \u2022 Click to lock', W / 2, H - 5);
+            } else {
+                ctx.fillText('Click to FIRE! \u2022 Right-click to cancel', W / 2, H - 5);
+            }
         }
 
         // Combo indicator
@@ -1836,14 +1979,14 @@ window.SlingPool = (() => {
         // Subtitle
         ctx.font = '13px sans-serif';
         ctx.fillStyle = '#ccc';
-        ctx.fillText('Slingshot + Pool + Pinball', W / 2, titleY + 28);
+        ctx.fillText('Cannon + Pool + Pinball', W / 2, titleY + 28);
         ctx.restore();
 
         // Instructions
         ctx.fillStyle = '#aaa';
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Pull back the cue ball and release to shoot!', W / 2, H * 0.58);
+        ctx.fillText('Aim the turret, click to lock, click again to fire!', W / 2, H * 0.58);
         ctx.fillText('Pot balls in pockets for points', W / 2, H * 0.64);
         ctx.fillText('3 shots per level \u2022 10 levels \u2022 Star ratings', W / 2, H * 0.70);
 
@@ -2019,6 +2162,8 @@ window.SlingPool = (() => {
     function onMouseDown(e) {
         e.preventDefault();
         const pos = getCanvasPos(e);
+        mouseX = pos.x;
+        mouseY = pos.y;
 
         if (state === ST_TITLE) {
             startGame();
@@ -2049,64 +2194,71 @@ window.SlingPool = (() => {
         }
 
         if (state === ST_AIMING && !cueBall.potting) {
-            // Check if clicking near cue ball
-            const d = dist(pos.x, pos.y, cueBall.x, cueBall.y);
-            if (d < 30) {
-                dragging = true;
-                pullX = pos.x;
-                pullY = pos.y;
-                dragStartX = pos.x;
-                dragStartY = pos.y;
+            if (!turretLocked) {
+                // First click: lock the aim direction, start power oscillation
+                turretLocked = true;
+                turretPower = 0;
+                powerDirection = 1;
+                playSound('pull', 30);
+            } else {
+                // Second click: fire at current power
+                if (turretPower >= MIN_POWER) {
+                    // Place cue ball at muzzle before firing
+                    cueBall.x = cueRestX + Math.cos(turretAngle) * (TURRET_BARREL_LEN + CUE_R + 2);
+                    cueBall.y = cueRestY + Math.sin(turretAngle) * (TURRET_BARREL_LEN + CUE_R + 2);
+                    fireShot(turretPower, turretAngle);
+                }
             }
         }
     }
 
     function onMouseMove(e) {
         e.preventDefault();
-        if (!dragging) return;
         const pos = getCanvasPos(e);
-        pullX = pos.x;
-        pullY = pos.y;
+        mouseX = pos.x;
+        mouseY = pos.y;
 
-        // Clamp pull distance
-        const dx = cueBall.x - pullX;
-        const dy = cueBall.y - pullY;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        if (d > MAX_PULL) {
-            pullX = cueBall.x - (dx / d) * MAX_PULL;
-            pullY = cueBall.y - (dy / d) * MAX_PULL;
-        }
-
-        // Audio feedback for pull stretch
-        const pullDist = dist(cueBall.x, cueBall.y, pullX, pullY);
-        if (Math.random() < 0.15) {
-            playSound('pull', pullDist);
+        // Update turret angle to track mouse (only when not locked)
+        if (state === ST_AIMING && !turretLocked) {
+            const dx = mouseX - cueRestX;
+            const dy = mouseY - cueRestY;
+            let angle = Math.atan2(dy, dx);
+            // Clamp to upper half (don't aim into the rail behind)
+            // Allow roughly -170 to -10 degrees (aiming upward from bottom)
+            if (angle > 0.15) angle = 0.15;
+            if (angle < -Math.PI - 0.15) angle = -Math.PI - 0.15;
+            // Clamp so turret can't aim straight down into the rail
+            if (angle > -0.08 && angle <= Math.PI) angle = -0.08;
+            turretAngle = angle;
         }
     }
 
     function onMouseUp(e) {
+        // Not used in turret mode - all actions on mousedown clicks
+    }
+
+    function onRightClick(e) {
         e.preventDefault();
-        if (!dragging) return;
-        dragging = false;
-
-        const dx = cueBall.x - pullX;
-        const dy = cueBall.y - pullY;
-        const pullDist = Math.sqrt(dx * dx + dy * dy);
-
-        if (pullDist >= MIN_PULL && state === ST_AIMING) {
-            const normX = dx / pullDist;
-            const normY = dy / pullDist;
-            fireShot(pullDist, normX, normY);
+        // Right-click / two-finger tap cancels locked aim
+        if (state === ST_AIMING && turretLocked) {
+            turretLocked = false;
+            turretPower = 0;
+            playSound('click');
         }
     }
 
     function onTouchStart(e) {
         if (e.touches.length === 1) {
-            onMouseDown(e.touches[0].clientX !== undefined ? e : { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: () => {} });
-            // Simpler: call with mock event
             const touch = e.touches[0];
-            const mockEvt = { clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => {} };
-            // Already handled above if structure matches
+            onMouseDown({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => {} });
+        } else if (e.touches.length === 2) {
+            // Two-finger tap cancels aim lock
+            e.preventDefault();
+            if (state === ST_AIMING && turretLocked) {
+                turretLocked = false;
+                turretPower = 0;
+                playSound('click');
+            }
         }
     }
 
@@ -2119,7 +2271,7 @@ window.SlingPool = (() => {
     }
 
     function onTouchEnd(e) {
-        onMouseUp({ preventDefault: () => {} });
+        // Not used for turret mode
     }
 
     function onResize() {
@@ -2140,6 +2292,19 @@ window.SlingPool = (() => {
         if (state === ST_ROLLING || state === ST_AIMING) {
             updatePhysics();
         }
+
+        // Oscillate power meter when turret aim is locked
+        if (state === ST_AIMING && turretLocked) {
+            turretPower += powerDirection * MAX_POWER * POWER_CYCLE_SPEED;
+            if (turretPower >= MAX_POWER) {
+                turretPower = MAX_POWER;
+                powerDirection = -1;
+            } else if (turretPower <= 0) {
+                turretPower = 0;
+                powerDirection = 1;
+            }
+        }
+
         updateParticles();
         updateFloatingTexts();
         updateShake();
@@ -2164,8 +2329,8 @@ window.SlingPool = (() => {
             // Draw cue ball
             drawCueBall();
 
-            // Draw slingshot
-            drawSlingshot();
+            // Draw turret
+            drawTurret();
 
             // Particles & texts
             drawParticles();
@@ -2212,7 +2377,12 @@ window.SlingPool = (() => {
             CUSHION_CLR = `rgb(${Math.round(rgb.r * 0.4)}, ${Math.round(Math.min(255, rgb.g * 0.7 + 30))}, ${Math.round(rgb.b * 0.4)})`;
         }
 
-        dragging = false;
+        turretAngle = -Math.PI / 2;
+        turretPower = 0;
+        powerDirection = 1;
+        turretLocked = false;
+        mouseX = BASE_W / 2;
+        mouseY = BASE_H / 2;
         particles = [];
         floatingTexts = [];
         shakeTimer = 0;
@@ -2233,6 +2403,7 @@ window.SlingPool = (() => {
         canvas.addEventListener('mousedown', onMouseDown);
         canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('mouseup', onMouseUp);
+        canvas.addEventListener('contextmenu', onRightClick);
         canvas.addEventListener('touchstart', onTouchStart, { passive: false });
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: true });
@@ -2254,6 +2425,7 @@ window.SlingPool = (() => {
             canvas.removeEventListener('mousedown', onMouseDown);
             canvas.removeEventListener('mousemove', onMouseMove);
             canvas.removeEventListener('mouseup', onMouseUp);
+            canvas.removeEventListener('contextmenu', onRightClick);
             canvas.removeEventListener('touchstart', onTouchStart);
             canvas.removeEventListener('touchmove', onTouchMove);
             canvas.removeEventListener('touchend', onTouchEnd);
