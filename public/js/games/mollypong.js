@@ -1,5 +1,21 @@
 /* MollyPong — Theme-aware Pong for Your World Arcade */
 window.MollyPong = (() => {
+
+    // -- roundRect polyfill (Safari <16, older browsers) --
+    if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+            if (!Array.isArray(radii)) radii = [radii || 0];
+            const r = radii.map(v => Math.min(Math.max(0, v || 0), Math.min(w, h) / 2));
+            while (r.length < 4) r.push(r[r.length - 1] || 0);
+            this.moveTo(x + r[0], y);
+            this.arcTo(x + w, y,     x + w, y + h, r[1]);
+            this.arcTo(x + w, y + h, x,     y + h, r[2]);
+            this.arcTo(x,     y + h, x,     y,     r[3]);
+            this.arcTo(x,     y,     x + w, y,     r[0]);
+            this.closePath();
+            return this;
+        };
+    }
     // ── Constants ──────────────────────────────────────────────
     const BASE_W = 480, BASE_H = 640;
     const WIN_SCORE      = 7;
@@ -10,10 +26,10 @@ window.MollyPong = (() => {
     const BALL_R         = 10;
     const BALL_SPEED_0   = 5.0;      // starting speed (px per frame)
     const BALL_SPEED_INC = 1.08;     // 8 % faster each point
-    const MAX_ANGLE      = Math.PI / 3;   // 60 ° max deflection
-    const TRAIL_LEN      = 8;
+    const MAX_ANGLE      = Math.PI / 3;   // 60 degree max deflection
+    const TRAIL_LEN      = 12;
     const SERVE_PAUSE    = 1500;     // ms pause after a point
-    const SHAKE_FRAMES   = 3;
+    const SHAKE_FRAMES   = 6;
 
     // AI tuning per level (index 0 = level 1)
     const AI_SPEED  = [2.8, 3.2, 3.6, 4.0, 4.5, 5.2, 6.0];
@@ -59,6 +75,14 @@ window.MollyPong = (() => {
     let particles;
     let shakeTimer, shakeX, shakeY;
     let titleBallX, titleBallY, titleBVX, titleBVY; // demo ball
+
+    // Paddle trail history
+    let playerTrail = [];
+    let aiTrail = [];
+
+    // Goal flash
+    let goalFlash = 0;
+    let goalFlashColor = '#FFF';
 
     // Input
     let keys, mouseX, touchX, inputActive;
@@ -117,15 +141,16 @@ window.MollyPong = (() => {
     function spawnBurst(x, y, count, color) {
         for (let i = 0; i < count; i++) {
             const a = Math.random() * Math.PI * 2;
-            const s = Math.random() * 3.5 + 1.5;
+            const s = Math.random() * 4.5 + 1.5;
             particles.push({
                 x, y,
                 vx: Math.cos(a) * s,
                 vy: Math.sin(a) * s,
                 life: 1.0,
-                decay: Math.random() * 0.03 + 0.02,
-                r: Math.random() * 3 + 1.5,
-                color: color || BALL_CLR
+                decay: Math.random() * 0.025 + 0.015,
+                r: Math.random() * 4 + 1.5,
+                color: color || BALL_CLR,
+                type: Math.random() > 0.6 ? 'spark' : 'circle'
             });
         }
     }
@@ -144,13 +169,23 @@ window.MollyPong = (() => {
 
     function drawParticles() {
         for (const p of particles) {
-            ctx.globalAlpha = p.life * 0.8;
+            ctx.globalAlpha = p.life * 0.85;
             ctx.fillStyle   = p.color;
             ctx.shadowColor  = p.color;
-            ctx.shadowBlur   = 5;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.shadowBlur   = 8;
+            if (p.type === 'spark') {
+                // Elongated spark
+                ctx.save();
+                const angle = Math.atan2(p.vy, p.vx);
+                ctx.translate(p.x, p.y);
+                ctx.rotate(angle);
+                ctx.fillRect(-p.r * 2 * p.life, -0.5, p.r * 4 * p.life, 1);
+                ctx.restore();
+            } else {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
         ctx.globalAlpha = 1;
         ctx.shadowBlur  = 0;
@@ -167,17 +202,66 @@ window.MollyPong = (() => {
         g.addColorStop(1, BG_BOT);
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, W, H);
+
+        // Subtle grid pattern
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+        ctx.lineWidth = 1;
+        const gridSize = 32;
+        for (let x = 0; x < W; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, H);
+            ctx.stroke();
+        }
+        for (let y = 0; y < H; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(W, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // Vignette corners
+        const vigGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75);
+        vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        vigGrad.addColorStop(1, 'rgba(0,0,0,0.3)');
+        ctx.fillStyle = vigGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Goal flash
+        if (goalFlash > 0) {
+            ctx.save();
+            ctx.globalAlpha = goalFlash * 0.15;
+            ctx.fillStyle = goalFlashColor;
+            ctx.fillRect(0, 0, W, H);
+            ctx.restore();
+            goalFlash *= 0.92;
+            if (goalFlash < 0.01) goalFlash = 0;
+        }
     }
 
     function drawCenterLine() {
         ctx.save();
-        ctx.setLineDash([8, 8]);
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        // Glowing center line
+        ctx.shadowColor = 'rgba(255,255,255,0.15)';
+        ctx.shadowBlur = 6;
+        ctx.setLineDash([10, 10]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
         ctx.lineWidth   = 2;
         ctx.beginPath();
         ctx.moveTo(0, H / 2);
         ctx.lineTo(W, H / 2);
         ctx.stroke();
+
+        // Center circle
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(W / 2, H / 2, 50, 0, Math.PI * 2);
+        ctx.stroke();
+
         ctx.restore();
     }
 
@@ -185,26 +269,80 @@ window.MollyPong = (() => {
         const x = cx - PADDLE_W / 2;
         const y = cy - PADDLE_H / 2;
 
-        // Gradient fill
+        // Neon outer glow (double layer)
+        ctx.save();
+        ctx.shadowColor  = color;
+        ctx.shadowBlur   = 24;
+        ctx.fillStyle = 'rgba(0,0,0,0)';
+        ctx.beginPath();
+        ctx.roundRect(x, y, PADDLE_W, PADDLE_H, PADDLE_RADIUS);
+        ctx.fill();
+        ctx.restore();
+
+        // Gradient fill with neon feel
         const grad = ctx.createLinearGradient(x, y, x, y + PADDLE_H);
-        grad.addColorStop(0, color);
-        grad.addColorStop(1, shadeColor(color, -30));
+        grad.addColorStop(0, shadeColor(color, 40));
+        grad.addColorStop(0.5, color);
+        grad.addColorStop(1, shadeColor(color, -40));
         ctx.fillStyle   = grad;
         ctx.shadowColor  = color;
-        ctx.shadowBlur   = 12;
+        ctx.shadowBlur   = 16;
 
         ctx.beginPath();
         ctx.roundRect(x, y, PADDLE_W, PADDLE_H, PADDLE_RADIUS);
         ctx.fill();
 
+        // Neon edge stroke
+        ctx.strokeStyle = shadeColor(color, 30);
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
         // Glossy highlight
-        ctx.shadowBlur  = 0;
-        ctx.globalAlpha = 0.30;
+        ctx.globalAlpha = 0.35;
         ctx.fillStyle   = '#ffffff';
         ctx.beginPath();
         ctx.roundRect(x + 4, y + 1, PADDLE_W - 8, PADDLE_H / 2 - 1, [PADDLE_RADIUS, PADDLE_RADIUS, 0, 0]);
         ctx.fill();
         ctx.globalAlpha = 1;
+
+        // Core bright line
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = shadeColor(color, 60);
+        ctx.beginPath();
+        ctx.roundRect(x + 10, y + PADDLE_H / 2 - 1, PADDLE_W - 20, 2, 1);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Paddle trail drawing
+    function drawPaddleTrails() {
+        // Player paddle trail
+        for (let i = 0; i < playerTrail.length; i++) {
+            const t = playerTrail[i];
+            const alpha = (i / playerTrail.length) * 0.12;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = playerColor();
+            ctx.beginPath();
+            ctx.roundRect(t - PADDLE_W / 2, H - PADDLE_MARGIN - PADDLE_H / 2, PADDLE_W, PADDLE_H, PADDLE_RADIUS);
+            ctx.fill();
+            ctx.restore();
+        }
+        // AI paddle trail
+        for (let i = 0; i < aiTrail.length; i++) {
+            const t = aiTrail[i];
+            const alpha = (i / aiTrail.length) * 0.12;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = AI_CLR;
+            ctx.beginPath();
+            ctx.roundRect(t - PADDLE_W / 2, PADDLE_MARGIN - PADDLE_H / 2, PADDLE_W, PADDLE_H, PADDLE_RADIUS);
+            ctx.fill();
+            ctx.restore();
+        }
     }
 
     /** Darken or lighten a hex color by `amt` (-100..100). */
@@ -222,14 +360,20 @@ window.MollyPong = (() => {
         for (let i = 0; i < trail.length; i++) {
             const t     = trail[i];
             const frac  = (i + 1) / trail.length;
-            const alpha = frac * 0.30;
-            const rad   = BALL_R * (0.3 + frac * 0.7);
+            const alpha = frac * 0.35;
+            const rad   = BALL_R * (0.2 + frac * 0.8);
+
+            // Comet-style colored trail
             ctx.globalAlpha = alpha;
-            ctx.fillStyle   = playerColor();
+            const trailGrad = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, rad * 1.5);
+            trailGrad.addColorStop(0, playerColor());
+            trailGrad.addColorStop(0.6, shadeColor(playerColor(), -30));
+            trailGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = trailGrad;
             ctx.shadowColor  = playerColor();
-            ctx.shadowBlur   = 4;
+            ctx.shadowBlur   = 6;
             ctx.beginPath();
-            ctx.arc(t.x, t.y, rad, 0, Math.PI * 2);
+            ctx.arc(t.x, t.y, rad * 1.5, 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.globalAlpha = 1;
@@ -237,25 +381,49 @@ window.MollyPong = (() => {
     }
 
     function drawBall(bx, by) {
-        // Outer glow
+        // Outer glow ring
+        ctx.save();
+        ctx.shadowColor = playerColor();
+        ctx.shadowBlur  = 25;
+        ctx.strokeStyle = playerColor();
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(bx, by, BALL_R + 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // Main glow
         ctx.shadowColor = BALL_CLR;
-        ctx.shadowBlur  = 18;
-        const grad = ctx.createRadialGradient(bx, by, 0, bx, by, BALL_R);
+        ctx.shadowBlur  = 22;
+        const grad = ctx.createRadialGradient(bx - 2, by - 2, 0, bx, by, BALL_R + 2);
         grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.6, 'rgba(255,255,255,0.6)');
+        grad.addColorStop(0.3, 'rgba(255,255,255,0.9)');
+        grad.addColorStop(0.7, 'rgba(255,255,255,0.4)');
         grad.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(bx, by, BALL_R + 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Core
-        ctx.shadowBlur = 8;
-        ctx.fillStyle  = '#ffffff';
+        // Core ball
+        ctx.shadowBlur = 12;
+        const coreGrad = ctx.createRadialGradient(bx - 2, by - 2, 0, bx, by, BALL_R * 0.7);
+        coreGrad.addColorStop(0, '#ffffff');
+        coreGrad.addColorStop(1, 'rgba(220,220,255,0.9)');
+        ctx.fillStyle  = coreGrad;
         ctx.beginPath();
-        ctx.arc(bx, by, BALL_R * 0.6, 0, Math.PI * 2);
+        ctx.arc(bx, by, BALL_R * 0.65, 0, Math.PI * 2);
         ctx.fill();
+
+        // Specular highlight
         ctx.shadowBlur = 0;
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#FFF';
+        ctx.beginPath();
+        ctx.arc(bx - 2, by - 3, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
     }
 
     function drawScores(time) {
@@ -263,14 +431,27 @@ window.MollyPong = (() => {
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
 
-        // AI score — upper half
-        ctx.font      = 'bold 72px "Segoe UI", system-ui, sans-serif';
-        ctx.fillStyle = 'rgba(139, 92, 246, 0.12)';
+        // AI score — upper half with neon glow
+        ctx.font      = 'bold 80px "Segoe UI", system-ui, sans-serif';
+        ctx.shadowColor = AI_CLR;
+        ctx.shadowBlur = 30;
+        ctx.fillStyle = hexAlpha(AI_CLR, 0.08);
         ctx.fillText(String(aiScore), W / 2, H * 0.25);
+        ctx.shadowBlur = 0;
+        // Neon outline
+        ctx.strokeStyle = hexAlpha(AI_CLR, 0.12);
+        ctx.lineWidth = 2;
+        ctx.strokeText(String(aiScore), W / 2, H * 0.25);
 
-        // Player score — lower half
-        ctx.fillStyle = hexAlpha(playerColor(), 0.12);
+        // Player score — lower half with neon glow
+        ctx.shadowColor = playerColor();
+        ctx.shadowBlur = 30;
+        ctx.fillStyle = hexAlpha(playerColor(), 0.08);
         ctx.fillText(String(playerScore), W / 2, H * 0.75);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = hexAlpha(playerColor(), 0.12);
+        ctx.lineWidth = 2;
+        ctx.strokeText(String(playerScore), W / 2, H * 0.75);
 
         ctx.restore();
     }
@@ -299,7 +480,7 @@ window.MollyPong = (() => {
             titleBallY = Math.max(BALL_R, Math.min(H - BALL_R, titleBallY));
         }
 
-        ctx.globalAlpha = 0.25;
+        ctx.globalAlpha = 0.2;
         drawBall(titleBallX, titleBallY);
         ctx.globalAlpha = 1;
 
@@ -308,16 +489,22 @@ window.MollyPong = (() => {
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
 
-        // "MOLLY PONG" — gradient
-        ctx.font = 'bold 48px "Segoe UI", system-ui, sans-serif';
+        // "PONG" — gradient with neon glow
+        ctx.font = 'bold 52px "Segoe UI", system-ui, sans-serif';
         const tg = ctx.createLinearGradient(W / 2 - 120, 0, W / 2 + 120, 0);
         tg.addColorStop(0, playerColor());
         tg.addColorStop(0.5, '#FFD700');
         tg.addColorStop(1, AI_CLR);
         ctx.fillStyle   = tg;
         ctx.shadowColor  = playerColor();
-        ctx.shadowBlur   = 16;
+        ctx.shadowBlur   = 30;
         ctx.fillText('PONG', W / 2, H * 0.32);
+        // Double glow layer
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 10;
+        ctx.globalAlpha = 0.3;
+        ctx.fillText('PONG', W / 2, H * 0.32);
+        ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
 
         // Player emoji + name
@@ -334,7 +521,7 @@ window.MollyPong = (() => {
         ctx.font      = 'bold 18px "Segoe UI", system-ui, sans-serif';
         ctx.fillStyle = '#FFD700';
         ctx.shadowColor = '#FFD700';
-        ctx.shadowBlur  = 6;
+        ctx.shadowBlur  = 12;
         ctx.fillText('Tap or Space to Start', W / 2, H * 0.58);
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
@@ -362,12 +549,17 @@ window.MollyPong = (() => {
         const title = won ? 'YOU WIN!' : 'GAME OVER';
         const tClr  = won ? '#34D399' : '#F43F5E';
 
-        // Title
+        // Title with neon glow
         ctx.font        = 'bold 44px "Segoe UI", system-ui, sans-serif';
         ctx.fillStyle    = tClr;
         ctx.shadowColor  = tClr;
-        ctx.shadowBlur   = 22;
+        ctx.shadowBlur   = 30;
         ctx.fillText(title, W / 2, H * 0.35);
+        // Second glow pass
+        ctx.globalAlpha = 0.4;
+        ctx.shadowBlur = 50;
+        ctx.fillText(title, W / 2, H * 0.35);
+        ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
 
         // Score line
@@ -387,7 +579,10 @@ window.MollyPong = (() => {
         ctx.globalAlpha = pulse;
         ctx.font        = 'bold 16px "Segoe UI", system-ui, sans-serif';
         ctx.fillStyle   = '#FFD700';
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 8;
         ctx.fillText('Tap or Space to Continue', W / 2, H * 0.65);
+        ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
 
         ctx.restore();
@@ -404,10 +599,14 @@ window.MollyPong = (() => {
 
         const pulse = 0.5 + Math.sin(time * 0.008) * 0.3;
         ctx.globalAlpha  = pulse;
-        ctx.font         = 'bold 32px "Segoe UI", system-ui, sans-serif';
+        ctx.font         = 'bold 36px "Segoe UI", system-ui, sans-serif';
         ctx.fillStyle    = color;
         ctx.shadowColor  = color;
-        ctx.shadowBlur   = 14;
+        ctx.shadowBlur   = 24;
+        ctx.fillText(msg, W / 2, H / 2);
+        // Double glow
+        ctx.globalAlpha = pulse * 0.3;
+        ctx.shadowBlur = 50;
         ctx.fillText(msg, W / 2, H / 2);
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
@@ -423,8 +622,9 @@ window.MollyPong = (() => {
     function applyShake() {
         if (shakeTimer > 0) {
             shakeTimer--;
-            shakeX = (Math.random() - 0.5) * shakeTimer * 2.5;
-            shakeY = (Math.random() - 0.5) * shakeTimer * 2.5;
+            const intensity = shakeTimer * 3;
+            shakeX = (Math.random() - 0.5) * intensity;
+            shakeY = (Math.random() - 0.5) * intensity;
         } else {
             shakeX = 0;
             shakeY = 0;
@@ -515,7 +715,7 @@ window.MollyPong = (() => {
 
             currentRally++;
             playBounce();
-            spawnBurst(ballX, playerPY - PADDLE_H / 2, 8, playerColor());
+            spawnBurst(ballX, playerPY - PADDLE_H / 2, 12, playerColor());
             return;
         }
 
@@ -534,7 +734,7 @@ window.MollyPong = (() => {
 
             currentRally++;
             playBounce();
-            spawnBurst(ballX, aiPY + PADDLE_H / 2, 8, AI_CLR);
+            spawnBurst(ballX, aiPY + PADDLE_H / 2, 12, AI_CLR);
         }
     }
 
@@ -550,11 +750,15 @@ window.MollyPong = (() => {
             level = playerScore;
             score += 100;
             playScore();
-            spawnBurst(W / 2, H - 40, 20, playerColor());
+            spawnBurst(W / 2, H - 40, 25, playerColor());
+            goalFlash = 1.0;
+            goalFlashColor = playerColor();
         } else {
             aiScore++;
             playLose();
-            spawnBurst(W / 2, 40, 20, AI_CLR);
+            spawnBurst(W / 2, 40, 25, AI_CLR);
+            goalFlash = 1.0;
+            goalFlashColor = AI_CLR;
         }
 
         lastScorer = scorer;
@@ -589,6 +793,14 @@ window.MollyPong = (() => {
         applyShake();
         updateParticles();
 
+        // Update paddle trails
+        if (state === ST_PLAYING || state === ST_SCORED) {
+            playerTrail.push(playerX);
+            if (playerTrail.length > 6) playerTrail.shift();
+            aiTrail.push(aiX);
+            if (aiTrail.length > 6) aiTrail.shift();
+        }
+
         if (state === ST_TITLE) return;
 
         if (state === ST_SCORED) {
@@ -617,13 +829,13 @@ window.MollyPong = (() => {
             ballX = BALL_R;
             bvx   = Math.abs(bvx);
             playWall();
-            spawnBurst(0, ballY, 6, '#A855F7');
+            spawnBurst(0, ballY, 8, '#A855F7');
         }
         if (ballX + BALL_R >= W) {
             ballX = W - BALL_R;
             bvx   = -Math.abs(bvx);
             playWall();
-            spawnBurst(W, ballY, 6, '#A855F7');
+            spawnBurst(W, ballY, 8, '#A855F7');
         }
 
         // Paddle collisions
@@ -649,6 +861,9 @@ window.MollyPong = (() => {
         drawBackground();
         drawCenterLine();
         drawScores(time);
+
+        // Paddle trails
+        drawPaddleTrails();
 
         // Paddles
         drawPaddle(playerX, H - PADDLE_MARGIN, playerColor());
@@ -737,6 +952,9 @@ window.MollyPong = (() => {
         ballSpeed    = BALL_SPEED_0;
         particles    = [];
         trail        = [];
+        playerTrail  = [];
+        aiTrail      = [];
+        goalFlash    = 0;
 
         playerX = W / 2;
         aiX     = W / 2;
@@ -834,11 +1052,15 @@ window.MollyPong = (() => {
         inputActive = false;
         particles   = [];
         trail       = [];
+        playerTrail = [];
+        aiTrail     = [];
         shakeTimer  = 0;
         shakeX      = 0;
         shakeY      = 0;
+        goalFlash   = 0;
 
         fitCanvas();
+        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
         initTitleBall();
 
         playerX = W / 2;

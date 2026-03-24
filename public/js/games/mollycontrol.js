@@ -42,6 +42,15 @@ window.MollyControl = (() => {
     let bombers = [];      // { x,y, dx, speed, alive, dropped }
     let satellites = [];   // { x,y, dx, speed, alive }
     let particles = [];    // { x,y,vx,vy, life, maxLife, color }
+    let scorePopups = [];  // { x, y, text, life, maxLife, color, vy }
+    let shootingStars = []; // { x, y, vx, vy, len, life, maxLife }
+    let shootingStarTimer = 0;
+
+    // Screen shake
+    let shakeX = 0, shakeY = 0, shakeMag = 0, shakeDur = 0, shakeTimer = 0;
+
+    // Window flicker cache (so windows don't randomize every frame)
+    let windowFlickerSeed = 0;
 
     // Wave config
     let enemiesRemaining = 0;
@@ -222,6 +231,7 @@ window.MollyControl = (() => {
         bombers = [];
         satellites = [];
         particles = [];
+        scorePopups = [];
     }
 
     // ── Wave Config ──
@@ -363,7 +373,22 @@ window.MollyControl = (() => {
             c.rubble.push({ rx: randFloat(-20, 20), ry: randFloat(-3, 3), size: randFloat(2, 5), color: c.color });
         }
         playCityDestroyed();
-        spawnParticles(c.x, H - GROUND_H - 5, 8, c.color);
+        spawnParticles(c.x, H - GROUND_H - 5, 15, c.color);
+        // Screen shake on city destruction
+        triggerShake(6, 400);
+    }
+
+    function triggerShake(magnitude, duration) {
+        shakeMag = magnitude;
+        shakeDur = duration;
+        shakeTimer = 0;
+    }
+
+    function spawnScorePopup(x, y, points, color) {
+        scorePopups.push({
+            x, y, text: '+' + points, life: 1000, maxLife: 1000,
+            color: color || '#FBBF24', vy: -1.2
+        });
     }
 
     function rebuildCity() {
@@ -391,7 +416,7 @@ window.MollyControl = (() => {
         if (state === STATES.TITLE) { updateTitle(dt); return; }
         if (state === STATES.WAVE_INTRO) { updateWaveIntro(dt); return; }
         if (state === STATES.WAVE_END) { updateWaveEnd(dt); return; }
-        if (state === STATES.GAME_OVER) { updateParticles(dt); return; }
+        if (state === STATES.GAME_OVER) { updateParticles(dt); updateScorePopups(dt); updateShootingStars(dt); return; }
 
         // PLAYING
         updateSpawning(dt);
@@ -401,6 +426,9 @@ window.MollyControl = (() => {
         updateBombers(dt);
         updateSatellites(dt);
         updateParticles(dt);
+        updateScorePopups(dt);
+        updateShootingStars(dt);
+        updateScreenShake(dt);
         checkCollisions();
         checkBonusCity();
         checkWaveComplete();
@@ -408,6 +436,7 @@ window.MollyControl = (() => {
     }
 
     function updateTitle(dt) {
+        updateShootingStars(dt);
         demoTimer += dt;
         if (demoTimer > 600) {
             demoTimer = 0;
@@ -433,6 +462,7 @@ window.MollyControl = (() => {
     }
 
     function updateWaveIntro(dt) {
+        updateShootingStars(dt);
         stateTimer -= dt;
         if (stateTimer <= 0) {
             state = STATES.PLAYING;
@@ -615,6 +645,58 @@ window.MollyControl = (() => {
         }
     }
 
+    function updateScorePopups(dt) {
+        for (let i = scorePopups.length - 1; i >= 0; i--) {
+            const sp = scorePopups[i];
+            sp.y += sp.vy;
+            sp.vy *= 0.98;
+            sp.life -= dt;
+            if (sp.life <= 0) scorePopups.splice(i, 1);
+        }
+    }
+
+    function updateShootingStars(dt) {
+        shootingStarTimer += dt;
+        // Spawn occasionally
+        if (shootingStarTimer > 3000 + Math.random() * 5000) {
+            shootingStarTimer = 0;
+            const fromRight = Math.random() > 0.5;
+            shootingStars.push({
+                x: fromRight ? W + 10 : -10,
+                y: randFloat(10, H * 0.3),
+                vx: (fromRight ? -1 : 1) * randFloat(3, 6),
+                vy: randFloat(1, 3),
+                len: randFloat(8, 18),
+                life: 800 + Math.random() * 600,
+                maxLife: 1400
+            });
+        }
+        for (let i = shootingStars.length - 1; i >= 0; i--) {
+            const ss = shootingStars[i];
+            ss.x += ss.vx;
+            ss.y += ss.vy;
+            ss.life -= dt;
+            if (ss.life <= 0 || ss.x < -50 || ss.x > W + 50 || ss.y > H) {
+                shootingStars.splice(i, 1);
+            }
+        }
+    }
+
+    function updateScreenShake(dt) {
+        if (shakeDur > 0) {
+            shakeTimer += dt;
+            if (shakeTimer >= shakeDur) {
+                shakeDur = 0;
+                shakeX = 0; shakeY = 0;
+            } else {
+                const progress = 1 - shakeTimer / shakeDur;
+                const mag = shakeMag * progress;
+                shakeX = (Math.random() - 0.5) * mag * 2;
+                shakeY = (Math.random() - 0.5) * mag * 2;
+            }
+        }
+    }
+
     function checkCollisions() {
         // Explosions vs enemy missiles
         for (let ei = explosions.length - 1; ei >= 0; ei--) {
@@ -629,6 +711,7 @@ window.MollyControl = (() => {
                     const chainLevel = e.chain + 1;
                     if (chainLevel > maxChainReaction) maxChainReaction = chainLevel;
                     spawnExplosion(m.x, m.y, CHAIN_EXP_MAX_R, chainLevel);
+                    spawnScorePopup(m.x, m.y - 10, chainLevel > 1 ? 25 * chainLevel : 25, chainLevel > 1 ? '#FF6B6B' : '#FBBF24');
                     playEnemyHit();
                     enemyMissiles.splice(mi, 1);
                 }
@@ -643,6 +726,7 @@ window.MollyControl = (() => {
                     totalMissilesDestroyed++;
                     spawnExplosion(b.x, b.y, CHAIN_EXP_MAX_R, 0);
                     spawnParticles(b.x, b.y, 10, '#F97316');
+                    spawnScorePopup(b.x, b.y - 15, 100, '#F97316');
                 }
             }
             // vs satellites
@@ -655,6 +739,7 @@ window.MollyControl = (() => {
                     totalMissilesDestroyed++;
                     spawnExplosion(s.x, s.y, CHAIN_EXP_MAX_R, 0);
                     spawnParticles(s.x, s.y, 12, '#A855F7');
+                    spawnScorePopup(s.x, s.y - 15, 200, '#A855F7');
                 }
             }
         }
@@ -697,43 +782,104 @@ window.MollyControl = (() => {
 
     // ── Drawing ──
     function draw() {
-        ctx.clearRect(0, 0, W, H);
+        ctx.save();
+        // Screen shake offset
+        if (shakeDur > 0) {
+            ctx.translate(shakeX, shakeY);
+        }
+
+        ctx.clearRect(-10, -10, W + 20, H + 20);
         drawBackground();
         drawStars();
 
-        if (state === STATES.TITLE) { drawTitle(); return; }
-        if (state === STATES.GAME_OVER) { drawGame(); drawGameOver(); return; }
-        if (state === STATES.WAVE_INTRO) { drawGame(); drawWaveIntro(); return; }
-        if (state === STATES.WAVE_END) { drawGame(); drawWaveEnd(); return; }
+        if (state === STATES.TITLE) { drawTitle(); drawVignette(); ctx.restore(); return; }
+        if (state === STATES.GAME_OVER) { drawGame(); drawScorePopups(); drawVignette(); drawGameOver(); ctx.restore(); return; }
+        if (state === STATES.WAVE_INTRO) { drawGame(); drawScorePopups(); drawVignette(); drawWaveIntro(); ctx.restore(); return; }
+        if (state === STATES.WAVE_END) { drawGame(); drawScorePopups(); drawVignette(); drawWaveEnd(); ctx.restore(); return; }
         drawGame();
+        drawScorePopups();
+        drawVignette();
+        ctx.restore();
     }
 
     function drawBackground() {
         const grd = ctx.createLinearGradient(0, 0, 0, H);
         grd.addColorStop(0, skyGrad[0]);
-        grd.addColorStop(0.7, skyGrad[1]);
-        grd.addColorStop(1, skyGrad[2]);
+        grd.addColorStop(0.5, skyGrad[1]);
+        grd.addColorStop(0.85, skyGrad[2]);
+        grd.addColorStop(1, '#12121e');
         ctx.fillStyle = grd;
         ctx.fillRect(0, 0, W, H);
         // Ground
         const gy = H - GROUND_H;
         const gg = ctx.createLinearGradient(0, gy, 0, H);
         gg.addColorStop(0, '#2d2d4e');
-        gg.addColorStop(1, '#1a1a2e');
+        gg.addColorStop(0.4, '#222244');
+        gg.addColorStop(1, '#151530');
         ctx.fillStyle = gg;
         ctx.fillRect(0, gy, W, GROUND_H);
-        // Ground line
-        ctx.strokeStyle = '#4a4a6e';
-        ctx.lineWidth = 1;
+        // Atmospheric ground glow (horizon haze)
+        const horizonGlow = ctx.createLinearGradient(0, gy - 40, 0, gy + 10);
+        horizonGlow.addColorStop(0, 'transparent');
+        horizonGlow.addColorStop(0.5, 'rgba(60,40,80,0.15)');
+        horizonGlow.addColorStop(1, 'rgba(40,20,60,0.25)');
+        ctx.fillStyle = horizonGlow;
+        ctx.fillRect(0, gy - 40, W, 50);
+        // Ground line with subtle glow
+        ctx.shadowColor = '#6a5acd';
+        ctx.shadowBlur = 6;
+        ctx.strokeStyle = '#5a5a8e';
+        ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+        ctx.shadowBlur = 0;
+        // Subtle terrain bumps on ground line
+        ctx.strokeStyle = '#4a4a6e';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        for (let x = 0; x < W; x += 3) {
+            const bumpH = Math.sin(x * 0.08) * 1.5 + Math.sin(x * 0.03) * 2;
+            ctx.lineTo(x, gy + bumpH);
+        }
+        ctx.stroke();
     }
 
     function drawStars() {
         const t = Date.now() * 0.001;
         stars.forEach(s => {
             const alpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * s.twinkleSpeed * 60 + s.brightness * 10));
+            // Larger stars get a subtle glow
+            if (s.size > 1.2) {
+                const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.size * 3);
+                glow.addColorStop(0, `rgba(200,220,255,${(alpha * 0.4).toFixed(2)})`);
+                glow.addColorStop(1, 'transparent');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size * 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
             ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
-            ctx.fillRect(s.x, s.y, s.size, s.size);
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.size * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        // Shooting stars
+        shootingStars.forEach(ss => {
+            const alpha = Math.max(0, ss.life / ss.maxLife);
+            const grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - ss.vx * ss.len, ss.y - ss.vy * ss.len);
+            grad.addColorStop(0, `rgba(255,255,255,${(alpha * 0.9).toFixed(2)})`);
+            grad.addColorStop(0.3, `rgba(180,200,255,${(alpha * 0.5).toFixed(2)})`);
+            grad.addColorStop(1, 'transparent');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(ss.x, ss.y);
+            ctx.lineTo(ss.x - ss.vx * ss.len, ss.y - ss.vy * ss.len);
+            ctx.stroke();
+            // Bright head
+            ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+            ctx.beginPath();
+            ctx.arc(ss.x, ss.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
         });
     }
 
@@ -752,91 +898,223 @@ window.MollyControl = (() => {
 
     function drawCities() {
         const gy = H - GROUND_H;
-        cities.forEach(c => {
+        const t = Date.now() * 0.001;
+        cities.forEach((c, ci) => {
             if (c.alive) {
-                c.buildings.forEach(b => {
+                // City glow on ground
+                const cityGlow = ctx.createRadialGradient(c.x, gy, 0, c.x, gy, 35);
+                cityGlow.addColorStop(0, c.color + '18');
+                cityGlow.addColorStop(1, 'transparent');
+                ctx.fillStyle = cityGlow;
+                ctx.beginPath();
+                ctx.arc(c.x, gy, 35, 0, Math.PI * 2);
+                ctx.fill();
+
+                c.buildings.forEach((b, bi) => {
                     const bx = c.x + b.rx - b.w / 2;
                     const by = gy - b.h;
-                    ctx.fillStyle = b.color;
+
+                    // Building shadow (depth)
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.fillRect(bx + 2, by + 2, b.w, b.h);
+
+                    // Building body — darker shade for silhouette feel
+                    const bodyGrad = ctx.createLinearGradient(bx, by, bx + b.w, by);
+                    bodyGrad.addColorStop(0, b.color);
+                    bodyGrad.addColorStop(1, shadeColor(b.color, -30));
+                    ctx.fillStyle = bodyGrad;
                     ctx.globalAlpha = b.shade;
                     ctx.fillRect(bx, by, b.w, b.h);
-                    // Window dots
-                    ctx.fillStyle = '#fef9c3';
-                    ctx.globalAlpha = 0.7 * b.shade;
+
+                    // Rooftop accent
+                    ctx.fillStyle = shadeColor(b.color, 20);
+                    ctx.fillRect(bx, by, b.w, 2);
+
+                    // Lit windows — use deterministic pattern (not random each frame)
+                    const seed = ci * 100 + bi * 10;
+                    ctx.globalAlpha = 0.85 * b.shade;
                     for (let wy = by + 5; wy < gy - 4; wy += 7) {
                         for (let wx = bx + 3; wx < bx + b.w - 3; wx += 5) {
-                            if (Math.random() > 0.3) ctx.fillRect(wx, wy, 2, 2);
+                            const winSeed = (seed + Math.floor(wx) * 7 + Math.floor(wy) * 13) % 100;
+                            if (winSeed > 25) {
+                                // Flicker some windows
+                                const flicker = (winSeed % 20 < 3) ? (0.6 + 0.4 * Math.sin(t * 2 + winSeed)) : 1;
+                                const warm = winSeed % 3 === 0;
+                                ctx.fillStyle = warm ? `rgba(254,240,138,${(0.9 * flicker).toFixed(2)})` : `rgba(254,249,195,${(0.7 * flicker).toFixed(2)})`;
+                                ctx.fillRect(wx, wy, 2, 3);
+                                // Tiny window glow
+                                if (winSeed > 70) {
+                                    ctx.fillStyle = `rgba(254,249,195,${(0.15 * flicker).toFixed(2)})`;
+                                    ctx.fillRect(wx - 1, wy - 1, 4, 5);
+                                }
+                            }
                         }
                     }
                     ctx.globalAlpha = 1;
                 });
             } else {
-                // Rubble
-                c.rubble.forEach(r => {
+                // Rubble with smoke wisps
+                c.rubble.forEach((r, ri) => {
+                    ctx.fillStyle = shadeColor(r.color, -40);
+                    ctx.globalAlpha = 0.45;
+                    ctx.fillRect(c.x + r.rx, gy - 3 + r.ry, r.size, r.size * 0.5);
                     ctx.fillStyle = r.color;
-                    ctx.globalAlpha = 0.5;
-                    ctx.fillRect(c.x + r.rx, gy - 3 + r.ry, r.size, r.size * 0.6);
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillRect(c.x + r.rx + 1, gy - 3 + r.ry, r.size * 0.7, r.size * 0.35);
                 });
+                // Smoke wisps from ruins
+                for (let s = 0; s < 2; s++) {
+                    const sx = c.x + Math.sin(t * 0.5 + ci + s) * 8;
+                    const sy = gy - 8 - Math.abs(Math.sin(t * 0.7 + ci * 2 + s)) * 15;
+                    ctx.fillStyle = `rgba(100,100,120,${(0.08 + 0.04 * Math.sin(t + s)).toFixed(2)})`;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 4 + Math.sin(t + s) * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
                 ctx.globalAlpha = 1;
             }
         });
     }
 
+    // Helper: darken/lighten hex color
+    function shadeColor(color, amount) {
+        let r = parseInt(color.slice(1, 3), 16);
+        let g = parseInt(color.slice(3, 5), 16);
+        let b = parseInt(color.slice(5, 7), 16);
+        r = Math.max(0, Math.min(255, r + amount));
+        g = Math.max(0, Math.min(255, g + amount));
+        b = Math.max(0, Math.min(255, b + amount));
+        return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
     function drawBatteries() {
         const gy = H - GROUND_H;
+        const t = Date.now() * 0.001;
         batteries.forEach((b, idx) => {
-            // Base triangle
-            ctx.fillStyle = '#06B6D4';
+            // Turret aim angle toward mouse
+            const aimAngle = (state === STATES.PLAYING) ? Math.atan2(mouseY - (gy - 12), mouseX - b.x) : -Math.PI / 2;
+
+            // Base platform — trapezoid
+            ctx.fillStyle = '#1e3a5f';
             ctx.beginPath();
-            ctx.moveTo(b.x - 14, gy);
-            ctx.lineTo(b.x + 14, gy);
-            ctx.lineTo(b.x, gy - 12);
+            ctx.moveTo(b.x - 18, gy);
+            ctx.lineTo(b.x + 18, gy);
+            ctx.lineTo(b.x + 12, gy - 6);
+            ctx.lineTo(b.x - 12, gy - 6);
             ctx.closePath();
             ctx.fill();
-            // Ammo dots
-            const dotSize = 3;
-            const cols = 5;
-            for (let a = 0; a < b.ammo; a++) {
-                const col = a % cols;
-                const row = Math.floor(a / cols);
-                const dx = (col - 2) * (dotSize + 1);
-                const dy = -(row + 1) * (dotSize + 1) - 14;
-                ctx.fillStyle = '#22D3EE';
-                ctx.fillRect(b.x + dx - dotSize / 2, gy + dy, dotSize, dotSize);
+
+            // Base top accent
+            ctx.fillStyle = '#2a5580';
+            ctx.fillRect(b.x - 12, gy - 7, 24, 2);
+
+            // Turret dome
+            ctx.fillStyle = '#06B6D4';
+            ctx.beginPath();
+            ctx.arc(b.x, gy - 10, 8, Math.PI, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            // Turret barrel — points toward mouse
+            ctx.save();
+            ctx.translate(b.x, gy - 10);
+            ctx.rotate(aimAngle);
+            // Barrel
+            ctx.fillStyle = '#0891B2';
+            ctx.fillRect(0, -2, 14, 4);
+            // Barrel tip
+            ctx.fillStyle = '#22D3EE';
+            ctx.fillRect(12, -2.5, 3, 5);
+            // Barrel glow if has ammo
+            if (b.ammo > 0) {
+                ctx.fillStyle = `rgba(34,211,238,${(0.3 + 0.2 * Math.sin(t * 4 + idx)).toFixed(2)})`;
+                ctx.beginPath();
+                ctx.arc(15, 0, 3, 0, Math.PI * 2);
+                ctx.fill();
             }
-            // Ammo text
-            ctx.fillStyle = '#94A3B8';
-            ctx.font = '10px monospace';
+            ctx.restore();
+
+            // Dome highlight
+            ctx.fillStyle = 'rgba(34,211,238,0.3)';
+            ctx.beginPath();
+            ctx.arc(b.x - 2, gy - 13, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ammo indicator — small pips in a row
+            const maxAmmo = AMMO_PER_BATTERY;
+            const pipW = 2, pipH = 4, pipGap = 1;
+            const totalPipW = maxAmmo * (pipW + pipGap) - pipGap;
+            const pipStartX = b.x - totalPipW / 2;
+            for (let a = 0; a < maxAmmo; a++) {
+                const px = pipStartX + a * (pipW + pipGap);
+                const py = gy + 4;
+                if (a < b.ammo) {
+                    ctx.fillStyle = '#22D3EE';
+                } else {
+                    ctx.fillStyle = 'rgba(100,100,120,0.3)';
+                }
+                ctx.fillRect(px, py, pipW, pipH);
+            }
+
+            // Battery label
+            ctx.fillStyle = '#64748B';
+            ctx.font = '8px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(b.ammo.toString(), b.x, gy + 14);
+            ctx.fillText((idx + 1).toString(), b.x, gy + 16);
         });
     }
 
     function drawEnemyMissiles() {
         enemyMissiles.forEach(m => {
-            // Trail
+            const isSmrt = m.smart;
+            const baseR = isSmrt ? 251 : 239, baseG = isSmrt ? 191 : 68, baseB = isSmrt ? 36 : 68;
+            // Trail — gradient widening with glow
             if (m.trail.length > 1) {
                 for (let t = 1; t < m.trail.length; t++) {
-                    const alpha = (t / m.trail.length) * 0.6;
-                    ctx.strokeStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
-                    ctx.lineWidth = 1.2;
+                    const pct = t / m.trail.length;
+                    const alpha = pct * 0.7;
+                    const width = 0.5 + pct * 2.5;
+                    // Outer glow layer
+                    ctx.strokeStyle = `rgba(${baseR},${baseG},${baseB},${(alpha * 0.3).toFixed(2)})`;
+                    ctx.lineWidth = width + 3;
+                    ctx.beginPath();
+                    ctx.moveTo(m.trail[t - 1].x, m.trail[t - 1].y);
+                    ctx.lineTo(m.trail[t].x, m.trail[t].y);
+                    ctx.stroke();
+                    // Core trail
+                    ctx.strokeStyle = `rgba(${baseR},${baseG},${baseB},${alpha.toFixed(2)})`;
+                    ctx.lineWidth = width;
                     ctx.beginPath();
                     ctx.moveTo(m.trail[t - 1].x, m.trail[t - 1].y);
                     ctx.lineTo(m.trail[t].x, m.trail[t].y);
                     ctx.stroke();
                 }
             }
-            // Head
-            ctx.fillStyle = m.smart ? '#FBBF24' : '#EF4444';
+            // Warhead glow
+            const headGlow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, 10);
+            headGlow.addColorStop(0, `rgba(255,255,200,0.6)`);
+            headGlow.addColorStop(0.3, `rgba(${baseR},${baseG},${baseB},0.4)`);
+            headGlow.addColorStop(1, 'transparent');
+            ctx.fillStyle = headGlow;
             ctx.beginPath();
-            ctx.arc(m.x, m.y, 2.5, 0, Math.PI * 2);
+            ctx.arc(m.x, m.y, 10, 0, Math.PI * 2);
             ctx.fill();
-            // MIRV indicator
+            // Warhead core
+            ctx.fillStyle = isSmrt ? '#FEF08A' : '#FCA5A5';
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            // MIRV indicator — pulsing ring
             if (m.mirv && !m.mirvDone) {
-                ctx.strokeStyle = 'rgba(251,191,36,0.5)';
-                ctx.lineWidth = 0.5;
+                const pulse = 0.3 + 0.4 * Math.sin(Date.now() * 0.008);
+                ctx.strokeStyle = `rgba(251,191,36,${pulse.toFixed(2)})`;
+                ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.arc(m.x, m.y, 5, 0, Math.PI * 2);
+                ctx.arc(m.x, m.y, 7 + Math.sin(Date.now() * 0.01) * 2, 0, Math.PI * 2);
                 ctx.stroke();
             }
         });
@@ -844,28 +1122,67 @@ window.MollyControl = (() => {
 
     function drawPlayerMissiles() {
         playerMissiles.forEach(m => {
-            // Trail
+            // Smoke trail puffs
+            if (m.trail.length > 2) {
+                for (let t = 0; t < m.trail.length; t++) {
+                    const pct = t / m.trail.length;
+                    const alpha = pct * 0.25;
+                    const size = (1 - pct) * 4 + 2;
+                    ctx.fillStyle = `rgba(180,200,220,${alpha.toFixed(2)})`;
+                    ctx.beginPath();
+                    ctx.arc(m.trail[t].x + (Math.random() - 0.5) * 2, m.trail[t].y + (Math.random() - 0.5) * 2, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            // Core trail line
             if (m.trail.length > 1) {
                 for (let t = 1; t < m.trail.length; t++) {
-                    const alpha = (t / m.trail.length) * 0.8;
+                    const pct = t / m.trail.length;
+                    const alpha = pct * 0.9;
                     ctx.strokeStyle = `rgba(6,182,212,${alpha.toFixed(2)})`;
-                    ctx.lineWidth = 1.5;
+                    ctx.lineWidth = 1 + pct * 1.5;
                     ctx.beginPath();
                     ctx.moveTo(m.trail[t - 1].x, m.trail[t - 1].y);
                     ctx.lineTo(m.trail[t].x, m.trail[t].y);
                     ctx.stroke();
                 }
             }
-            // Head
+            // Missile head glow
+            const headGlow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, 8);
+            headGlow.addColorStop(0, 'rgba(34,211,238,0.7)');
+            headGlow.addColorStop(0.5, 'rgba(6,182,212,0.3)');
+            headGlow.addColorStop(1, 'transparent');
+            ctx.fillStyle = headGlow;
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            // Bright head
+            ctx.fillStyle = '#ECFEFF';
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
             ctx.fillStyle = '#06B6D4';
             ctx.beginPath();
-            ctx.arc(m.x, m.y, 2, 0, Math.PI * 2);
+            ctx.arc(m.x, m.y, 1.5, 0, Math.PI * 2);
             ctx.fill();
-            // Target crosshair
-            ctx.strokeStyle = 'rgba(6,182,212,0.3)';
+            // Animated target crosshair
+            const t2 = Date.now() * 0.003;
+            const crossR = 8 + Math.sin(t2) * 2;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(6,182,212,0.4)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(m.tx, m.ty, crossR, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+            // Cross lines
+            ctx.strokeStyle = 'rgba(6,182,212,0.25)';
             ctx.lineWidth = 0.5;
             ctx.beginPath();
-            ctx.arc(m.tx, m.ty, 8, 0, Math.PI * 2);
+            ctx.moveTo(m.tx - 5, m.ty); ctx.lineTo(m.tx + 5, m.ty);
+            ctx.moveTo(m.tx, m.ty - 5); ctx.lineTo(m.tx, m.ty + 5);
             ctx.stroke();
         });
     }
@@ -873,36 +1190,57 @@ window.MollyControl = (() => {
     function drawExplosions() {
         explosions.forEach(e => {
             if (e.r <= 0) return;
-            // Outer glow
-            const glowR = e.r * 1.5;
-            const glow = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, glowR);
-            glow.addColorStop(0, e.color + '40');
-            glow.addColorStop(1, 'transparent');
-            ctx.fillStyle = glow;
+            const pulse = 0.75 + 0.25 * Math.sin(Date.now() * 0.02);
+            const phaseAlpha = e.phase === 2 ? Math.max(0, 1 - e.timer / EXP_SHRINK_MS) : 1;
+
+            // Wide atmospheric glow
+            const farGlow = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r * 2.5);
+            farGlow.addColorStop(0, `rgba(255,140,50,${(0.15 * phaseAlpha).toFixed(2)})`);
+            farGlow.addColorStop(0.5, `rgba(255,60,30,${(0.06 * phaseAlpha).toFixed(2)})`);
+            farGlow.addColorStop(1, 'transparent');
+            ctx.fillStyle = farGlow;
             ctx.beginPath();
-            ctx.arc(e.x, e.y, glowR, 0, Math.PI * 2);
+            ctx.arc(e.x, e.y, e.r * 2.5, 0, Math.PI * 2);
             ctx.fill();
-            // Core explosion
+
+            // Core explosion: white center → orange → red → fade
             const grad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r);
-            const pulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.015);
-            grad.addColorStop(0, '#FFFFFF');
-            grad.addColorStop(0.3, e.color);
-            grad.addColorStop(0.7, e.color + 'AA');
+            grad.addColorStop(0, `rgba(255,255,255,${(0.95 * pulse * phaseAlpha).toFixed(2)})`);
+            grad.addColorStop(0.15, `rgba(255,240,200,${(0.9 * phaseAlpha).toFixed(2)})`);
+            grad.addColorStop(0.35, `rgba(255,160,50,${(0.8 * phaseAlpha).toFixed(2)})`);
+            grad.addColorStop(0.6, `rgba(220,60,30,${(0.6 * phaseAlpha).toFixed(2)})`);
+            grad.addColorStop(0.85, `rgba(150,20,20,${(0.3 * phaseAlpha).toFixed(2)})`);
             grad.addColorStop(1, 'transparent');
             ctx.fillStyle = grad;
-            ctx.globalAlpha = pulse;
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
             ctx.fill();
-            ctx.globalAlpha = 1;
-            // Ring
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 1.5;
-            ctx.globalAlpha = 0.4;
+
+            // Hot inner core (extra bright)
+            if (e.phase < 2) {
+                const coreR = e.r * 0.3;
+                const coreGrad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, coreR);
+                coreGrad.addColorStop(0, `rgba(255,255,255,${(0.9 * pulse).toFixed(2)})`);
+                coreGrad.addColorStop(1, 'rgba(255,200,100,0)');
+                ctx.fillStyle = coreGrad;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, coreR, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Shockwave ring
+            ctx.strokeStyle = `rgba(255,200,150,${(0.35 * phaseAlpha).toFixed(2)})`;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(e.x, e.y, e.r * 0.8, 0, Math.PI * 2);
+            ctx.arc(e.x, e.y, e.r * 0.9, 0, Math.PI * 2);
             ctx.stroke();
-            ctx.globalAlpha = 1;
+
+            // Outer fading ring
+            ctx.strokeStyle = `rgba(255,100,50,${(0.15 * phaseAlpha).toFixed(2)})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.r * 1.2, 0, Math.PI * 2);
+            ctx.stroke();
         });
     }
 
@@ -955,11 +1293,55 @@ window.MollyControl = (() => {
     function drawParticles() {
         particles.forEach(p => {
             const alpha = Math.max(0, p.life / p.maxLife);
-            ctx.fillStyle = p.color;
             ctx.globalAlpha = alpha;
-            ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
+            // Particle glow for larger particles
+            if (alpha > 0.3) {
+                const pglow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 4);
+                pglow.addColorStop(0, p.color);
+                pglow.addColorStop(1, 'transparent');
+                ctx.fillStyle = pglow;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
         });
         ctx.globalAlpha = 1;
+    }
+
+    function drawScorePopups() {
+        scorePopups.forEach(sp => {
+            const alpha = Math.max(0, sp.life / sp.maxLife);
+            const scale = 0.8 + 0.4 * (1 - alpha); // grows slightly as it fades
+            ctx.save();
+            ctx.translate(sp.x, sp.y);
+            ctx.scale(scale, scale);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 13px monospace';
+            // Shadow for readability
+            ctx.fillStyle = `rgba(0,0,0,${(alpha * 0.5).toFixed(2)})`;
+            ctx.fillText(sp.text, 1, 1);
+            // Main text
+            ctx.fillStyle = sp.color;
+            ctx.globalAlpha = alpha;
+            ctx.fillText(sp.text, 0, 0);
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        });
+    }
+
+    function drawVignette() {
+        // Corner vignette
+        const vg = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75);
+        vg.addColorStop(0, 'transparent');
+        vg.addColorStop(0.7, 'rgba(0,0,0,0.08)');
+        vg.addColorStop(1, 'rgba(0,0,0,0.35)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, W, H);
     }
 
     function drawCrosshair() {
@@ -997,12 +1379,22 @@ window.MollyControl = (() => {
     }
 
     function drawTitle() {
-        // Demo explosions
+        // Demo explosions with upgraded gradients
         demoExplosions.forEach(e => {
             if (e.r <= 0) return;
+            // Outer glow
+            const farG = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r * 1.8);
+            farG.addColorStop(0, 'rgba(255,140,50,0.1)');
+            farG.addColorStop(1, 'transparent');
+            ctx.fillStyle = farG;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.r * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+            // Core
             const grad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r);
-            grad.addColorStop(0, '#FFFFFF80');
-            grad.addColorStop(0.4, e.color + '80');
+            grad.addColorStop(0, 'rgba(255,255,255,0.5)');
+            grad.addColorStop(0.2, 'rgba(255,200,100,0.45)');
+            grad.addColorStop(0.5, e.color + '50');
             grad.addColorStop(1, 'transparent');
             ctx.fillStyle = grad;
             ctx.beginPath();
@@ -1050,15 +1442,40 @@ window.MollyControl = (() => {
 
     function drawTitleCities() {
         const gy = H - GROUND_H;
-        // Draw a few sample candy buildings
-        const sampleX = [W * 0.2, W * 0.4, W * 0.6, W * 0.8];
-        const sampleColors = ['#F43F5E', '#3B82F6', '#22C55E', '#EC4899'];
+        const t = Date.now() * 0.001;
+        const sampleX = [W * 0.15, W * 0.35, W * 0.55, W * 0.75, W * 0.9];
+        const sampleColors = ['#F43F5E', '#3B82F6', '#22C55E', '#EC4899', '#A855F7'];
         sampleX.forEach((x, i) => {
+            // City ground glow
+            const cg = ctx.createRadialGradient(x, gy, 0, x, gy, 25);
+            cg.addColorStop(0, sampleColors[i] + '15');
+            cg.addColorStop(1, 'transparent');
+            ctx.fillStyle = cg;
+            ctx.beginPath(); ctx.arc(x, gy, 25, 0, Math.PI * 2); ctx.fill();
+
             for (let b = 0; b < 3; b++) {
-                const bw = 10, bh = 15 + b * 8;
+                const bw = 10, bh = 18 + b * 9;
+                const bx = x + (b - 1) * 12 - bw / 2;
+                const by = gy - bh;
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(bx + 1, by + 1, bw, bh);
+                // Building
                 ctx.fillStyle = sampleColors[i];
-                ctx.globalAlpha = 0.6;
-                ctx.fillRect(x + (b - 1) * 12 - bw / 2, gy - bh, bw, bh);
+                ctx.globalAlpha = 0.65;
+                ctx.fillRect(bx, by, bw, bh);
+                // Windows
+                ctx.globalAlpha = 0.5;
+                for (let wy = by + 4; wy < gy - 4; wy += 6) {
+                    for (let wx = bx + 2; wx < bx + bw - 2; wx += 5) {
+                        const wSeed = (i * 30 + b * 10 + Math.floor(wx) * 7 + Math.floor(wy) * 3) % 100;
+                        if (wSeed > 30) {
+                            const flicker = wSeed % 15 < 3 ? 0.4 + 0.6 * Math.sin(t * 2 + wSeed) : 0.8;
+                            ctx.fillStyle = `rgba(254,240,138,${(flicker * 0.8).toFixed(2)})`;
+                            ctx.fillRect(wx, wy, 2, 2.5);
+                        }
+                    }
+                }
             }
         });
         ctx.globalAlpha = 1;
@@ -1066,67 +1483,135 @@ window.MollyControl = (() => {
 
     function drawWaveIntro() {
         const t = Date.now() * 0.001;
+        // Dramatic dark overlay
+        const introAlpha = Math.min(1, stateTimer / 1500) * 0.5;
+        ctx.fillStyle = `rgba(0,0,0,${introAlpha.toFixed(2)})`;
+        ctx.fillRect(0, 0, W, H);
+
+        // Horizontal scan lines
+        ctx.fillStyle = 'rgba(6,182,212,0.03)';
+        for (let y = 0; y < H; y += 4) {
+            ctx.fillRect(0, y, W, 1);
+        }
+
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+
+        // WAVE number — large with glow
         ctx.shadowColor = '#06B6D4';
-        ctx.shadowBlur = 15;
-        ctx.font = 'bold 36px monospace';
+        ctx.shadowBlur = 25 + 10 * Math.sin(t * 3);
+        ctx.font = 'bold 42px monospace';
         ctx.fillStyle = '#06B6D4';
-        const scale = 1 + 0.05 * Math.sin(t * 4);
-        ctx.translate(W / 2, H * 0.4);
+        const scale = 1 + 0.06 * Math.sin(t * 4);
+        ctx.translate(W / 2, H * 0.37);
         ctx.scale(scale, scale);
         ctx.fillText('WAVE ' + wave, 0, 0);
         ctx.restore();
-        // Subtitle
-        if (wave >= 3 && wave < 4) {
-            ctx.font = '12px monospace';
-            ctx.fillStyle = '#FBBF24';
+
+        // Decorative line under title
+        const lineW = 120 + 20 * Math.sin(t * 2);
+        const lineGrad = ctx.createLinearGradient(W / 2 - lineW / 2, 0, W / 2 + lineW / 2, 0);
+        lineGrad.addColorStop(0, 'transparent');
+        lineGrad.addColorStop(0.3, 'rgba(6,182,212,0.6)');
+        lineGrad.addColorStop(0.5, 'rgba(6,182,212,0.9)');
+        lineGrad.addColorStop(0.7, 'rgba(6,182,212,0.6)');
+        lineGrad.addColorStop(1, 'transparent');
+        ctx.strokeStyle = lineGrad;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - lineW / 2, H * 0.43);
+        ctx.lineTo(W / 2 + lineW / 2, H * 0.43);
+        ctx.stroke();
+
+        // Warning subtitles
+        let warningText = '', warningColor = '';
+        if (wave === 3) { warningText = 'WARNING: MIRVs incoming!'; warningColor = '#FBBF24'; }
+        else if (wave === 4) { warningText = 'WARNING: Bombers spotted!'; warningColor = '#F97316'; }
+        else if (wave === 5) { warningText = 'WARNING: Smart bombs detected!'; warningColor = '#EF4444'; }
+        else if (wave >= 6) { warningText = 'WARNING: Satellites overhead!'; warningColor = '#A855F7'; }
+
+        if (warningText) {
+            const warnAlpha = 0.5 + 0.5 * Math.sin(t * 5);
+            ctx.save();
+            ctx.font = 'bold 13px monospace';
+            ctx.fillStyle = warningColor;
+            ctx.globalAlpha = warnAlpha;
             ctx.textAlign = 'center';
-            ctx.fillText('WARNING: MIRVs incoming!', W / 2, H * 0.48);
-        } else if (wave === 4) {
-            ctx.font = '12px monospace';
-            ctx.fillStyle = '#F97316';
-            ctx.textAlign = 'center';
-            ctx.fillText('WARNING: Bombers spotted!', W / 2, H * 0.48);
-        } else if (wave === 5) {
-            ctx.font = '12px monospace';
-            ctx.fillStyle = '#EF4444';
-            ctx.textAlign = 'center';
-            ctx.fillText('WARNING: Smart bombs detected!', W / 2, H * 0.48);
-        } else if (wave === 6) {
-            ctx.font = '12px monospace';
-            ctx.fillStyle = '#A855F7';
-            ctx.textAlign = 'center';
-            ctx.fillText('WARNING: Satellites overhead!', W / 2, H * 0.48);
+            ctx.shadowColor = warningColor;
+            ctx.shadowBlur = 10;
+            ctx.fillText(warningText, W / 2, H * 0.50);
+            ctx.globalAlpha = 1;
+            ctx.restore();
         }
+
+        // City count
+        const alive = cities.filter(c => c.alive).length;
+        ctx.font = '11px monospace';
+        ctx.fillStyle = '#64748B';
+        ctx.textAlign = 'center';
+        ctx.fillText(alive + ' cities standing', W / 2, H * 0.57);
     }
 
     function drawWaveEnd() {
+        const t = Date.now() * 0.001;
+
+        // Subtle dark overlay
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(0, 0, W, H);
+
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = 'bold 24px monospace';
-        ctx.fillStyle = '#22D3EE';
-        ctx.fillText('WAVE ' + wave + ' COMPLETE', W / 2, H * 0.3);
 
-        ctx.font = '16px monospace';
-        let y = H * 0.4;
+        // Title with glow
+        ctx.shadowColor = '#22D3EE';
+        ctx.shadowBlur = 15;
+        ctx.font = 'bold 26px monospace';
+        ctx.fillStyle = '#22D3EE';
+        ctx.fillText('WAVE ' + wave + ' COMPLETE', W / 2, H * 0.28);
+        ctx.shadowBlur = 0;
+
+        // Decorative line
+        const lw = 160;
+        const lg = ctx.createLinearGradient(W / 2 - lw / 2, 0, W / 2 + lw / 2, 0);
+        lg.addColorStop(0, 'transparent');
+        lg.addColorStop(0.5, 'rgba(34,211,238,0.5)');
+        lg.addColorStop(1, 'transparent');
+        ctx.strokeStyle = lg;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - lw / 2, H * 0.33);
+        ctx.lineTo(W / 2 + lw / 2, H * 0.33);
+        ctx.stroke();
+
+        ctx.font = '15px monospace';
+        let y = H * 0.39;
         if (waveEndPhase >= 1) {
             ctx.fillStyle = '#34D399';
-            ctx.fillText('Cities Saved: ' + waveBonusCities + ' x ' + (100 * wave) + ' = ' + (waveBonusCities * 100 * wave), W / 2, y);
-            y += 28;
+            const cityText = 'Cities Saved: ' + waveBonusCities + ' x ' + (100 * wave) + ' = ' + (waveBonusCities * 100 * wave);
+            ctx.shadowColor = '#34D399';
+            ctx.shadowBlur = 5;
+            ctx.fillText(cityText, W / 2, y);
+            ctx.shadowBlur = 0;
+            y += 30;
         }
         if (waveEndPhase >= 2) {
             ctx.fillStyle = '#60A5FA';
+            ctx.shadowColor = '#60A5FA';
+            ctx.shadowBlur = 5;
             ctx.fillText('Ammo Bonus: ' + waveBonusAmmo + ' x 5 = ' + (waveBonusAmmo * 5), W / 2, y);
-            y += 28;
+            ctx.shadowBlur = 0;
+            y += 30;
         }
         if (waveEndPhase >= 3) {
-            ctx.fillStyle = '#FBBF24';
-            ctx.font = 'bold 18px monospace';
             const total = waveBonusCities * 100 * wave + waveBonusAmmo * 5;
+            ctx.font = 'bold 20px monospace';
+            ctx.fillStyle = '#FBBF24';
+            ctx.shadowColor = '#FBBF24';
+            ctx.shadowBlur = 12 + 4 * Math.sin(t * 3);
             ctx.fillText('TOTAL BONUS: ' + total, W / 2, y);
+            ctx.shadowBlur = 0;
         }
         ctx.restore();
     }

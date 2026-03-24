@@ -39,6 +39,11 @@ window.Maeteoroids = (() => {
     let audioCtx = null;
     let startTime = 0;
 
+    // ── Visual upgrade state ──
+    let screenShakeX = 0, screenShakeY = 0, screenShakeTimer = 0;
+    let scorePopups = [];
+    let vignetteGrad = null;
+
     // ── Touch state ──
     let touchLeft = false, touchRight = false, touchThrust = false, touchFire = false;
     let lastTapTime = 0;
@@ -84,25 +89,55 @@ window.Maeteoroids = (() => {
         else if (obj.y < -margin) obj.y = H + margin;
     }
 
-    // ── Stars ──
+    // ── Multi-layer Parallax Starfield ──
     function createStars() {
         stars = [];
+        // Layer 0: distant small dim stars
         for (let i = 0; i < STAR_COUNT; i++) {
             stars.push({
                 x: rand(0, W), y: rand(0, H),
-                size: rand(0.5, 2.5) * SCALE,
-                brightness: rand(0.3, 1),
-                drift: rand(-0.05, 0.05)
+                size: rand(0.3, 1.2) * SCALE,
+                brightness: rand(0.15, 0.45),
+                drift: rand(-0.02, 0.02),
+                layer: 0
+            });
+        }
+        // Layer 1: mid-distance stars
+        for (let i = 0; i < Math.round(STAR_COUNT * 0.4); i++) {
+            stars.push({
+                x: rand(0, W), y: rand(0, H),
+                size: rand(1, 2) * SCALE,
+                brightness: rand(0.4, 0.75),
+                drift: rand(-0.06, 0.06),
+                layer: 1
+            });
+        }
+        // Layer 2: close bright stars with twinkle
+        for (let i = 0; i < Math.round(STAR_COUNT * 0.15); i++) {
+            stars.push({
+                x: rand(0, W), y: rand(0, H),
+                size: rand(1.5, 3) * SCALE,
+                brightness: rand(0.6, 1),
+                drift: rand(-0.1, 0.1),
+                layer: 2,
+                twinkleSpeed: rand(0.002, 0.008),
+                twinklePhase: rand(0, Math.PI * 2)
             });
         }
     }
 
     function updateStars(dt) {
         for (const s of stars) {
-            s.x += s.drift * dt;
-            s.y += 0.02 * dt;
-            s.brightness += rand(-0.01, 0.01);
-            s.brightness = Math.max(0.2, Math.min(1, s.brightness));
+            const speedMult = s.layer === 0 ? 0.3 : s.layer === 1 ? 0.7 : 1;
+            s.x += s.drift * dt * speedMult;
+            s.y += 0.02 * dt * speedMult;
+            if (s.twinklePhase !== undefined) {
+                s.twinklePhase += s.twinkleSpeed * dt;
+                s.brightness = 0.5 + Math.sin(s.twinklePhase) * 0.5;
+            } else {
+                s.brightness += rand(-0.005, 0.005);
+                s.brightness = Math.max(0.1, Math.min(1, s.brightness));
+            }
             if (s.x > W) s.x = 0;
             if (s.x < 0) s.x = W;
             if (s.y > H) s.y = 0;
@@ -111,7 +146,18 @@ window.Maeteoroids = (() => {
 
     function drawStars() {
         for (const s of stars) {
-            ctx.fillStyle = `rgba(200,210,255,${s.brightness * 0.6})`;
+            const alpha = s.brightness * (s.layer === 0 ? 0.4 : s.layer === 1 ? 0.6 : 0.85);
+            if (s.layer === 2 && s.size > 2 * SCALE) {
+                // Close stars get a subtle cross-shaped twinkle
+                const cr = s.size * 1.5;
+                ctx.strokeStyle = `rgba(200,210,255,${alpha * 0.3})`;
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(s.x - cr, s.y); ctx.lineTo(s.x + cr, s.y);
+                ctx.moveTo(s.x, s.y - cr); ctx.lineTo(s.x, s.y + cr);
+                ctx.stroke();
+            }
+            ctx.fillStyle = `rgba(200,210,255,${alpha})`;
             ctx.beginPath();
             ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
             ctx.fill();
@@ -123,7 +169,8 @@ window.Maeteoroids = (() => {
         return {
             x: W / 2, y: H / 2, rot: -Math.PI / 2,
             vx: 0, vy: 0, alive: true, thrusting: false,
-            thrustParticles: []
+            thrustParticles: [],
+            flameTime: 0 // for animated flame
         };
     }
 
@@ -134,19 +181,27 @@ window.Maeteoroids = (() => {
         ship.rot += rotating * ROTATION_SPEED * dt * 0.016;
         ship.thrusting = !!(keys.ArrowUp || keys.up || touchThrust);
         if (ship.thrusting) {
+            ship.flameTime += dt * 0.01;
             ship.vx += Math.cos(ship.rot) * THRUST_POWER * dt * 0.016;
             ship.vy += Math.sin(ship.rot) * THRUST_POWER * dt * 0.016;
-            if (Math.random() < 0.6) {
-                const angle = ship.rot + Math.PI + rand(-0.3, 0.3);
-                ship.thrustParticles.push({
-                    x: ship.x - Math.cos(ship.rot) * SHIP_SIZE * 0.6,
-                    y: ship.y - Math.sin(ship.rot) * SHIP_SIZE * 0.6,
-                    vx: Math.cos(angle) * rand(1, 3) * SCALE + ship.vx * 0.3,
-                    vy: Math.sin(angle) * rand(1, 3) * SCALE + ship.vy * 0.3,
-                    life: 1, decay: rand(0.03, 0.06)
-                });
+            // More plentiful thrust particles
+            for (let tp = 0; tp < 2; tp++) {
+                if (Math.random() < 0.7) {
+                    const angle = ship.rot + Math.PI + rand(-0.4, 0.4);
+                    const colors = ['#FDE68A', '#F59E0B', '#EF4444', '#FF6B35'];
+                    ship.thrustParticles.push({
+                        x: ship.x - Math.cos(ship.rot) * SHIP_SIZE * 0.6 + rand(-2, 2) * SCALE,
+                        y: ship.y - Math.sin(ship.rot) * SHIP_SIZE * 0.6 + rand(-2, 2) * SCALE,
+                        vx: Math.cos(angle) * rand(1, 4) * SCALE + ship.vx * 0.3,
+                        vy: Math.sin(angle) * rand(1, 4) * SCALE + ship.vy * 0.3,
+                        life: 1, decay: rand(0.025, 0.055),
+                        color: colors[Math.floor(rand(0, colors.length))]
+                    });
+                }
             }
             playThrust();
+        } else {
+            ship.flameTime = 0;
         }
         const speed = Math.hypot(ship.vx, ship.vy);
         if (speed > MAX_SPEED) {
@@ -172,14 +227,57 @@ window.Maeteoroids = (() => {
     function drawShip() {
         if (!ship.alive) return;
         if (invulnTimer > 0 && Math.floor(invulnTimer / 80) % 2 === 0) return;
+
         const S = SHIP_SIZE;
+
+        // ── Ghost ship at edges (screen wrap visual feedback) ──
+        const edgeMargin = S * 2.5;
+        const ghostPositions = [];
+        if (ship.x < edgeMargin) ghostPositions.push({ x: ship.x + W, y: ship.y });
+        if (ship.x > W - edgeMargin) ghostPositions.push({ x: ship.x - W, y: ship.y });
+        if (ship.y < edgeMargin) ghostPositions.push({ x: ship.x, y: ship.y + H });
+        if (ship.y > H - edgeMargin) ghostPositions.push({ x: ship.x, y: ship.y - H });
+        for (const gp of ghostPositions) {
+            drawShipBody(gp.x, gp.y, S, 0.25);
+        }
+
+        // ── Main ship ──
+        drawShipBody(ship.x, ship.y, S, 1);
+
+        // Thrust trail particles with color variation and fading trails
+        for (const p of ship.thrustParticles) {
+            const alpha = p.life * 0.85;
+            const rgb = hexToRgb(p.color);
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = Math.round(6 * SCALE * p.life);
+            ctx.fillStyle = `rgba(${rgb},${alpha})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.life * 3.5 * SCALE, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+    }
+
+    function drawShipBody(x, y, S, opacity) {
         ctx.save();
-        ctx.translate(ship.x, ship.y);
+        ctx.globalAlpha = opacity;
+        ctx.translate(x, y);
         ctx.rotate(ship.rot);
+
+        // Engine glow halo (behind ship)
+        if (ship.thrusting && opacity > 0.5) {
+            const haloGrad = ctx.createRadialGradient(-S * 0.5, 0, 0, -S * 0.5, 0, S * 1.5);
+            haloGrad.addColorStop(0, 'rgba(245,158,11,0.15)');
+            haloGrad.addColorStop(1, 'rgba(245,158,11,0)');
+            ctx.fillStyle = haloGrad;
+            ctx.beginPath();
+            ctx.arc(-S * 0.5, 0, S * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Ship body gradient
         ctx.shadowColor = SHIP_COLOR;
         ctx.shadowBlur = GLOW_AMOUNT;
-
-        // Solid candy ship body with gradient
         const shipGrad = ctx.createLinearGradient(-S, 0, S, 0);
         shipGrad.addColorStop(0, '#0E7490');
         shipGrad.addColorStop(0.4, '#06B6D4');
@@ -193,8 +291,36 @@ window.Maeteoroids = (() => {
         ctx.closePath();
         ctx.fill();
 
-        // Glossy highlight on upper half
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        // Hull panel lines for detail
+        ctx.strokeStyle = 'rgba(103,232,249,0.3)';
+        ctx.lineWidth = Math.max(0.5, SCALE);
+        ctx.beginPath();
+        ctx.moveTo(S * 0.3, -S * 0.08);
+        ctx.lineTo(-S * 0.2, -S * 0.25);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(S * 0.3, S * 0.08);
+        ctx.lineTo(-S * 0.2, S * 0.25);
+        ctx.stroke();
+
+        // Cockpit canopy
+        const cockpitGrad = ctx.createRadialGradient(S * 0.2, -S * 0.03, 0, S * 0.2, 0, S * 0.22);
+        cockpitGrad.addColorStop(0, 'rgba(255,255,255,0.6)');
+        cockpitGrad.addColorStop(0.4, 'rgba(103,232,249,0.35)');
+        cockpitGrad.addColorStop(1, 'rgba(6,182,212,0.1)');
+        ctx.fillStyle = cockpitGrad;
+        ctx.beginPath();
+        ctx.ellipse(S * 0.2, 0, S * 0.18, S * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cockpit highlight dot
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.beginPath();
+        ctx.arc(S * 0.28, -S * 0.04, S * 0.04, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glossy highlight on upper hull
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
         ctx.beginPath();
         ctx.moveTo(S * 0.7, -S * 0.05);
         ctx.quadraticCurveTo(S * 0.2, -S * 0.4, -S * 0.5, -S * 0.4);
@@ -214,35 +340,58 @@ window.Maeteoroids = (() => {
         ctx.closePath();
         ctx.stroke();
 
-        // Engine glow when thrusting — filled candy flame
+        // Wing tip lights
+        ctx.shadowBlur = Math.round(6 * SCALE);
+        ctx.shadowColor = '#FF4D6A';
+        ctx.fillStyle = '#FF4D6A';
+        ctx.beginPath();
+        ctx.arc(-S * 0.68, -S * 0.52, Math.max(1, S * 0.05), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = '#34D399';
+        ctx.fillStyle = '#34D399';
+        ctx.beginPath();
+        ctx.arc(-S * 0.68, S * 0.52, Math.max(1, S * 0.05), 0, Math.PI * 2);
+        ctx.fill();
+
+        // Engine glow when thrusting — multi-layer animated flame
         if (ship.thrusting) {
             ctx.shadowColor = '#F59E0B';
-            ctx.shadowBlur = Math.round(18 * SCALE);
-            const flicker = rand(0.6, 1);
-            const flameGrad = ctx.createRadialGradient(-S * 0.85, 0, 0, -S * 0.85, 0, S * flicker * 0.6);
-            flameGrad.addColorStop(0, '#FDE68A');
-            flameGrad.addColorStop(0.4, '#F59E0B');
-            flameGrad.addColorStop(1, 'rgba(239,68,68,0)');
-            ctx.fillStyle = flameGrad;
+            ctx.shadowBlur = Math.round(22 * SCALE);
+            const t = ship.flameTime;
+            const flicker1 = 0.7 + Math.sin(t * 15) * 0.15 + Math.sin(t * 23) * 0.15;
+            const flicker2 = 0.5 + Math.sin(t * 19 + 1) * 0.2 + Math.sin(t * 31) * 0.1;
+
+            // Outer flame (red/orange)
+            const outerGrad = ctx.createRadialGradient(-S * 0.8, 0, 0, -S * 0.8, 0, S * flicker1 * 0.8);
+            outerGrad.addColorStop(0, 'rgba(239,68,68,0.8)');
+            outerGrad.addColorStop(0.6, 'rgba(245,158,11,0.4)');
+            outerGrad.addColorStop(1, 'rgba(239,68,68,0)');
+            ctx.fillStyle = outerGrad;
             ctx.beginPath();
-            ctx.moveTo(-S * 0.65, -S * 0.3);
-            ctx.quadraticCurveTo(-S * (1 + flicker * 0.4), 0, -S * 0.65, S * 0.3);
+            ctx.moveTo(-S * 0.6, -S * 0.35);
+            ctx.quadraticCurveTo(-S * (1.1 + flicker1 * 0.5), 0, -S * 0.6, S * 0.35);
             ctx.closePath();
+            ctx.fill();
+
+            // Inner flame (white/yellow)
+            const innerGrad = ctx.createRadialGradient(-S * 0.75, 0, 0, -S * 0.75, 0, S * flicker2 * 0.5);
+            innerGrad.addColorStop(0, 'rgba(253,230,138,0.95)');
+            innerGrad.addColorStop(0.5, 'rgba(245,158,11,0.6)');
+            innerGrad.addColorStop(1, 'rgba(245,158,11,0)');
+            ctx.fillStyle = innerGrad;
+            ctx.beginPath();
+            ctx.moveTo(-S * 0.62, -S * 0.2);
+            ctx.quadraticCurveTo(-S * (0.9 + flicker2 * 0.35), 0, -S * 0.62, S * 0.2);
+            ctx.closePath();
+            ctx.fill();
+
+            // Core (white hot)
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.beginPath();
+            ctx.ellipse(-S * 0.55, 0, S * 0.08, S * 0.12, 0, 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.restore();
-
-        // Thrust trail particles
-        ctx.shadowColor = '#F59E0B';
-        ctx.shadowBlur = Math.round(8 * SCALE);
-        for (const p of ship.thrustParticles) {
-            const alpha = p.life * 0.8;
-            ctx.fillStyle = `rgba(245,158,11,${alpha})`;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.life * 3 * SCALE, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.shadowBlur = 0;
     }
 
     // ── Bullets ──
@@ -266,7 +415,7 @@ window.Maeteoroids = (() => {
         for (let i = bullets.length - 1; i >= 0; i--) {
             const b = bullets[i];
             b.trail.push({ x: b.x, y: b.y });
-            if (b.trail.length > 6) b.trail.shift();
+            if (b.trail.length > 8) b.trail.shift();
             b.x += b.vx * dt * 0.06;
             b.y += b.vy * dt * 0.06;
             b.life -= dt * 0.06;
@@ -277,21 +426,32 @@ window.Maeteoroids = (() => {
 
     function drawBullets() {
         for (const b of bullets) {
-            // Trail
+            // Elongated glow trail
             ctx.shadowColor = BULLET_COLOR;
-            ctx.shadowBlur = Math.round(8 * SCALE);
+            ctx.shadowBlur = Math.round(10 * SCALE);
             for (let i = 0; i < b.trail.length; i++) {
-                const alpha = (i / b.trail.length) * 0.4;
+                const t = i / b.trail.length;
+                const alpha = t * 0.5;
+                const size = (0.5 + t * 1.5) * SCALE;
                 ctx.fillStyle = `rgba(245,158,11,${alpha})`;
                 ctx.beginPath();
-                ctx.arc(b.trail[i].x, b.trail[i].y, 1.5 * SCALE, 0, Math.PI * 2);
+                ctx.arc(b.trail[i].x, b.trail[i].y, size, 0, Math.PI * 2);
                 ctx.fill();
             }
-            // Candy bullet — glowing gradient ball
-            ctx.shadowBlur = Math.round(12 * SCALE);
+            // Bullet glow halo
+            ctx.shadowBlur = Math.round(16 * SCALE);
+            const haloGrad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 8 * SCALE);
+            haloGrad.addColorStop(0, 'rgba(253,230,138,0.3)');
+            haloGrad.addColorStop(1, 'rgba(245,158,11,0)');
+            ctx.fillStyle = haloGrad;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 8 * SCALE, 0, Math.PI * 2);
+            ctx.fill();
+            // Bullet core
             const bGrad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 4 * SCALE);
-            bGrad.addColorStop(0, '#FDE68A');
-            bGrad.addColorStop(0.5, BULLET_COLOR);
+            bGrad.addColorStop(0, '#FFFFFF');
+            bGrad.addColorStop(0.3, '#FDE68A');
+            bGrad.addColorStop(0.7, BULLET_COLOR);
             bGrad.addColorStop(1, '#D97706');
             ctx.fillStyle = bGrad;
             ctx.beginPath();
@@ -304,13 +464,47 @@ window.Maeteoroids = (() => {
     // ── Asteroids ──
     function makeAsteroidShape(radius) {
         const pts = [];
-        const verts = Math.floor(rand(8, 14));
+        const verts = Math.floor(rand(9, 16));
         for (let i = 0; i < verts; i++) {
             const angle = (i / verts) * Math.PI * 2;
-            const r = radius * rand(0.7, 1.3);
+            const r = radius * rand(0.65, 1.3);
             pts.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
         }
         return pts;
+    }
+
+    // Generate surface detail: craters and cracks
+    function makeAsteroidDetail(radius, size) {
+        const detail = { craters: [], cracks: [] };
+        // Craters
+        const craterCount = size === 'large' ? Math.floor(rand(3, 6)) : size === 'medium' ? Math.floor(rand(2, 4)) : Math.floor(rand(1, 2));
+        for (let i = 0; i < craterCount; i++) {
+            const ang = rand(0, Math.PI * 2);
+            const dist = rand(0.15, 0.65) * radius;
+            detail.craters.push({
+                x: Math.cos(ang) * dist,
+                y: Math.sin(ang) * dist,
+                r: rand(0.08, 0.2) * radius,
+                depth: rand(0.15, 0.4)
+            });
+        }
+        // Cracks (only on larger asteroids)
+        if (size !== 'small') {
+            const crackCount = Math.floor(rand(2, 5));
+            for (let i = 0; i < crackCount; i++) {
+                const startAng = rand(0, Math.PI * 2);
+                const startDist = rand(0.2, 0.6) * radius;
+                const len = rand(0.2, 0.5) * radius;
+                const endAng = startAng + rand(-0.6, 0.6);
+                detail.cracks.push({
+                    x1: Math.cos(startAng) * startDist,
+                    y1: Math.sin(startAng) * startDist,
+                    x2: Math.cos(endAng) * (startDist + len),
+                    y2: Math.sin(endAng) * (startDist + len)
+                });
+            }
+        }
+        return detail;
     }
 
     function spawnAsteroid(x, y, size) {
@@ -324,7 +518,8 @@ window.Maeteoroids = (() => {
             rot: 0, rotSpeed: rand(-0.03, 0.03),
             size: size, radius: radius,
             color: ASTEROID_COLORS[Math.floor(rand(0, ASTEROID_COLORS.length))],
-            shape: makeAsteroidShape(radius)
+            shape: makeAsteroidShape(radius),
+            detail: makeAsteroidDetail(radius, size)
         });
     }
 
@@ -363,51 +558,77 @@ window.Maeteoroids = (() => {
             const rad = a.radius;
             const rgb = hexToRgb(a.color);
 
-            // Candy ball — filled gradient circle
+            // Outer glow
             ctx.shadowColor = a.color;
             ctx.shadowBlur = GLOW_AMOUNT;
-            const grad = ctx.createRadialGradient(-rad * 0.25, -rad * 0.25, rad * 0.1, 0, 0, rad);
-            grad.addColorStop(0, 'rgba(255,255,255,0.55)');
-            grad.addColorStop(0.35, a.color);
-            grad.addColorStop(1, `rgba(${rgb},0.5)`);
-            ctx.fillStyle = grad;
+
+            // Rocky body using irregular polygon shape
+            const darkColor = `rgba(${rgb},0.7)`;
+            const bodyGrad = ctx.createRadialGradient(-rad * 0.3, -rad * 0.3, rad * 0.05, 0, 0, rad);
+            bodyGrad.addColorStop(0, `rgba(${rgb},1)`);
+            bodyGrad.addColorStop(0.5, a.color);
+            bodyGrad.addColorStop(1, darkColor);
+            ctx.fillStyle = bodyGrad;
             ctx.beginPath();
-            ctx.arc(0, 0, rad, 0, Math.PI * 2);
+            ctx.moveTo(a.shape[0].x, a.shape[0].y);
+            for (let i = 1; i < a.shape.length; i++) {
+                ctx.lineTo(a.shape[i].x, a.shape[i].y);
+            }
+            ctx.closePath();
             ctx.fill();
+
             ctx.shadowBlur = 0;
 
-            // Swirl pattern for large/medium
-            if (a.size !== 'small') {
-                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-                ctx.lineWidth = Math.max(1, rad * 0.06);
+            // Rocky edge outline
+            ctx.strokeStyle = `rgba(${rgb},0.5)`;
+            ctx.lineWidth = Math.max(1, 1.5 * SCALE);
+            ctx.beginPath();
+            ctx.moveTo(a.shape[0].x, a.shape[0].y);
+            for (let i = 1; i < a.shape.length; i++) {
+                ctx.lineTo(a.shape[i].x, a.shape[i].y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // Craters
+            for (const c of a.detail.craters) {
+                const craterGrad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r);
+                craterGrad.addColorStop(0, `rgba(0,0,0,${c.depth})`);
+                craterGrad.addColorStop(0.7, `rgba(0,0,0,${c.depth * 0.3})`);
+                craterGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = craterGrad;
                 ctx.beginPath();
-                for (let ang = 0; ang < Math.PI * 4; ang += 0.15) {
-                    const sr = rad * 0.15 + (ang / (Math.PI * 4)) * rad * 0.65;
-                    const sx = Math.cos(ang) * sr;
-                    const sy = Math.sin(ang) * sr;
-                    if (ang < 0.01) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
-                }
+                ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                ctx.fill();
+                // Crater rim highlight
+                ctx.strokeStyle = `rgba(255,255,255,${c.depth * 0.3})`;
+                ctx.lineWidth = Math.max(0.5, 0.7 * SCALE);
+                ctx.beginPath();
+                ctx.arc(c.x - c.r * 0.15, c.y - c.r * 0.15, c.r * 0.85, -Math.PI * 0.6, Math.PI * 0.3);
                 ctx.stroke();
             }
 
-            // Glossy highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            // Surface cracks
+            for (const cr of a.detail.cracks) {
+                ctx.strokeStyle = `rgba(0,0,0,0.3)`;
+                ctx.lineWidth = Math.max(0.5, 0.8 * SCALE);
+                ctx.beginPath();
+                ctx.moveTo(cr.x1, cr.y1);
+                ctx.lineTo(cr.x2, cr.y2);
+                ctx.stroke();
+            }
+
+            // Specular highlight on top-left
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
             ctx.beginPath();
-            ctx.ellipse(-rad * 0.22, -rad * 0.28, rad * 0.35, rad * 0.18, -0.5, 0, Math.PI * 2);
+            ctx.ellipse(-rad * 0.25, -rad * 0.3, rad * 0.4, rad * 0.2, -0.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Shine dot
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            // Bright shine dot
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
             ctx.beginPath();
-            ctx.arc(-rad * 0.3, -rad * 0.35, Math.max(1.5, rad * 0.1), 0, Math.PI * 2);
+            ctx.arc(-rad * 0.3, -rad * 0.35, Math.max(1, rad * 0.07), 0, Math.PI * 2);
             ctx.fill();
-
-            // Subtle border ring
-            ctx.strokeStyle = `rgba(${rgb},0.3)`;
-            ctx.lineWidth = Math.max(1, rad * 0.04);
-            ctx.beginPath();
-            ctx.arc(0, 0, rad * 0.95, 0, Math.PI * 2);
-            ctx.stroke();
 
             ctx.restore();
         }
@@ -416,15 +637,29 @@ window.Maeteoroids = (() => {
 
     // ── Particles ──
     function spawnExplosion(x, y, color, count) {
-        for (let i = 0; i < (count || PARTICLE_COUNT); i++) {
+        const rgb = hexToRgb(color);
+        const cnt = count || PARTICLE_COUNT;
+        for (let i = 0; i < cnt; i++) {
             const angle = rand(0, Math.PI * 2);
-            const speed = rand(1, 5) * SCALE;
+            const speed = rand(1, 6) * SCALE;
+            // Mix of colors: base color, white sparks, and darker debris
+            const type = Math.random();
+            let pColor;
+            if (type < 0.3) pColor = '#FFFFFF';
+            else if (type < 0.6) pColor = color;
+            else {
+                const r = Math.max(0, parseInt(color.slice(1, 3), 16) - 60);
+                const g = Math.max(0, parseInt(color.slice(3, 5), 16) - 60);
+                const b = Math.max(0, parseInt(color.slice(5, 7), 16) - 60);
+                pColor = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+            }
             particles.push({
-                x: x, y: y,
+                x: x + rand(-4, 4) * SCALE, y: y + rand(-4, 4) * SCALE,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                life: 1, decay: rand(0.015, 0.04),
-                color: color, size: rand(1, 4) * SCALE
+                life: 1, decay: rand(0.012, 0.035),
+                color: pColor, size: rand(1, 4.5) * SCALE,
+                trail: []
             });
         }
     }
@@ -443,19 +678,27 @@ window.Maeteoroids = (() => {
                 x: x + f.dx * 0.5, y: y + f.dy * 0.5,
                 vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
                 life: 1, decay: 0.012, color: SHIP_COLOR, size: 3 * SCALE, isLine: true,
-                rot: rand(0, Math.PI * 2), rotSpeed: rand(-0.1, 0.1), len: rand(6, 14) * SCALE
+                rot: rand(0, Math.PI * 2), rotSpeed: rand(-0.1, 0.1), len: rand(6, 14) * SCALE,
+                trail: []
             });
         }
-        spawnExplosion(x, y, SHIP_COLOR, Math.round(20 * SCALE));
+        spawnExplosion(x, y, SHIP_COLOR, Math.round(25 * SCALE));
     }
 
     function updateParticles(dt) {
         for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
+            // Store trail positions for fading trails
+            if (p.trail && p.life > 0.3) {
+                p.trail.push({ x: p.x, y: p.y });
+                if (p.trail.length > 5) p.trail.shift();
+            }
             p.x += p.vx * dt * 0.06;
             p.y += p.vy * dt * 0.06;
             if (p.rot !== undefined) p.rot += p.rotSpeed * dt * 0.06;
             p.life -= p.decay * dt * 0.06;
+            // Slight gravity on particles
+            p.vy += 0.01 * dt * 0.06;
             if (p.life <= 0) particles.splice(i, 1);
         }
     }
@@ -464,7 +707,7 @@ window.Maeteoroids = (() => {
         for (const p of particles) {
             const alpha = Math.max(0, p.life);
             ctx.shadowColor = p.color;
-            ctx.shadowBlur = Math.round(6 * SCALE);
+            ctx.shadowBlur = Math.round(6 * SCALE * alpha);
             if (p.isLine) {
                 ctx.save();
                 ctx.translate(p.x, p.y);
@@ -477,6 +720,16 @@ window.Maeteoroids = (() => {
                 ctx.stroke();
                 ctx.restore();
             } else {
+                // Draw fading trail behind particle
+                if (p.trail && p.trail.length > 1) {
+                    for (let ti = 0; ti < p.trail.length; ti++) {
+                        const ta = (ti / p.trail.length) * alpha * 0.3;
+                        ctx.fillStyle = `rgba(${hexToRgb(p.color)},${ta})`;
+                        ctx.beginPath();
+                        ctx.arc(p.trail[ti].x, p.trail[ti].y, p.size * alpha * 0.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
                 ctx.fillStyle = `rgba(${hexToRgb(p.color)},${alpha})`;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
@@ -487,10 +740,79 @@ window.Maeteoroids = (() => {
     }
 
     function hexToRgb(hex) {
+        if (!hex || hex.charAt(0) !== '#') return '200,200,200';
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);
         return `${r},${g},${b}`;
+    }
+
+    // ── Score Popups ──
+    function spawnScorePopup(x, y, points, color) {
+        scorePopups.push({
+            x: x, y: y,
+            text: '+' + points,
+            color: color,
+            life: 1,
+            vy: -1.5 * SCALE
+        });
+    }
+
+    function updateScorePopups(dt) {
+        for (let i = scorePopups.length - 1; i >= 0; i--) {
+            const p = scorePopups[i];
+            p.y += p.vy * dt * 0.06;
+            p.life -= 0.015 * dt * 0.06;
+            if (p.life <= 0) scorePopups.splice(i, 1);
+        }
+    }
+
+    function drawScorePopups() {
+        const fontSize = Math.max(12, Math.round(16 * SCALE));
+        ctx.font = `bold ${fontSize}px monospace`;
+        ctx.textAlign = 'center';
+        for (const p of scorePopups) {
+            const alpha = Math.max(0, p.life);
+            ctx.fillStyle = `rgba(${hexToRgb(p.color)},${alpha})`;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = Math.round(6 * SCALE);
+            ctx.fillText(p.text, p.x, p.y);
+        }
+        ctx.shadowBlur = 0;
+    }
+
+    // ── Screen Shake ──
+    function triggerScreenShake(intensity) {
+        screenShakeTimer = Math.max(screenShakeTimer, 8);
+        screenShakeX = rand(-intensity, intensity) * SCALE;
+        screenShakeY = rand(-intensity, intensity) * SCALE;
+    }
+
+    function updateScreenShake(dt) {
+        if (screenShakeTimer > 0) {
+            screenShakeTimer -= dt * 0.06;
+            const intensity = screenShakeTimer * 0.5;
+            screenShakeX = rand(-intensity, intensity) * SCALE;
+            screenShakeY = rand(-intensity, intensity) * SCALE;
+            if (screenShakeTimer <= 0) {
+                screenShakeX = 0;
+                screenShakeY = 0;
+                screenShakeTimer = 0;
+            }
+        }
+    }
+
+    // ── Vignette ──
+    function createVignette() {
+        vignetteGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.75);
+        vignetteGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        vignetteGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
+    }
+
+    function drawVignette() {
+        if (!vignetteGrad) return;
+        ctx.fillStyle = vignetteGrad;
+        ctx.fillRect(0, 0, W, H);
     }
 
     // ── Collisions ──
@@ -512,7 +834,9 @@ window.Maeteoroids = (() => {
                 const a = asteroids[ai];
                 if (dist(b, a) < a.radius + 3 * SCALE) {
                     score += ASTEROID_SCORES[a.size];
-                    spawnExplosion(a.x, a.y, a.color, a.size === 'large' ? 18 : a.size === 'medium' ? 12 : 8);
+                    spawnExplosion(a.x, a.y, a.color, a.size === 'large' ? 22 : a.size === 'medium' ? 14 : 8);
+                    spawnScorePopup(a.x, a.y - a.radius, ASTEROID_SCORES[a.size], a.color);
+                    triggerScreenShake(a.size === 'large' ? 5 : a.size === 'medium' ? 3 : 1.5);
                     screenFlash = 3;
                     playExplode(a.size);
                     // Confetti for large asteroid kills
@@ -537,6 +861,7 @@ window.Maeteoroids = (() => {
     function killShip() {
         ship.alive = false;
         spawnShipDeath(ship.x, ship.y);
+        triggerScreenShake(8);
         playDeath();
         lives--;
         if (lives <= 0) {
@@ -554,6 +879,7 @@ window.Maeteoroids = (() => {
         ship.rot = -Math.PI / 2;
         ship.alive = true;
         ship.thrustParticles = [];
+        ship.flameTime = 0;
         invulnTimer = INVULN_TIME;
     }
 
@@ -690,8 +1016,8 @@ window.Maeteoroids = (() => {
         ctx.textAlign = 'center';
         ctx.fillText(String(score).padStart(6, '0'), W / 2, Math.round(52 * SCALE));
 
-        // Lives (small ship icons)
-        const lifeSize = Math.max(6, Math.round(8 * SCALE));
+        // Lives as filled mini ship icons
+        const lifeSize = Math.max(6, Math.round(9 * SCALE));
         const lifeSpacing = Math.max(18, Math.round(24 * SCALE));
         for (let i = 0; i < lives; i++) {
             const lx = Math.round(30 * SCALE) + i * lifeSpacing;
@@ -699,16 +1025,22 @@ window.Maeteoroids = (() => {
             ctx.save();
             ctx.translate(lx, ly);
             ctx.rotate(-Math.PI / 2);
-            ctx.strokeStyle = SHIP_COLOR;
+            // Filled mini ship
+            const miniGrad = ctx.createLinearGradient(-lifeSize, 0, lifeSize, 0);
+            miniGrad.addColorStop(0, '#0E7490');
+            miniGrad.addColorStop(1, '#67E8F9');
+            ctx.fillStyle = miniGrad;
             ctx.shadowColor = SHIP_COLOR;
             ctx.shadowBlur = Math.round(4 * SCALE);
-            ctx.lineWidth = Math.max(1, 1.5 * SCALE);
             ctx.beginPath();
             ctx.moveTo(lifeSize, 0);
             ctx.lineTo(-lifeSize * 0.6, -lifeSize * 0.55);
             ctx.lineTo(-lifeSize * 0.35, 0);
             ctx.lineTo(-lifeSize * 0.6, lifeSize * 0.55);
             ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#67E8F9';
+            ctx.lineWidth = Math.max(0.7, 1 * SCALE);
             ctx.stroke();
             ctx.restore();
         }
@@ -782,6 +1114,8 @@ window.Maeteoroids = (() => {
             updateBullets(dt);
             updateAsteroids(dt);
             updateParticles(dt);
+            updateScorePopups(dt);
+            updateScreenShake(dt);
             checkBulletHits();
             checkCollisions();
 
@@ -813,13 +1147,19 @@ window.Maeteoroids = (() => {
         }
 
         // Draw
+        ctx.save();
+        // Apply screen shake
+        if (screenShakeTimer > 0) {
+            ctx.translate(screenShakeX, screenShakeY);
+        }
+
         // Dark gradient background (themed)
         const bgGradObj = ctx.createLinearGradient(0, 0, W * 0.3, H);
         bgGradObj.addColorStop(0, bgGrad[0]);
         bgGradObj.addColorStop(0.5, bgGrad[1]);
         bgGradObj.addColorStop(1, bgGrad[2]);
         ctx.fillStyle = bgGradObj;
-        ctx.fillRect(0, 0, W, H);
+        ctx.fillRect(-10, -10, W + 20, H + 20);
 
         if (screenFlash > 0) {
             ctx.fillStyle = `rgba(255,255,255,${Math.min(0.08, screenFlash * 0.03)})`;
@@ -831,10 +1171,16 @@ window.Maeteoroids = (() => {
         drawBullets();
         drawParticles();
         drawShip();
+        drawScorePopups();
         drawHUD();
         drawLevelText();
 
         if (!ship.alive && respawnTimer < 0) drawGameOver();
+
+        ctx.restore();
+
+        // Vignette overlay (drawn after restore so it's not affected by shake)
+        drawVignette();
 
         animFrame = requestAnimationFrame(gameLoop);
     }
@@ -888,8 +1234,13 @@ window.Maeteoroids = (() => {
     function init(canvasEl, player, onGameOver) {
         canvas = canvasEl;
         ctx = canvas.getContext('2d');
-        W = canvas.width;
-        H = canvas.height;
+        const container = canvas.parentElement;
+        if (container) {
+            canvas.width = Math.max(480, container.clientWidth || 480);
+            canvas.height = Math.max(480, container.clientHeight || 480);
+        }
+        W = canvas.width || 480;
+        H = canvas.height || 480;
         activePlayer = player || null;
         gameOverCallback = onGameOver || null;
         startTime = Date.now();
@@ -905,12 +1256,28 @@ window.Maeteoroids = (() => {
             bgGrad          = [_t.bgGradient[0], _t.bgGradient[1], _t.bgGradient[1]];
         }
 
+        // Delayed refit for container layout settling
+        requestAnimationFrame(() => {
+            if (!canvas || !canvas.parentElement) return;
+            const p = canvas.parentElement;
+            const pw = Math.max(480, p.clientWidth || 480);
+            const ph = Math.max(480, p.clientHeight || 480);
+            if (pw !== canvas.width || ph !== canvas.height) {
+                canvas.width = pw; canvas.height = ph;
+                W = canvas.width; H = canvas.height;
+                computeScale();
+                createVignette();
+            }
+        });
+
         // Compute all scale-dependent values
         computeScale();
 
         // Reset state
         score = 0; level = 1; lives = 3;
         bullets = []; asteroids = []; particles = [];
+        scorePopups = [];
+        screenShakeX = 0; screenShakeY = 0; screenShakeTimer = 0;
         keys = {};
         lastFireTime = 0;
         invulnTimer = INVULN_TIME;
@@ -927,6 +1294,7 @@ window.Maeteoroids = (() => {
 
         ship = createShip();
         createStars();
+        createVignette();
         spawnWave();
 
         document.addEventListener('keydown', onKeyDown);
@@ -955,6 +1323,8 @@ window.Maeteoroids = (() => {
         }
         keys = {};
         bullets = []; asteroids = []; particles = []; stars = [];
+        scorePopups = [];
+        vignetteGrad = null;
     }
 
     return {

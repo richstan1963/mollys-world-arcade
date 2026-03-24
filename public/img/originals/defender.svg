@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 180" width="500" height="180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="rgb(1,36,42)"/>
+      <stop offset="50%" stop-color="rgb(1,54,63)"/>
+      <stop offset="100%" stop-color="rgb(0,21,25)"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#06B6D4" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#06B6D4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="textGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="500" height="180" fill="url(#bg)"/>
+  <rect width="500" height="180" fill="url(#glow)"/>
+  <!-- Stars -->
+  <circle cx="137" cy="31" r="0.5" fill="white" opacity="0.36"/>
+  <circle cx="396" cy="82" r="0.9" fill="white" opacity="0.35"/>
+  <circle cx="483" cy="36" r="0.7" fill="white" opacity="0.54"/>
+  <circle cx="426" cy="127" r="1.8" fill="white" opacity="0.64"/>
+  <circle cx="172" cy="54" r="0.7" fill="white" opacity="0.50"/>
+  <circle cx="463" cy="134" r="1.9" fill="white" opacity="0.20"/>
+  <circle cx="467" cy="11" r="1.1" fill="white" opacity="0.55"/>
+  <circle cx="487" cy="49" r="1.0" fill="white" opacity="0.31"/>
+  <circle cx="320" cy="78" r="0.9" fill="white" opacity="0.41"/>
+  <circle cx="198" cy="17" r="0.9" fill="white" opacity="0.26"/>
+  <circle cx="179" cy="30" r="1.9" fill="white" opacity="0.40"/>
+  <circle cx="348" cy="37" r="0.5" fill="white" opacity="0.49"/>
+  <circle cx="427" cy="79" r="1.8" fill="white" opacity="0.43"/>
+  <circle cx="155" cy="101" r="1.5" fill="white" opacity="0.51"/>
+  <circle cx="25" cy="61" r="1.3" fill="white" opacity="0.22"/>
+  <circle cx="156" cy="123" r="1.4" fill="white" opacity="0.23"/>
+  <circle cx="171" cy="83" r="1.4" fill="white" opacity="0.42"/>
+  <circle cx="472" cy="140" r="1.6" fill="white" opacity="0.21"/>
+  <circle cx="450" cy="66" r="1.5" fill="white" opacity="0.56"/>
+  <circle cx="261" cy="162" r="1.3" fill="white" opacity="0.41"/>
+  <circle cx="150" cy="104" r="1.3" fill="white" opacity="0.46"/>
+  <circle cx="300" cy="76" r="0.6" fill="white" opacity="0.63"/>
+  <circle cx="246" cy="72" r="0.8" fill="white" opacity="0.58"/>
+  <circle cx="95" cy="43" r="1.5" fill="white" opacity="0.57"/>
+  <circle cx="26" cy="45" r="1.0" fill="white" opacity="0.57"/>
+  <!-- Icon -->
+  <text x="250" y="58" text-anchor="middle" font-size="48" fill="white" opacity="0.9">🚀</text>
+  <!-- Title -->
+  <text x="250" y="105" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#06B6D4" filter="url(#textGlow)">DEFENDER</text>
+  <!-- Subtitle -->
+  <text x="250" y="130" text-anchor="middle" font-family="monospace" font-size="10" fill="white" opacity="0.4">YOUR WORLD ARCADE</text>
+  <!-- Accent line -->
+  <rect x="170" y="142" width="160" height="1.5" rx="1" fill="#06B6D4" opacity="0.3"/>
+</svg>

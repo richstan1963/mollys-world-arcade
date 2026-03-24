@@ -81,8 +81,15 @@
 /* ── Candy Banner ── */
 .candy-card-banner {
     position: relative;
-    height: 100px;
-    overflow: hidden;
+    height: 160px;
+}
+.candy-card-banner img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    border-radius: 12px 12px 0 0;
 }
 .candy-banner-bg {
     position: absolute;
@@ -622,7 +629,7 @@
     .originals-hero-title { font-size: 28px; }
     .originals-hero-icon { font-size: 48px; }
     .originals-grid { grid-template-columns: 1fr; padding: 0 12px 24px; }
-    .candy-card-banner { height: 80px; }
+    .candy-card-banner { height: 140px; }
     .candy-banner-emoji { font-size: 42px; }
     .original-card-header { padding: 16px 16px 10px; }
     .original-card-title { font-size: 20px; }

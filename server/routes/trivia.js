@@ -155,6 +155,67 @@ function generateDBTrivia(db) {
     return questions;
 }
 
+// ── Extract trivia facts from AI-generated game_intel trivia docs ────────────
+function generateIntelTrivia(db) {
+    const questions = [];
+    try {
+        // Grab random trivia docs from game_intel
+        const docs = db.prepare(`
+            SELECT gi.game_title, gi.content_md
+            FROM game_intel gi
+            WHERE gi.doc_type = 'trivia' AND length(gi.content_md) > 100
+            ORDER BY RANDOM() LIMIT 30
+        `).all();
+
+        for (const doc of docs) {
+            // Extract bullet-point facts (lines starting with - or * that are meaty)
+            const lines = doc.content_md.split('\n')
+                .map(l => l.trim())
+                .filter(l => (l.startsWith('- ') || l.startsWith('* ')) && l.length > 40 && l.length < 300)
+                .map(l => l.replace(/^[-*]\s*\*?\*?/, '').replace(/\*\*$/,'').trim());
+
+            if (lines.length === 0) continue;
+
+            // Pick one random fact and make it a true/false-style question
+            const fact = lines[Math.floor(Math.random() * lines.length)];
+            const game = doc.game_title;
+
+            questions.push({
+                q: `True or false about "${game}": ${fact}`,
+                a: 'True',
+                wrong: ['False', 'Only in Japan', 'Urban legend'],
+            });
+        }
+
+        // Also generate "Which game..." questions from multiple trivia docs
+        if (docs.length >= 4) {
+            const picked = docs.slice(0, 8);
+            for (let i = 0; i < Math.min(picked.length, 5); i++) {
+                const doc = picked[i];
+                const lines = doc.content_md.split('\n')
+                    .map(l => l.trim())
+                    .filter(l => (l.startsWith('- ') || l.startsWith('* ')) && l.length > 30)
+                    .map(l => l.replace(/^[-*]\s*\*?\*?/, '').replace(/\*\*$/,'').trim());
+                if (!lines.length) continue;
+
+                const fact = lines[0];
+                const wrongGames = picked
+                    .filter(d => d.game_title !== doc.game_title)
+                    .slice(0, 3)
+                    .map(d => d.game_title);
+                if (wrongGames.length < 3) continue;
+
+                questions.push({
+                    q: `Which game is this fact about? "${fact.slice(0, 120)}${fact.length > 120 ? '...' : ''}"`,
+                    a: doc.game_title,
+                    wrong: wrongGames,
+                });
+            }
+        }
+    } catch { /* intel trivia optional */ }
+    return questions;
+}
+
 // ── GET /api/trivia/random?count=5 ───────────────────────────────────────────
 router.get('/random', (req, res) => {
     const count = Math.min(Math.max(parseInt(req.query.count) || 5, 1), 20);
@@ -168,6 +229,14 @@ router.get('/random', (req, res) => {
         pool = pool.concat(dbQ);
     } catch (e) {
         // DB questions optional — static trivia still works
+    }
+
+    // Add AI-generated game_intel trivia facts
+    try {
+        const intelQ = generateIntelTrivia(db);
+        pool = pool.concat(intelQ);
+    } catch {
+        // intel trivia optional
     }
 
     // Shuffle and pick

@@ -55,6 +55,8 @@ const IntelHubView = (() => {
                         <div class="ih-opts" id="ihOpts">
                             <label class="ih-opt-lbl"><input type="checkbox" id="ihBio" checked> Bios</label>
                             <label class="ih-opt-lbl"><input type="checkbox" id="ihGuide" checked> Guides</label>
+                            <label class="ih-opt-lbl"><input type="checkbox" id="ihTrivia" checked> Trivia</label>
+                            <label class="ih-opt-lbl"><input type="checkbox" id="ihMovelist"> Movelists</label>
                             <select id="ihDelay" class="ih-sel">
                                 <option value="0">No delay</option>
                                 <option value="500" selected>500ms</option>
@@ -86,6 +88,11 @@ const IntelHubView = (() => {
                     <div class="ih-stat-lbl">Guides Ready</div>
                     <div class="ih-stat-pct" id="ihSGdePct"></div>
                 </div>
+                <div class="ih-stat ih-stat-trivia">
+                    <div class="ih-stat-val" id="ihSTrv">—</div>
+                    <div class="ih-stat-lbl">Trivia Ready</div>
+                    <div class="ih-stat-pct" id="ihSTrvPct"></div>
+                </div>
                 <div class="ih-stat ih-stat-done">
                     <div class="ih-stat-val" id="ihSDone">—</div>
                     <div class="ih-stat-lbl">Fully Complete</div>
@@ -97,10 +104,11 @@ const IntelHubView = (() => {
             <div class="ih-toolbar">
                 <div class="ih-tabs" id="ihTabs">
                     <button class="ih-tab active" data-f="all"           onclick="IntelHubView._filter('all')">All</button>
-                    <button class="ih-tab"         data-f="missing_bio"   onclick="IntelHubView._filter('missing_bio')">No Bio</button>
-                    <button class="ih-tab"         data-f="missing_guide" onclick="IntelHubView._filter('missing_guide')">No Guide</button>
-                    <button class="ih-tab"         data-f="missing_both"  onclick="IntelHubView._filter('missing_both')">Neither</button>
-                    <button class="ih-tab"         data-f="complete"      onclick="IntelHubView._filter('complete')">✓ Complete</button>
+                    <button class="ih-tab"         data-f="missing_bio"      onclick="IntelHubView._filter('missing_bio')">No Bio</button>
+                    <button class="ih-tab"         data-f="missing_guide"    onclick="IntelHubView._filter('missing_guide')">No Guide</button>
+                    <button class="ih-tab"         data-f="missing_trivia"   onclick="IntelHubView._filter('missing_trivia')">No Trivia</button>
+                    <button class="ih-tab"         data-f="missing_both"     onclick="IntelHubView._filter('missing_both')">Neither</button>
+                    <button class="ih-tab"         data-f="complete"         onclick="IntelHubView._filter('complete')">✓ Complete</button>
                 </div>
                 <input class="ih-search-input" id="ihQ" type="search" placeholder="🔍 Search games..."
                     oninput="IntelHubView._search(this.value)">
@@ -225,13 +233,16 @@ const IntelHubView = (() => {
     function _updateStats(s) {
         if (!alive()) return;
         const pct = (n, d) => d > 0 ? `${Math.round(n/d*100)}%` : '—';
-        if ($('ihSTot'))      $('ihSTot').textContent     = s.total?.toLocaleString() ?? '—';
+        if ($('ihSTot'))      $('ihSTot').textContent     = s.total_titles?.toLocaleString() ?? s.total?.toLocaleString() ?? '—';
         if ($('ihSBio'))      $('ihSBio').textContent     = s.bios?.toLocaleString()  ?? '—';
         if ($('ihSGde'))      $('ihSGde').textContent     = s.guides?.toLocaleString() ?? '—';
-        if ($('ihSDone'))     $('ihSDone').textContent    = s.both?.toLocaleString()  ?? '—';
-        if ($('ihSBioPct'))   $('ihSBioPct').textContent  = pct(s.bios, s.total);
-        if ($('ihSGdePct'))   $('ihSGdePct').textContent  = pct(s.guides, s.total);
-        if ($('ihSDonePct'))  $('ihSDonePct').textContent = pct(s.both, s.total);
+        if ($('ihSTrv'))      $('ihSTrv').textContent     = s.trivia?.toLocaleString() ?? '—';
+        if ($('ihSDone'))     $('ihSDone').textContent    = s.complete?.toLocaleString() ?? s.both?.toLocaleString() ?? '—';
+        const t = s.total_titles || s.total || 0;
+        if ($('ihSBioPct'))   $('ihSBioPct').textContent  = pct(s.bios, t);
+        if ($('ihSGdePct'))   $('ihSGdePct').textContent  = pct(s.guides, t);
+        if ($('ihSTrvPct'))   $('ihSTrvPct').textContent  = pct(s.trivia, t);
+        if ($('ihSDonePct'))  $('ihSDonePct').textContent = pct(s.complete || s.both, t);
     }
 
     // ── Load & render game table ───────────────────────────────────────────────
@@ -263,25 +274,24 @@ const IntelHubView = (() => {
             const isLive  = currId === g.id;
             const isSel   = g.id === _drawerRomId;
 
-            const bioBtn = g.has_bio
-                ? `<button class="ih-sbtn ih-s-yes" data-rom="${g.id}" data-type="bio" data-name="${name}" onclick="IntelHubView._view(this)">✓ Bio</button>`
-                : `<button class="ih-sbtn ih-s-no"  data-rom="${g.id}" data-type="bio" data-name="${name}" onclick="IntelHubView._gen(this)">✗ Bio</button>`;
-            const gdeBtn = g.has_guide
-                ? `<button class="ih-sbtn ih-s-yes" data-rom="${g.id}" data-type="guide" data-name="${name}" onclick="IntelHubView._view(this)">✓ Guide</button>`
-                : `<button class="ih-sbtn ih-s-no"  data-rom="${g.id}" data-type="guide" data-name="${name}" onclick="IntelHubView._gen(this)">✗ Guide</button>`;
+            const docBtn = (has, type, label) => has
+                ? `<button class="ih-sbtn ih-s-yes" data-rom="${g.id}" data-type="${type}" data-name="${name}" onclick="IntelHubView._view(this)">✓ ${label}</button>`
+                : `<button class="ih-sbtn ih-s-no"  data-rom="${g.id}" data-type="${type}" data-name="${name}" onclick="IntelHubView._gen(this)">✗ ${label}</button>`;
 
             return `<tr class="${isLive ? 'ih-row-live' : ''} ${isSel ? 'ih-row-sel' : ''}">
                 <td class="ih-td-name">${name}${isLive ? '<span class="ih-livedot">●</span>' : ''}</td>
                 <td class="ih-td-sys">${sys}</td>
-                <td class="ih-td-doc">${bioBtn}</td>
-                <td class="ih-td-doc">${gdeBtn}</td>
+                <td class="ih-td-doc">${docBtn(g.has_bio, 'bio', 'Bio')}</td>
+                <td class="ih-td-doc">${docBtn(g.has_guide, 'guide', 'Guide')}</td>
+                <td class="ih-td-doc">${docBtn(g.has_trivia, 'trivia', 'Trivia')}</td>
+                <td class="ih-td-doc">${docBtn(g.has_movelist, 'movelist', 'Moves')}</td>
             </tr>`;
         }).join('');
 
         wrap.innerHTML = `<table class="ih-table">
             <thead><tr>
                 <th>Game</th><th>System</th>
-                <th class="ih-th-c">Bio</th><th class="ih-th-c">Guide</th>
+                <th class="ih-th-c">Bio</th><th class="ih-th-c">Guide</th><th class="ih-th-c">Trivia</th><th class="ih-th-c">Moves</th>
             </tr></thead>
             <tbody>${rows}</tbody>
         </table>`;
@@ -448,8 +458,10 @@ const IntelHubView = (() => {
     // ── Batch start/stop ───────────────────────────────────────────────────────
     async function _start() {
         const types = [];
-        if ($('ihBio')?.checked)   types.push('bio');
-        if ($('ihGuide')?.checked) types.push('guide');
+        if ($('ihBio')?.checked)      types.push('bio');
+        if ($('ihGuide')?.checked)    types.push('guide');
+        if ($('ihTrivia')?.checked)   types.push('trivia');
+        if ($('ihMovelist')?.checked) types.push('movelist');
         if (types.length === 0) { if (window.H) H.toast('Select at least one type', 'error'); return; }
 
         const delay = parseInt($('ihDelay')?.value || '500');

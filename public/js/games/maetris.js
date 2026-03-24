@@ -10,10 +10,11 @@ window.Maetris = (() => {
 
     function buildColors(TC) {
         function hexToGlow(hex) { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},0.5)`; }
+        function hexToRgb(hex) { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return [r,g,b]; }
         const A = typeof ArcadeThemes !== 'undefined' ? ArcadeThemes : null;
         const li = (h,p) => A ? A.lighten(h,p) : h;
         const dk = (h,p) => A ? A.darken(h,p) : h;
-        const c = (hex) => ({ base: hex, light: li(hex,30), dark: dk(hex,20), glow: hexToGlow(hex) });
+        const c = (hex) => ({ base: hex, light: li(hex,30), dark: dk(hex,20), glow: hexToGlow(hex), rgb: hexToRgb(hex) });
         COLORS = { I: c(TC[0]), O: c(TC[1]), T: c(TC[2]), S: c(TC[3]), Z: c(TC[4]), J: c(TC[5]), L: c(TC[0]) };
     }
     // Default colors (overridden in init by theme)
@@ -105,6 +106,15 @@ window.Maetris = (() => {
     let bgStars = [];
     let bgParticles = [];
     let startTime = 0;
+    let frameCount = 0;
+
+    // ── Visual FX state ──
+    let particles = [];
+    let scorePopups = [];
+    let screenShake = 0;
+    let comboCount = 0;
+    let lockParticles = [];
+    let gridPulse = 0;
 
     // ── Touch state ──
     let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
@@ -136,6 +146,8 @@ window.Maetris = (() => {
         while (fits(current.type, current.rot, current.x, gy + 1)) gy++;
         return gy;
     }
+
+    const rng = (a, b) => Math.random() * (b - a) + a;
 
     // ── 7-bag randomizer ──
     function fillBag() {
@@ -170,6 +182,8 @@ window.Maetris = (() => {
             const bx = current.x + cx, by = current.y + cy;
             if (by >= 0 && by < NY) board[by][bx] = current.type;
         }
+        // Spawn lock particles at each cell
+        spawnLockParticles(current);
         playSound('lock');
     }
 
@@ -254,16 +268,112 @@ window.Maetris = (() => {
         }
     }
 
-    // ── Background stars ──
+    // ── Particle system ──
+    function spawnParticles(x, y, color, count, speedMult) {
+        const sm = speedMult || 1;
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x, y,
+                vx: rng(-2.5, 2.5) * sm,
+                vy: rng(-3, 1) * sm,
+                life: rng(300, 700),
+                max: 700,
+                color,
+                size: rng(1.5, 4)
+            });
+        }
+    }
+
+    function spawnLockParticles(piece) {
+        const col = COLORS[piece.type];
+        if (!col) return;
+        for (const [cx, cy] of cells(piece.type, piece.rot)) {
+            const px = boardX + (piece.x + cx) * cellSize + cellSize / 2;
+            const py = boardY + (piece.y + cy) * cellSize + cellSize / 2;
+            spawnParticles(px, py, col.base, 3, 0.6);
+        }
+    }
+
+    function spawnLineClearParticles(rows) {
+        for (const r of rows) {
+            for (let c = 0; c < NX; c++) {
+                const type = board[r][c];
+                const col = COLORS[type];
+                if (!col) continue;
+                const px = boardX + c * cellSize + cellSize / 2;
+                const py = boardY + r * cellSize + cellSize / 2;
+                spawnParticles(px, py, col.base, 4, 1.2);
+                // Extra white sparkle particles
+                spawnParticles(px, py, '#FFFFFF', 2, 0.8);
+            }
+        }
+    }
+
+    function spawnScorePopup(x, y, text, color) {
+        scorePopups.push({ x, y, text, life: 1200, max: 1200, color: color || '#FBBF24' });
+    }
+
+    function updateParticles(dt) {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx * (dt / 16);
+            p.y += p.vy * (dt / 16);
+            p.vy += 0.04 * (dt / 16); // gravity
+            p.life -= dt;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        for (let i = scorePopups.length - 1; i >= 0; i--) {
+            scorePopups[i].y -= 0.8 * (dt / 16);
+            scorePopups[i].life -= dt;
+            if (scorePopups[i].life <= 0) scorePopups.splice(i, 1);
+        }
+    }
+
+    function drawParticles() {
+        for (const p of particles) {
+            ctx.save();
+            const alpha = p.life / p.max;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 4;
+            const sz = p.size * alpha;
+            ctx.fillRect(p.x - sz / 2, p.y - sz / 2, sz, sz);
+            ctx.restore();
+        }
+    }
+
+    function drawScorePopups() {
+        for (const s of scorePopups) {
+            ctx.save();
+            const progress = s.life / s.max;
+            ctx.globalAlpha = progress;
+            const scale = 1 + (1 - progress) * 0.3;
+            ctx.translate(s.x, s.y);
+            ctx.scale(scale, scale);
+            ctx.translate(-s.x, -s.y);
+            ctx.fillStyle = s.color;
+            ctx.shadowColor = s.color;
+            ctx.shadowBlur = 8;
+            const sz = Math.max(12, cellSize * 0.7) | 0;
+            ctx.font = `bold ${sz}px "Segoe UI", system-ui, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText(s.text, s.x, s.y);
+            ctx.restore();
+        }
+    }
+
+    // ── Background stars (animated starfield) ──
     function initBgStars() {
         bgStars = [];
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < 100; i++) {
             bgStars.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
-                size: Math.random() * 2 + 0.5,
-                speed: Math.random() * 0.3 + 0.05,
-                twinkle: Math.random() * Math.PI * 2
+                size: Math.random() * 2.5 + 0.3,
+                speed: Math.random() * 0.4 + 0.05,
+                twinkle: Math.random() * Math.PI * 2,
+                hue: Math.random() * 60 + 220 // blue-purple range
             });
         }
     }
@@ -302,12 +412,14 @@ window.Maetris = (() => {
         hudCenterX = hudX + hudW / 2;
     }
 
-    // ── Drawing ──
+    // ══════════════════════════════════════════
+    //  DRAWING
+    // ══════════════════════════════════════════
     function drawBackground() {
         const W = canvas.width, H = canvas.height;
         const t = (Date.now() - startTime) / 1000;
 
-        // Dark gradient background (themed)
+        // Deep dark gradient background (themed)
         const grad = ctx.createLinearGradient(0, 0, W * 0.3, H);
         grad.addColorStop(0, bgGrad[0]);
         grad.addColorStop(0.5, bgGrad[1] || bgGrad[0]);
@@ -315,24 +427,56 @@ window.Maetris = (() => {
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, W, H);
 
-        // Animated background stars
+        // Animated starfield with colored twinkle
         for (const star of bgStars) {
             star.y += star.speed;
+            star.x += star.speed * 0.1;
             if (star.y > H) { star.y = 0; star.x = Math.random() * W; }
-            star.twinkle += 0.02;
-            const alpha = 0.3 + Math.sin(star.twinkle) * 0.25;
-            ctx.fillStyle = `rgba(167,139,250,${alpha})`;
+            if (star.x > W) { star.x = 0; }
+            star.twinkle += 0.03;
+            const alpha = 0.2 + Math.sin(star.twinkle) * 0.3;
+            const hue = star.hue + Math.sin(t * 0.5 + star.twinkle) * 20;
+            ctx.fillStyle = `hsla(${hue}, 70%, 75%, ${Math.max(0, alpha)})`;
             ctx.beginPath();
             ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
             ctx.fill();
+            // Larger stars get a soft glow
+            if (star.size > 1.5) {
+                ctx.fillStyle = `hsla(${hue}, 70%, 75%, ${Math.max(0, alpha * 0.15)})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size * 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
+
+        // Subtle scrolling grid overlay on background
+        ctx.save();
+        ctx.globalAlpha = 0.025;
+        ctx.strokeStyle = '#A855F7';
+        ctx.lineWidth = 0.5;
+        const gridStep = 40;
+        const scrollY = (t * 8) % gridStep;
+        for (let x = 0; x < W; x += gridStep) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, H);
+            ctx.stroke();
+        }
+        for (let y = -gridStep + scrollY; y < H + gridStep; y += gridStep) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(W, y);
+            ctx.stroke();
+        }
+        ctx.restore();
     }
 
     function drawBoard() {
         // Board background with subtle gradient
         const boardGrad = ctx.createLinearGradient(boardX, boardY, boardX, boardY + boardH);
-        boardGrad.addColorStop(0, 'rgba(30,15,50,0.7)');
-        boardGrad.addColorStop(1, 'rgba(10,5,20,0.8)');
+        boardGrad.addColorStop(0, 'rgba(30,15,50,0.75)');
+        boardGrad.addColorStop(0.5, 'rgba(15,8,35,0.85)');
+        boardGrad.addColorStop(1, 'rgba(10,5,20,0.9)');
         ctx.fillStyle = boardGrad;
 
         // Rounded board rectangle
@@ -345,8 +489,9 @@ window.Maetris = (() => {
         ctx.arcTo(boardX, boardY, boardX + boardW, boardY, br);
         ctx.fill();
 
-        // Grid lines
-        ctx.strokeStyle = 'rgba(168,85,247,0.08)';
+        // Grid lines with pulsing effect on line clears
+        const gpAlpha = 0.06 + gridPulse * 0.08;
+        ctx.strokeStyle = `rgba(168,85,247,${gpAlpha})`;
         ctx.lineWidth = 0.5;
         for (let c = 1; c < NX; c++) {
             ctx.beginPath();
@@ -368,25 +513,35 @@ window.Maetris = (() => {
                     if (clearAnim && clearAnim.rows.includes(r)) {
                         const progress = (Date.now() - clearAnim.start) / clearAnim.duration;
                         if (progress < 1) {
-                            const scale = 1 + progress * 0.3;
+                            const scale = 1 + progress * 0.4;
                             const alpha = 1 - progress;
-                            drawCandy(boardX + c * cellSize, boardY + r * cellSize, cellSize, board[r][c], alpha, scale);
-                            // White flash
-                            ctx.fillStyle = `rgba(255,255,255,${0.6 * (1 - progress)})`;
+                            drawNeonBlock(boardX + c * cellSize, boardY + r * cellSize, cellSize, board[r][c], alpha, scale);
+                            // Intense white flash that fades
+                            ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - progress)})`;
                             ctx.fillRect(boardX + c * cellSize, boardY + r * cellSize, cellSize, cellSize);
+                            // Row-wide flash bar
+                            if (c === 0) {
+                                ctx.save();
+                                ctx.globalAlpha = 0.3 * (1 - progress);
+                                ctx.fillStyle = '#FFFFFF';
+                                ctx.fillRect(boardX, boardY + r * cellSize, boardW, cellSize);
+                                ctx.restore();
+                            }
                         }
                     } else {
-                        drawCandy(boardX + c * cellSize, boardY + r * cellSize, cellSize, board[r][c], 1, 1);
+                        drawNeonBlock(boardX + c * cellSize, boardY + r * cellSize, cellSize, board[r][c], 1, 1);
                     }
                 }
             }
         }
 
-        // Board border with glow
+        // Board border with animated glow
+        const t = (Date.now() - startTime) / 1000;
+        const borderPulse = 0.4 + Math.sin(t * 2) * 0.15;
         ctx.save();
-        ctx.shadowColor = 'rgba(168,85,247,0.4)';
-        ctx.shadowBlur = 12;
-        ctx.strokeStyle = 'rgba(168,85,247,0.5)';
+        ctx.shadowColor = `rgba(168,85,247,${borderPulse})`;
+        ctx.shadowBlur = 14 + Math.sin(t * 3) * 4;
+        ctx.strokeStyle = `rgba(168,85,247,${borderPulse + 0.1})`;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(boardX + br, boardY);
@@ -398,10 +553,10 @@ window.Maetris = (() => {
         ctx.restore();
     }
 
-    function drawCandy(x, y, sz, type, alpha, scale) {
+    function drawNeonBlock(x, y, sz, type, alpha, scale) {
         const col = COLORS[type];
         if (!col) return;
-        const pad = Math.max(1, sz * 0.05);
+        const pad = Math.max(1, sz * 0.06);
         const bsz = sz - pad * 2;
 
         ctx.save();
@@ -418,44 +573,64 @@ window.Maetris = (() => {
         const bx = x + pad, by = y + pad;
         const r = Math.max(3, bsz * 0.18);
 
-        // Outer glow for big cells
-        if (sz >= 20) {
+        // Outer neon glow (larger for emphasis)
+        if (sz >= 16) {
             ctx.shadowColor = col.glow;
-            ctx.shadowBlur = 6;
+            ctx.shadowBlur = 10;
         }
 
-        // Base fill with gradient
-        const grad = ctx.createLinearGradient(bx, by, bx + bsz * 0.3, by + bsz);
-        grad.addColorStop(0, col.light);
-        grad.addColorStop(0.35, col.base);
+        // Base gradient fill — richer with 4 stops
+        const grad = ctx.createLinearGradient(bx, by, bx + bsz * 0.4, by + bsz);
+        const rgb = col.rgb || [128, 128, 128];
+        grad.addColorStop(0, `rgba(${Math.min(255, rgb[0] + 70)},${Math.min(255, rgb[1] + 70)},${Math.min(255, rgb[2] + 70)},1)`);
+        grad.addColorStop(0.3, col.light);
+        grad.addColorStop(0.6, col.base);
         grad.addColorStop(1, col.dark);
         ctx.fillStyle = grad;
         roundRect(ctx, bx, by, bsz, bsz, r);
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Inner border (darker)
+        // Inner border (subtle dark edge)
         ctx.strokeStyle = col.dark;
         ctx.lineWidth = 1;
-        ctx.globalAlpha = alpha * 0.4;
-        roundRect(ctx, bx + 1, by + 1, bsz - 2, bsz - 2, r - 1);
+        ctx.globalAlpha = alpha * 0.35;
+        roundRect(ctx, bx + 1, by + 1, bsz - 2, bsz - 2, Math.max(1, r - 1));
         ctx.stroke();
         ctx.globalAlpha = alpha;
 
-        // Glossy highlight (top half)
-        const hl = ctx.createLinearGradient(bx, by, bx, by + bsz * 0.55);
-        hl.addColorStop(0, 'rgba(255,255,255,0.45)');
-        hl.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+        // Glossy top highlight (glass-like shine)
+        const hl = ctx.createLinearGradient(bx, by, bx, by + bsz * 0.5);
+        hl.addColorStop(0, 'rgba(255,255,255,0.5)');
+        hl.addColorStop(0.3, 'rgba(255,255,255,0.18)');
+        hl.addColorStop(0.6, 'rgba(255,255,255,0.04)');
         hl.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = hl;
-        roundRect(ctx, bx, by, bsz, bsz * 0.55, r);
+        roundRect(ctx, bx + 1, by + 1, bsz - 2, bsz * 0.5, Math.max(1, r - 1));
         ctx.fill();
 
-        // Shine dot
-        if (sz >= 16) {
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        // Inner shine highlight (bright dot)
+        if (sz >= 14) {
+            const shineR = bsz * 0.1;
+            const shineGrad = ctx.createRadialGradient(
+                bx + bsz * 0.25, by + bsz * 0.22, 0,
+                bx + bsz * 0.25, by + bsz * 0.22, shineR * 2
+            );
+            shineGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
+            shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = shineGrad;
             ctx.beginPath();
-            ctx.arc(bx + bsz * 0.26, by + bsz * 0.24, bsz * 0.09, 0, Math.PI * 2);
+            ctx.arc(bx + bsz * 0.25, by + bsz * 0.22, shineR * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Bottom-right ambient occlusion
+        if (sz >= 16) {
+            const aoGrad = ctx.createLinearGradient(bx, by + bsz * 0.7, bx, by + bsz);
+            aoGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            aoGrad.addColorStop(1, 'rgba(0,0,0,0.2)');
+            ctx.fillStyle = aoGrad;
+            roundRect(ctx, bx, by + bsz * 0.7, bsz, bsz * 0.3, r);
             ctx.fill();
         }
 
@@ -477,24 +652,36 @@ window.Maetris = (() => {
         const gy = ghostY();
         if (gy === current.y) return;
         const col = COLORS[current.type];
+        const t = (Date.now() - startTime) / 1000;
+        const pulse = 0.12 + Math.sin(t * 4) * 0.06;
+
         for (const [cx, cy] of cells(current.type, current.rot)) {
             const px = boardX + (current.x + cx) * cellSize;
             const py = boardY + (gy + cy) * cellSize;
             const pad = 2;
-            // Ghost as translucent block
-            ctx.globalAlpha = 0.18;
+            const bsz = cellSize - pad * 2;
+            const r = Math.max(2, bsz * 0.15);
+
+            // Translucent fill with slight glow
+            ctx.save();
+            ctx.globalAlpha = pulse;
             ctx.fillStyle = col.base;
-            roundRect(ctx, px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2, 3);
+            ctx.shadowColor = col.glow;
+            ctx.shadowBlur = 6;
+            roundRect(ctx, px + pad, py + pad, bsz, bsz, r);
             ctx.fill();
-            // Dashed border
-            ctx.globalAlpha = 0.35;
+            ctx.restore();
+
+            // Dashed outline border
+            ctx.save();
+            ctx.globalAlpha = 0.4 + Math.sin(t * 3) * 0.1;
             ctx.strokeStyle = col.light;
             ctx.lineWidth = 1.5;
-            ctx.setLineDash([3, 3]);
-            roundRect(ctx, px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2, 3);
+            ctx.setLineDash([4, 3]);
+            roundRect(ctx, px + pad, py + pad, bsz, bsz, r);
             ctx.stroke();
             ctx.setLineDash([]);
-            ctx.globalAlpha = 1;
+            ctx.restore();
         }
     }
 
@@ -503,20 +690,23 @@ window.Maetris = (() => {
         for (const [cx, cy] of cells(current.type, current.rot)) {
             const py = current.y + cy;
             if (py < 0) continue;
-            drawCandy(boardX + (current.x + cx) * cellSize, boardY + py * cellSize, cellSize, current.type, 1, 1);
+            drawNeonBlock(boardX + (current.x + cx) * cellSize, boardY + py * cellSize, cellSize, current.type, 1, 1);
         }
     }
 
     function drawHardDropTrail() {
         for (let i = hardDropTrail.length - 1; i >= 0; i--) {
             const t = hardDropTrail[i];
-            t.alpha -= 0.06;
+            t.alpha -= 0.05;
             if (t.alpha <= 0) { hardDropTrail.splice(i, 1); continue; }
             const col = COLORS[t.type];
-            ctx.globalAlpha = t.alpha * 0.3;
+            ctx.save();
+            ctx.globalAlpha = t.alpha * 0.35;
             ctx.fillStyle = col.light;
-            ctx.fillRect(boardX + t.x * cellSize + 2, boardY + t.y * cellSize + 2, cellSize - 4, cellSize - 4);
-            ctx.globalAlpha = 1;
+            ctx.shadowColor = col.glow;
+            ctx.shadowBlur = 4;
+            ctx.fillRect(boardX + t.x * cellSize + 3, boardY + t.y * cellSize + 3, cellSize - 6, cellSize - 6);
+            ctx.restore();
         }
     }
 
@@ -525,9 +715,30 @@ window.Maetris = (() => {
         const cx = hudCenterX;
         const t = (Date.now() - startTime) / 1000;
 
-        // ── Title: "MAE-TRIS" with animated gradient ──
+        // ── HUD backdrop: semi-transparent panel ──
+        ctx.save();
+        const hudPadding = 4;
+        const hudBoxX = hudX - hudPadding;
+        const hudBoxY = boardY - 2;
+        const hudBoxW = hudW + hudPadding * 2;
+        const hudBoxH = boardH + 4;
+        const hudGrad = ctx.createLinearGradient(hudBoxX, hudBoxY, hudBoxX, hudBoxY + hudBoxH);
+        hudGrad.addColorStop(0, 'rgba(15,8,30,0.5)');
+        hudGrad.addColorStop(0.5, 'rgba(20,10,40,0.4)');
+        hudGrad.addColorStop(1, 'rgba(15,8,30,0.5)');
+        ctx.fillStyle = hudGrad;
+        roundRect(ctx, hudBoxX, hudBoxY, hudBoxW, hudBoxH, 8);
+        ctx.fill();
+        // Subtle border for HUD panel
+        ctx.strokeStyle = 'rgba(168,85,247,0.15)';
+        ctx.lineWidth = 1;
+        roundRect(ctx, hudBoxX, hudBoxY, hudBoxW, hudBoxH, 8);
+        ctx.stroke();
+        ctx.restore();
+
+        // ── Title: "BLOCK STACK" with animated gradient ──
         const titleSize = Math.max(11, Math.min(18, hudW * 0.16)) | 0;
-        const titleY = boardY + titleSize + 2;
+        const titleY = boardY + titleSize + 4;
 
         ctx.save();
         ctx.font = `bold ${titleSize}px "Segoe UI", system-ui, sans-serif`;
@@ -538,6 +749,8 @@ window.Maetris = (() => {
         tg.addColorStop(0.5, `hsl(${(hue + 120) % 360}, 80%, 65%)`);
         tg.addColorStop(1, `hsl(${(hue + 240) % 360}, 80%, 65%)`);
         ctx.fillStyle = tg;
+        ctx.shadowColor = `hsl(${hue}, 80%, 65%)`;
+        ctx.shadowBlur = 8;
         ctx.fillText('BLOCK STACK', cx, titleY);
         ctx.restore();
 
@@ -552,7 +765,7 @@ window.Maetris = (() => {
             ctx.fillText(`${player.emoji || ''} ${player.name || ''}`, cx, nextSectionY - 2);
         }
 
-        // ── Stats (compact inline) ──
+        // ── Stats (compact inline) with glowing values ──
         const boxGap = 3;
         const boxW = hudW - 6;
         const boxH = Math.max(22, Math.min(32, H * 0.04));
@@ -565,20 +778,32 @@ window.Maetris = (() => {
             { label: 'LINES', value: String(lines), color: '#10B981' }
         ];
 
+        // Combo counter
+        if (comboCount > 1) {
+            stats.push({ label: 'COMBO', value: `x${comboCount}`, color: '#F59E0B' });
+        }
+
         const labelSize = Math.max(7, Math.min(9, boxH * 0.3)) | 0;
         const valueSize = Math.max(10, Math.min(15, boxH * 0.5)) | 0;
 
         stats.forEach((s, i) => {
             const by = statY + i * (boxH + boxGap);
 
-            // Subtle box bg
-            ctx.fillStyle = 'rgba(255,255,255,0.04)';
+            // Subtle box bg with gradient
+            const statGrad = ctx.createLinearGradient(boxX, by, boxX + boxW, by);
+            statGrad.addColorStop(0, 'rgba(255,255,255,0.05)');
+            statGrad.addColorStop(1, 'rgba(255,255,255,0.02)');
+            ctx.fillStyle = statGrad;
             roundRect(ctx, boxX, by, boxW, boxH, 4);
             ctx.fill();
 
-            // Colored left accent
+            // Colored left accent with glow
+            ctx.save();
+            ctx.shadowColor = s.color;
+            ctx.shadowBlur = 4;
             ctx.fillStyle = s.color;
             ctx.fillRect(boxX, by + 2, 2, boxH - 4);
+            ctx.restore();
 
             // Label left
             ctx.font = `600 ${labelSize}px "Segoe UI", system-ui, sans-serif`;
@@ -586,21 +811,45 @@ window.Maetris = (() => {
             ctx.textAlign = 'left';
             ctx.fillText(s.label, boxX + 6, by + boxH / 2 + labelSize * 0.35);
 
-            // Value right
+            // Value right with glow
+            ctx.save();
             ctx.font = `bold ${valueSize}px "Segoe UI", system-ui, sans-serif`;
             ctx.fillStyle = s.color;
+            ctx.shadowColor = s.color;
+            ctx.shadowBlur = 6;
             ctx.textAlign = 'right';
             ctx.fillText(s.value, boxX + boxW - 4, by + boxH / 2 + valueSize * 0.35);
+            ctx.restore();
         });
 
-        // ── NEXT preview ──
-        const nextY = statY + stats.length * (boxH + boxGap) + 4;
+        // ── NEXT preview with styled box ──
+        const nextY = statY + stats.length * (boxH + boxGap) + 6;
+
+        // Next box background
+        const nextBoxW = hudW - 10;
+        const nextBoxX = hudX + 5;
+        const nextBoxTopY = nextY - 2;
+        const previewSize = Math.max(8, Math.min(cellSize * 0.5, 14));
+        const nextBoxH = labelSize + 12 + Math.min(2, nextPieces.length) * (PIECES[nextPieces[0] || 'T'].size * previewSize + 8);
+
+        // Styled next-piece container
+        ctx.save();
+        const nextBgGrad = ctx.createLinearGradient(nextBoxX, nextBoxTopY, nextBoxX, nextBoxTopY + nextBoxH);
+        nextBgGrad.addColorStop(0, 'rgba(30,15,60,0.4)');
+        nextBgGrad.addColorStop(1, 'rgba(20,10,40,0.3)');
+        ctx.fillStyle = nextBgGrad;
+        roundRect(ctx, nextBoxX, nextBoxTopY, nextBoxW, nextBoxH, 5);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(168,85,247,0.2)';
+        ctx.lineWidth = 1;
+        roundRect(ctx, nextBoxX, nextBoxTopY, nextBoxW, nextBoxH, 5);
+        ctx.stroke();
+        ctx.restore();
+
         ctx.font = `600 ${labelSize}px "Segoe UI", system-ui, sans-serif`;
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
         ctx.textAlign = 'center';
         ctx.fillText('NEXT', cx, nextY + labelSize);
-
-        const previewSize = Math.max(8, Math.min(cellSize * 0.5, 14));
 
         for (let ni = 0; ni < Math.min(2, nextPieces.length); ni++) {
             const np = nextPieces[ni];
@@ -608,14 +857,10 @@ window.Maetris = (() => {
             const pw = ps * previewSize;
             const ph = ps * previewSize;
             const pxOff = cx - pw / 2;
-            const pyOff = nextY + labelSize + 6 + ni * (ph + 6);
-
-            ctx.fillStyle = 'rgba(30,15,50,0.3)';
-            roundRect(ctx, pxOff - 3, pyOff - 2, pw + 6, ph + 4, 3);
-            ctx.fill();
+            const pyOff = nextY + labelSize + 8 + ni * (ph + 8);
 
             for (const [ccx, ccy] of cells(np, 0)) {
-                drawCandy(pxOff + ccx * previewSize, pyOff + ccy * previewSize, previewSize, np, ni === 0 ? 1 : 0.4, 1);
+                drawNeonBlock(pxOff + ccx * previewSize, pyOff + ccy * previewSize, previewSize, np, ni === 0 ? 1 : 0.35, 1);
             }
         }
 
@@ -623,7 +868,7 @@ window.Maetris = (() => {
         if (levelUpAnim > 0) {
             ctx.save();
             const alpha = Math.min(1, levelUpAnim / 30);
-            const scale = 1 + (1 - alpha) * 0.3;
+            const scale = 1 + (1 - alpha) * 0.4;
             const lcx = boardX + boardW / 2;
             const lcy = boardY + boardH / 2;
             ctx.translate(lcx, lcy);
@@ -633,34 +878,65 @@ window.Maetris = (() => {
             const luSize = Math.max(24, cellSize * 1.5) | 0;
             ctx.font = `bold ${luSize}px "Segoe UI", system-ui, sans-serif`;
             ctx.textAlign = 'center';
+            // Double glow for emphasis
             ctx.shadowColor = '#F59E0B';
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = 25;
             const luGrad = ctx.createLinearGradient(lcx - 80, lcy, lcx + 80, lcy);
             luGrad.addColorStop(0, '#FCD34D');
             luGrad.addColorStop(0.5, '#F59E0B');
             luGrad.addColorStop(1, '#FCD34D');
             ctx.fillStyle = luGrad;
             ctx.fillText(`LEVEL ${level}!`, lcx, lcy);
+            // Second pass for extra glow
+            ctx.shadowBlur = 40;
+            ctx.globalAlpha = alpha * 0.3;
+            ctx.fillText(`LEVEL ${level}!`, lcx, lcy);
             ctx.restore();
             levelUpAnim--;
         }
 
+        // ── Combo flash banner ──
+        if (comboCount > 1) {
+            const comboAlpha = Math.min(1, 0.5 + Math.sin(t * 8) * 0.3);
+            ctx.save();
+            ctx.globalAlpha = comboAlpha * 0.7;
+            const comboSize = Math.max(14, cellSize * 0.8) | 0;
+            ctx.font = `bold ${comboSize}px "Segoe UI", system-ui, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#FBBF24';
+            ctx.shadowColor = '#F59E0B';
+            ctx.shadowBlur = 12;
+            ctx.fillText(`${comboCount}x COMBO`, boardX + boardW / 2, boardY + boardH * 0.15);
+            ctx.restore();
+        }
+
         // ── Pause overlay ──
         if (paused) {
-            ctx.fillStyle = 'rgba(0,0,0,0.65)';
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
             ctx.fillRect(boardX, boardY, boardW, boardH);
             const pauseSize = Math.max(24, cellSize * 1.3) | 0;
+            ctx.save();
             ctx.font = `bold ${pauseSize}px "Segoe UI", system-ui, sans-serif`;
             ctx.fillStyle = '#A855F7';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#A855F7';
-            ctx.shadowBlur = 16;
+            ctx.shadowBlur = 20;
             ctx.fillText('PAUSED', boardX + boardW / 2, boardY + boardH / 2);
             ctx.shadowBlur = 0;
             ctx.font = `${Math.max(12, pauseSize * 0.45)|0}px "Segoe UI", system-ui, sans-serif`;
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
             ctx.fillText('Press P to resume', boardX + boardW / 2, boardY + boardH / 2 + pauseSize);
+            ctx.restore();
         }
+    }
+
+    function drawVignette() {
+        const W = canvas.width, H = canvas.height;
+        const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.75);
+        vg.addColorStop(0, 'transparent');
+        vg.addColorStop(1, 'rgba(0,0,0,0.35)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, W, H);
     }
 
     // ── Game logic ──
@@ -722,6 +998,7 @@ window.Maetris = (() => {
         }
         score += dist * 2;
         playSound('drop');
+        screenShake = Math.min(6, dist * 0.5);
         placePiece();
     }
 
@@ -730,16 +1007,30 @@ window.Maetris = (() => {
         const fullRows = getFullRows();
         if (fullRows.length > 0) {
             const n = fullRows.length;
+            comboCount++;
             const gained = (LINE_SCORES[n] || 800) * level;
-            score += gained;
+            const comboBonus = comboCount > 1 ? comboCount * 50 : 0;
+            score += gained + comboBonus;
             lines += n;
+
+            // Line clear particles
+            spawnLineClearParticles(fullRows);
+            gridPulse = 1;
+            screenShake = n >= 4 ? 10 : n >= 2 ? 5 : 3;
 
             if (n === 4) {
                 playSound('tetris');
-                // Confetti for Tetris!
+                spawnScorePopup(boardX + boardW / 2, boardY + fullRows[0] * cellSize, 'TETRIS!', '#FBBF24');
                 if (typeof Confetti !== 'undefined') Confetti.burst(boardX + boardW / 2, boardY + boardH / 2, 30);
             } else {
                 playSound('clear');
+                if (n >= 2) {
+                    spawnScorePopup(boardX + boardW / 2, boardY + fullRows[0] * cellSize, `+${gained}`, '#06B6D4');
+                }
+            }
+
+            if (comboCount > 1) {
+                spawnScorePopup(boardX + boardW / 2, boardY + fullRows[0] * cellSize - cellSize, `${comboCount}x COMBO!`, '#F59E0B');
             }
 
             const newLevel = Math.floor(lines / LINES_PER_LEVEL) + 1;
@@ -747,12 +1038,14 @@ window.Maetris = (() => {
                 level = newLevel;
                 levelUpAnim = 60;
                 playSound('levelup');
+                screenShake = 8;
                 if (typeof Confetti !== 'undefined') Confetti.rain(1500);
             }
 
-            clearAnim = { rows: fullRows, start: Date.now(), duration: 350 };
+            clearAnim = { rows: fullRows, start: Date.now(), duration: 400 };
             current = null;
         } else {
+            comboCount = 0;
             spawn();
         }
     }
@@ -824,8 +1117,17 @@ window.Maetris = (() => {
         if (lastTime === 0) { lastTime = time; return; }
         const dt = time - lastTime;
         lastTime = time;
+        frameCount++;
 
-        if (paused) { render(); return; }
+        if (paused) { render(dt); return; }
+
+        // Update particles
+        updateParticles(dt);
+
+        // Decay screen shake
+        screenShake = Math.max(0, screenShake - dt * 0.008);
+        // Decay grid pulse
+        gridPulse = Math.max(0, gridPulse - dt * 0.003);
 
         // Handle clear animation completion
         if (clearAnim) {
@@ -834,11 +1136,11 @@ window.Maetris = (() => {
                 clearAnim = null;
                 spawn();
             }
-            render();
+            render(dt);
             return;
         }
 
-        if (!current) { render(); return; }
+        if (!current) { render(dt); return; }
 
         // Gravity
         dropTimer += dt;
@@ -849,17 +1151,34 @@ window.Maetris = (() => {
             }
         }
 
-        render();
+        render(dt);
     }
 
-    function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function render(dt) {
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        // Apply screen shake
+        ctx.save();
+        if (screenShake > 0.1) {
+            const sx = rng(-screenShake, screenShake);
+            const sy = rng(-screenShake, screenShake);
+            ctx.translate(sx, sy);
+        }
+
         drawBackground();
         drawBoard();
         drawGhost();
         drawHardDropTrail();
         drawCurrent();
+        drawParticles();
+        drawScorePopups();
         drawHUD();
+
+        ctx.restore();
+
+        // Vignette always on top, outside shake transform
+        drawVignette();
     }
 
     // ── Public API ──
@@ -874,6 +1193,15 @@ window.Maetris = (() => {
         const t = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(themeId) : null;
         if (t) { buildColors(t.colors); bgGrad = t.bgGradient || bgGrad; }
 
+        // Size canvas from container with safe fallbacks
+        const container = canvas.parentElement;
+        if (container) {
+            canvas.width = Math.max(300, container.clientWidth || 480);
+            canvas.height = Math.max(400, container.clientHeight || 640);
+        }
+        if (canvas.width < 100) canvas.width = 480;
+        if (canvas.height < 100) canvas.height = 640;
+
         // Reset state
         score = 0; level = 1; lines = 0;
         dropTimer = 0; lastTime = 0;
@@ -885,8 +1213,27 @@ window.Maetris = (() => {
         nextPieces = [];
         current = null;
         startTime = Date.now();
+        frameCount = 0;
+        particles = [];
+        scorePopups = [];
+        screenShake = 0;
+        comboCount = 0;
+        gridPulse = 0;
 
         computeLayout();
+
+        // Delayed refit for container layout settling
+        requestAnimationFrame(() => {
+            if (!canvas || !canvas.parentElement) return;
+            const p = canvas.parentElement;
+            const pw = Math.max(300, p.clientWidth || 480);
+            const ph = Math.max(400, p.clientHeight || 640);
+            if (pw !== canvas.width || ph !== canvas.height) {
+                canvas.width = pw; canvas.height = ph;
+                computeLayout();
+            }
+        });
+
         clearBoard();
         initAudio();
         initBgStars();

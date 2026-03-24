@@ -181,7 +181,8 @@ window.ArcadeThemes = {
     //    e.g. "MollyPop", "JRo Blast", "Lylah Sparkle"
     gameName(playerName, themeId, gameType) {
         const theme = this.get(themeId);
-        const suffix = theme.gameNames[gameType] || 'Pop';
+        const suffix = theme.gameNames[gameType];
+        if (!suffix) return null; // Unknown game — caller should use real game name
         // Short names (≤5 chars) get concatenated: "MollyPop"
         // Longer names get spaced: "Walkerman Crash"
         if (playerName.length <= 5) {

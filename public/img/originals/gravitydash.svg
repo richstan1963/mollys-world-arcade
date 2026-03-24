@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 180" width="500" height="180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="rgb(1,36,42)"/>
+      <stop offset="50%" stop-color="rgb(1,54,63)"/>
+      <stop offset="100%" stop-color="rgb(0,21,25)"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#06B6D4" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#06B6D4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="textGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="500" height="180" fill="url(#bg)"/>
+  <rect width="500" height="180" fill="url(#glow)"/>
+  <!-- Stars -->
+  <circle cx="324" cy="137" r="1.0" fill="white" opacity="0.54"/>
+  <circle cx="409" cy="90" r="0.7" fill="white" opacity="0.44"/>
+  <circle cx="449" cy="118" r="1.8" fill="white" opacity="0.61"/>
+  <circle cx="420" cy="24" r="1.1" fill="white" opacity="0.38"/>
+  <circle cx="277" cy="67" r="0.8" fill="white" opacity="0.30"/>
+  <circle cx="27" cy="118" r="2.0" fill="white" opacity="0.23"/>
+  <circle cx="142" cy="135" r="1.7" fill="white" opacity="0.27"/>
+  <circle cx="322" cy="17" r="1.9" fill="white" opacity="0.25"/>
+  <circle cx="481" cy="132" r="1.6" fill="white" opacity="0.57"/>
+  <circle cx="98" cy="122" r="1.9" fill="white" opacity="0.33"/>
+  <circle cx="312" cy="98" r="1.0" fill="white" opacity="0.28"/>
+  <circle cx="332" cy="39" r="1.7" fill="white" opacity="0.29"/>
+  <circle cx="480" cy="72" r="1.4" fill="white" opacity="0.38"/>
+  <circle cx="155" cy="25" r="0.9" fill="white" opacity="0.22"/>
+  <circle cx="199" cy="169" r="1.8" fill="white" opacity="0.41"/>
+  <circle cx="87" cy="141" r="1.9" fill="white" opacity="0.30"/>
+  <circle cx="139" cy="55" r="1.4" fill="white" opacity="0.53"/>
+  <circle cx="191" cy="133" r="1.0" fill="white" opacity="0.31"/>
+  <circle cx="312" cy="103" r="0.8" fill="white" opacity="0.48"/>
+  <circle cx="367" cy="22" r="1.7" fill="white" opacity="0.22"/>
+  <circle cx="444" cy="78" r="1.2" fill="white" opacity="0.58"/>
+  <circle cx="369" cy="50" r="1.7" fill="white" opacity="0.22"/>
+  <circle cx="79" cy="119" r="0.6" fill="white" opacity="0.31"/>
+  <circle cx="339" cy="66" r="0.9" fill="white" opacity="0.21"/>
+  <circle cx="152" cy="92" r="1.2" fill="white" opacity="0.40"/>
+  <!-- Icon -->
+  <text x="250" y="58" text-anchor="middle" font-size="48" fill="white" opacity="0.9">🌀</text>
+  <!-- Title -->
+  <text x="250" y="105" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#06B6D4" filter="url(#textGlow)">GRAVITY DASH</text>
+  <!-- Subtitle -->
+  <text x="250" y="130" text-anchor="middle" font-family="monospace" font-size="10" fill="white" opacity="0.4">YOUR WORLD ARCADE</text>
+  <!-- Accent line -->
+  <rect x="170" y="142" width="160" height="1.5" rx="1" fill="#06B6D4" opacity="0.3"/>
+</svg>

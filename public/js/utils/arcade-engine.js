@@ -137,102 +137,59 @@ window.ArcadeEngine = (() => {
     // ═══════════════════════════════════════════════════
     let attractActive = false;
 
-    // ── Multiple-Choice Trivia Questions ──
-    const TRIVIA = [
-        { q: "What was Mario's original name in Donkey Kong?",
-          a: ["Jumpman", "Plumber Boy", "Mr. Video", "Little Italian"],
-          correct: 0 },
-        { q: "How many levels does the original Pac-Man have before the kill screen?",
-          a: ["128", "256", "512", "999"],
-          correct: 1 },
-        { q: "What caused a coin shortage in Japan in 1978?",
-          a: ["Donkey Kong", "Galaga", "Space Invaders", "Pong"],
-          correct: 2 },
-        { q: "Which game featured the first known video game Easter egg?",
-          a: ["Pac-Man", "Adventure (Atari)", "Pitfall!", "Asteroids"],
-          correct: 1 },
-        { q: "What code first appeared in Gradius for NES in 1986?",
-          a: ["The Konami Code", "The Capcom Trick", "IDDQD", "ABACABB"],
-          correct: 0 },
-        { q: "How many bytes of RAM did the Atari 2600 have?",
-          a: ["64 bytes", "128 bytes", "256 bytes", "512 bytes"],
-          correct: 1 },
-        { q: "The PlayStation was originally designed as an add-on for which console?",
-          a: ["Sega Genesis", "Super Nintendo", "Atari Jaguar", "Neo Geo"],
-          correct: 1 },
-        { q: "What was Tetris inventor Alexey Pajitnov's nationality?",
-          a: ["Japanese", "American", "Russian", "German"],
-          correct: 2 },
-        { q: "Which gaming handheld famously survived a Gulf War bombing?",
-          a: ["Atari Lynx", "Sega Game Gear", "Game Boy", "Neo Geo Pocket"],
-          correct: 2 },
-        { q: "What was Q*bert almost named instead?",
-          a: ["@!#?@!", "Jumpy Joe", "Cube Dude", "Bouncer"],
-          correct: 0 },
-        { q: "Which game is credited as the first to have combo moves?",
-          a: ["Mortal Kombat", "Street Fighter II", "Fatal Fury", "Tekken"],
-          correct: 1 },
-        { q: "What was the first console game to feature a battery save?",
-          a: ["Super Mario Bros.", "Metroid", "The Legend of Zelda", "Dragon Quest"],
-          correct: 2 },
-        { q: "Why doesn't the NES Zapper work on modern TVs?",
-          a: ["Wrong voltage", "No CRT scan lines", "Infrared interference", "Too fast refresh rate"],
-          correct: 1 },
-        { q: "Who created the Neo Geo hardware?",
-          a: ["Sega", "Capcom", "SNK", "Konami"],
-          correct: 2 },
-        { q: "What year was the original Street Fighter released?",
-          a: ["1985", "1987", "1989", "1991"],
-          correct: 1 },
-        { q: "What does 'NES' stand for?",
-          a: ["Nintendo Entertainment System", "New Electronic System", "National Entertainment Set", "Nintendo Electric Station"],
-          correct: 0 },
-        { q: "Which Metal Slug game was the first in the series?",
-          a: ["Metal Slug X", "Metal Slug", "Metal Slug 2", "Super Vehicle-001"],
-          correct: 1 },
-        { q: "What company made the TurboGrafx-16?",
-          a: ["Sega", "NEC", "Atari", "Bandai"],
-          correct: 1 },
-        { q: "How many buttons does an original NES controller have?",
-          a: ["4", "6", "8", "10"],
-          correct: 2 },
-        { q: "What was Sega's last home console?",
-          a: ["Saturn", "Dreamcast", "Genesis 2", "Master System II"],
-          correct: 1 },
-        { q: "Which arcade game was the highest-grossing of all time by 1982?",
-          a: ["Donkey Kong", "Pac-Man", "Space Invaders", "Asteroids"],
-          correct: 1 },
-        { q: "The Game Boy Advance was released in what year?",
-          a: ["1999", "2000", "2001", "2002"],
-          correct: 2 },
-        { q: "What was the name of the Atari 2600's predecessor?",
-          a: ["Atari 1600", "Atari Pong", "Atari VCS", "Atari 800"],
-          correct: 2 },
-        { q: "Which company developed Bubble Bobble?",
-          a: ["Namco", "Taito", "Konami", "Capcom"],
-          correct: 1 },
-        { q: "How many fighters were in the original Street Fighter II roster?",
-          a: ["6", "8", "10", "12"],
-          correct: 1 },
-        { q: "What was the first commercially sold video game console?",
-          a: ["Atari 2600", "Magnavox Odyssey", "ColecoVision", "Intellivision"],
-          correct: 1 },
-        { q: "What color is the ghost Blinky in Pac-Man?",
-          a: ["Pink", "Blue", "Orange", "Red"],
-          correct: 3 },
-        { q: "Which King of Fighters game is considered the series peak by fans?",
-          a: ["KOF '97", "KOF '98", "KOF 2002", "KOF XIII"],
-          correct: 1 },
-        { q: "What does 'RPG' stand for in gaming?",
-          a: ["Rocket Propelled Grenade", "Role-Playing Game", "Random Player Generator", "Real Player Graphics"],
-          correct: 1 },
-        { q: "Which Samurai Shodown game introduced Ukyo Tachibana?",
-          a: ["Samurai Shodown", "Samurai Shodown II", "Samurai Shodown III", "Samurai Shodown IV"],
-          correct: 0 },
-    ];
+    // ── Trivia — loaded from API, with hardcoded fallback ──
+    let TRIVIA = [];
+    let _triviaLoaded = false;
 
-    function startAttractMode() {
+    async function loadTrivia() {
+        if (_triviaLoaded && TRIVIA.length > 10) return;
+        try {
+            const res = await fetch('/api/trivia/random?count=20');
+            if (!res.ok) throw new Error('API error');
+            const data = await res.json();
+            if (data.questions?.length) {
+                TRIVIA = data.questions.map(q => ({
+                    q: q.question,
+                    a: q.options,
+                    correct: q.correct,
+                }));
+                _triviaLoaded = true;
+                return;
+            }
+        } catch { /* fall through to hardcoded */ }
+
+        // Fallback — static trivia if API unavailable
+        if (TRIVIA.length === 0) {
+            TRIVIA = [
+                { q: "What was Mario's original name in Donkey Kong?",
+                  a: ["Jumpman", "Plumber Boy", "Mr. Video", "Little Italian"], correct: 0 },
+                { q: "How many levels does Pac-Man have before the kill screen?",
+                  a: ["128", "256", "512", "999"], correct: 1 },
+                { q: "What caused a coin shortage in Japan in 1978?",
+                  a: ["Donkey Kong", "Galaga", "Space Invaders", "Pong"], correct: 2 },
+                { q: "What code first appeared in Gradius for NES in 1986?",
+                  a: ["The Konami Code", "The Capcom Trick", "IDDQD", "ABACABB"], correct: 0 },
+                { q: "How many bytes of RAM did the Atari 2600 have?",
+                  a: ["64 bytes", "128 bytes", "256 bytes", "512 bytes"], correct: 1 },
+                { q: "Who created the Neo Geo hardware?",
+                  a: ["Sega", "Capcom", "SNK", "Konami"], correct: 2 },
+                { q: "What was Sega's last home console?",
+                  a: ["Saturn", "Dreamcast", "Genesis 2", "Master System II"], correct: 1 },
+                { q: "Which company developed Bubble Bobble?",
+                  a: ["Namco", "Taito", "Konami", "Capcom"], correct: 1 },
+                { q: "What was Nintendo's business before video games?",
+                  a: ["Playing cards", "Toys", "Electronics", "Taxi service"], correct: 0 },
+                { q: "What color is the ghost Blinky in Pac-Man?",
+                  a: ["Pink", "Blue", "Orange", "Red"], correct: 3 },
+            ];
+        }
+    }
+
+    async function startAttractMode() {
         if (attractActive) return;
+        // Refresh trivia from API each time attract mode starts — always fresh questions
+        _triviaLoaded = false;
+        await loadTrivia();
         // Don't activate during game play — check if overlay is visible (display not explicitly 'none')
         const po = document.getElementById('playerOverlay');
         if (po && po.style.display !== 'none') return;

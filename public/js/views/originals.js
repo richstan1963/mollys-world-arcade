@@ -69,8 +69,7 @@ window.OriginalsView = {
     renderGameCard(game) {
         const p = this._player();
         const themeObj = this._theme();
-        const themedName = this._themedName(game.id);
-        const displayName = themedName || game.name;
+        const displayName = game.name;
         const color = themeObj ? themeObj.colors[0] : (game.color || '#F43F5E');
         const cardIcon = themeObj ? themeObj.icon : (game.icon || '🎮');
         const topScores = (game.top_scores || []).slice(0, 3);
@@ -109,9 +108,10 @@ window.OriginalsView = {
 
         return `
             <div class="original-card candy-card" style="--card-color:${color}">
-                <div class="candy-card-banner">
+                <div class="candy-card-banner" style="position:relative;overflow:hidden">
                     <div class="candy-banner-bg"></div>
-                    <div class="candy-banner-emoji">${cardIcon}</div>
+                    <img src="/img/originals/${game.id}.svg" alt="${H.escHtml(displayName)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center center;opacity:0.9" onerror="this.style.display='none';this.nextElementSibling.style.display=''">
+                    <div class="candy-banner-emoji" style="display:none">${cardIcon}</div>
                 </div>
                 <div class="original-card-header">
                     <div class="original-card-info">

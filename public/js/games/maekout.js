@@ -1,5 +1,21 @@
 /* Breakout — Theme-aware brick breaker for Your World Arcade */
 window.Maekout = (() => {
+
+    // -- roundRect polyfill (Safari <16, older browsers) --
+    if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+            if (!Array.isArray(radii)) radii = [radii || 0];
+            const r = radii.map(v => Math.min(Math.max(0, v || 0), Math.min(w, h) / 2));
+            while (r.length < 4) r.push(r[r.length - 1] || 0);
+            this.moveTo(x + r[0], y);
+            this.arcTo(x + w, y,     x + w, y + h, r[1]);
+            this.arcTo(x + w, y + h, x,     y + h, r[2]);
+            this.arcTo(x,     y + h, x,     y,     r[3]);
+            this.arcTo(x,     y,     x + w, y,     r[0]);
+            this.closePath();
+            return this;
+        };
+    }
     // ── Constants ──
     const PADDLE_WIDTH_RATIO = 0.15;
     const PADDLE_HEIGHT = 14;
@@ -498,15 +514,26 @@ window.Maekout = (() => {
         });
     }
 
+    // ── Color helpers ──
+    function shadeColor(hex, amt) {
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+        const num = parseInt(c, 16);
+        let r = Math.min(255, Math.max(0, (num >> 16)         + amt));
+        let g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amt));
+        let b = Math.min(255, Math.max(0, (num & 0xff)        + amt));
+        return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
     // ── Draw helpers — theme-aware brick rendering ──
     function drawBrick(x, y, w, h, color, wobblePhase) {
         const style = theme ? theme.blockStyle : 'round';
-        const r = Math.min(w, h) * 0.15;
+        const r = Math.min(w, h) * 0.18;
         ctx.save();
 
-        // Glow
+        // Enhanced glow
         ctx.shadowColor = color.hex;
-        ctx.shadowBlur = 5;
+        ctx.shadowBlur = 8;
 
         if (style === 'pixel') {
             // Flat pixel block with inner border
@@ -521,6 +548,9 @@ window.Maekout = (() => {
             ctx.beginPath();
             ctx.moveTo(x + w, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h);
             ctx.stroke();
+            // Pixel shine
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.fillRect(x + 2, y + 2, w * 0.4, 2);
         } else if (style === 'sharp') {
             // Angular block with chevron highlight
             ctx.fillStyle = color.hex;
@@ -533,11 +563,17 @@ window.Maekout = (() => {
             ctx.shadowBlur = 0;
             // Chevron accent
             ctx.fillStyle = color.light;
-            ctx.globalAlpha = 0.3;
+            ctx.globalAlpha = 0.35;
             ctx.beginPath();
             ctx.moveTo(x + 2, y); ctx.lineTo(x + w / 2, y + h * 0.35);
             ctx.lineTo(x + w - 2, y); ctx.closePath(); ctx.fill();
             ctx.globalAlpha = 1;
+            // Edge highlight
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(x + 2, y); ctx.lineTo(x + w - 2, y);
+            ctx.stroke();
         } else if (style === 'jagged') {
             // Irregular rocky block
             ctx.fillStyle = color.hex;
@@ -557,24 +593,50 @@ window.Maekout = (() => {
             ctx.lineTo(x + w * 0.8, y + h * 0.5);
             ctx.stroke();
             ctx.globalAlpha = 1;
+            // Rock highlights
+            ctx.fillStyle = 'rgba(255,255,255,0.12)';
+            ctx.beginPath();
+            ctx.arc(x + w * 0.35, y + h * 0.3, 3, 0, Math.PI * 2);
+            ctx.fill();
         } else {
-            // Round (default) — rounded rect with gradient
+            // Round (default) — rounded rect with enhanced gradient + shine
             const grad = ctx.createLinearGradient(x, y, x, y + h);
             grad.addColorStop(0, color.light);
-            grad.addColorStop(0.5, color.hex);
+            grad.addColorStop(0.35, color.hex);
+            grad.addColorStop(0.65, color.hex);
             grad.addColorStop(1, color.dark);
             ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.roundRect(x, y, w, h, r);
             ctx.fill();
+
+            // Neon edge stroke
             ctx.shadowBlur = 0;
-            // Glossy highlight
-            ctx.globalAlpha = 0.35;
+            ctx.strokeStyle = color.light;
+            ctx.globalAlpha = 0.25;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, r);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            // Glossy shine highlight (elongated)
+            ctx.globalAlpha = 0.4;
             ctx.fillStyle = '#FFF';
             ctx.beginPath();
-            ctx.ellipse(x + w / 2, y + h * 0.25, w * 0.3, h * 0.2, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + w * 0.35, y + h * 0.22, w * 0.25, h * 0.15, -0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.15;
+            ctx.beginPath();
+            ctx.roundRect(x + 3, y + 1, w - 6, h * 0.35, [r, r, 0, 0]);
             ctx.fill();
             ctx.globalAlpha = 1;
+
+            // Bottom edge shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.12)';
+            ctx.beginPath();
+            ctx.roundRect(x + 2, y + h - 3, w - 4, 3, [0, 0, r, r]);
+            ctx.fill();
         }
 
         // Emoji overlay (all styles)
@@ -638,39 +700,67 @@ window.Maekout = (() => {
             }
         });
 
-        // Trail
+        // Trail with glow effect
         trail.forEach((tp, i) => {
-            const alpha = (i / trail.length) * 0.4;
+            const frac = (i + 1) / trail.length;
+            const alpha = frac * 0.45;
+            const rad = BALL_RADIUS * (0.2 + 0.8 * frac);
             ctx.save();
             ctx.globalAlpha = alpha;
+            // Glow halo
+            const trailGrad = ctx.createRadialGradient(tp.x, tp.y, 0, tp.x, tp.y, rad * 1.8);
+            trailGrad.addColorStop(0, tp.color);
+            trailGrad.addColorStop(0.5, tp.color);
+            trailGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = trailGrad;
+            ctx.beginPath();
+            ctx.arc(tp.x, tp.y, rad * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+            // Core dot
+            ctx.globalAlpha = alpha * 1.5;
             ctx.fillStyle = tp.color;
             ctx.beginPath();
-            ctx.arc(tp.x, tp.y, BALL_RADIUS * (0.3 + 0.7 * i / trail.length), 0, Math.PI * 2);
+            ctx.arc(tp.x, tp.y, rad * 0.6, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         });
 
-        // Balls — candy jawbreaker style
+        // Balls — enhanced jawbreaker style with glow
         balls.forEach(b => {
             ctx.save();
+            // Outer glow ring
             ctx.shadowColor = lastHitColor;
-            ctx.shadowBlur = 12;
-            // Rainbow layers
-            const grad = ctx.createRadialGradient(b.x - 2, b.y - 2, 1, b.x, b.y, b.radius);
+            ctx.shadowBlur = 18;
+            ctx.strokeStyle = lastHitColor;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.25;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius + 4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            // Main ball with gradient
+            ctx.shadowBlur = 14;
+            const grad = ctx.createRadialGradient(b.x - 2, b.y - 2, 0, b.x, b.y, b.radius);
             grad.addColorStop(0, '#FFFFFF');
-            grad.addColorStop(0.5, '#FDE68A');
-            grad.addColorStop(1, '#F59E0B');
+            grad.addColorStop(0.3, '#FDE68A');
+            grad.addColorStop(0.7, '#F59E0B');
+            grad.addColorStop(1, '#B45309');
             ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
             ctx.fill();
-            ctx.restore();
-            // Highlight
-            ctx.save();
-            ctx.globalAlpha = 0.6;
+
+            // Specular highlight
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 0.7;
             ctx.fillStyle = '#FFF';
             ctx.beginPath();
-            ctx.arc(b.x - 1.5, b.y - 1.5, b.radius * 0.35, 0, Math.PI * 2);
+            ctx.arc(b.x - 2, b.y - 2, b.radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath();
+            ctx.ellipse(b.x, b.y - b.radius * 0.3, b.radius * 0.5, b.radius * 0.2, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         });
@@ -680,113 +770,194 @@ window.Maekout = (() => {
             const bx = paddle.x + paddle.w / 2;
             const by = paddle.y - BALL_RADIUS - 1;
             ctx.save();
+            // Pulsing glow
+            const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 200);
             ctx.shadowColor = '#FDE68A';
-            ctx.shadowBlur = 8;
-            const grad = ctx.createRadialGradient(bx - 2, by - 2, 1, bx, by, BALL_RADIUS);
+            ctx.shadowBlur = 10 + pulse * 6;
+            const grad = ctx.createRadialGradient(bx - 2, by - 2, 0, bx, by, BALL_RADIUS);
             grad.addColorStop(0, '#FFFFFF');
-            grad.addColorStop(0.5, '#FDE68A');
-            grad.addColorStop(1, '#F59E0B');
+            grad.addColorStop(0.3, '#FDE68A');
+            grad.addColorStop(0.7, '#F59E0B');
+            grad.addColorStop(1, '#B45309');
             ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.arc(bx, by, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // Specular
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(bx - 2, by - 2, BALL_RADIUS * 0.3, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
             if (gameActive) {
                 ctx.save();
                 ctx.globalAlpha = 0.5 + 0.3 * Math.sin(Date.now() / 300);
-                ctx.fillStyle = '#AAA';
-                ctx.font = '12px "Segoe UI", sans-serif';
+                ctx.fillStyle = '#DDD';
+                ctx.shadowColor = '#FDE68A';
+                ctx.shadowBlur = 6;
+                ctx.font = 'bold 12px "Segoe UI", sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('SPACE / TAP to launch', W / 2, paddle.y - 28);
                 ctx.restore();
             }
         }
 
-        // Paddle — themed colors
+        // Paddle — neon glow themed
         {
             const pc = BLOCK_COLORS[0] || { hex: '#EC4899', light: '#F9A8D4', dark: '#BE185D' };
             const pc2 = BLOCK_COLORS[1] || pc;
             ctx.save();
             const pr = paddle.h / 2;
-            // Main body gradient
-            const pg = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.h);
-            pg.addColorStop(0, pc.light);
-            pg.addColorStop(0.5, pc.hex);
-            pg.addColorStop(1, pc.dark);
-            ctx.fillStyle = pg;
+
+            // Outer neon glow (double layer)
+            ctx.shadowColor = pc.hex;
+            ctx.shadowBlur = activePowerups.wide ? 28 : 18;
+            ctx.fillStyle = 'rgba(0,0,0,0)';
             ctx.beginPath();
             ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, pr);
             ctx.fill();
-            // Accent stripe down the middle
-            ctx.fillStyle = pc2.hex;
-            ctx.globalAlpha = 0.35;
-            ctx.fillRect(paddle.x + paddle.w * 0.4, paddle.y + 1, paddle.w * 0.2, paddle.h - 2);
-            ctx.globalAlpha = 1;
-            // Glow
-            ctx.shadowColor = pc.hex;
-            ctx.shadowBlur = activePowerups.wide ? 16 : 8;
-            ctx.strokeStyle = pc.hex;
-            ctx.lineWidth = 1;
+
+            // Main body gradient
+            const pg = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.h);
+            pg.addColorStop(0, pc.light);
+            pg.addColorStop(0.4, pc.hex);
+            pg.addColorStop(0.6, pc.hex);
+            pg.addColorStop(1, pc.dark);
+            ctx.fillStyle = pg;
+            ctx.shadowBlur = activePowerups.wide ? 22 : 14;
+            ctx.beginPath();
+            ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, pr);
+            ctx.fill();
+
+            // Neon edge stroke
+            ctx.shadowBlur = 8;
+            ctx.strokeStyle = pc.light;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, pr);
             ctx.stroke();
             ctx.shadowBlur = 0;
-            // Glossy top highlight
+
+            // Accent stripe down the middle
+            ctx.fillStyle = pc2.hex;
             ctx.globalAlpha = 0.3;
+            ctx.fillRect(paddle.x + paddle.w * 0.4, paddle.y + 1, paddle.w * 0.2, paddle.h - 2);
+            ctx.globalAlpha = 1;
+
+            // Glossy top highlight
+            ctx.globalAlpha = 0.4;
             ctx.fillStyle = '#FFF';
             ctx.beginPath();
             ctx.ellipse(paddle.x + paddle.w / 2, paddle.y + 3, paddle.w * 0.35, 3, 0, 0, Math.PI * 2);
             ctx.fill();
+
+            // Core bright line
+            ctx.globalAlpha = 0.35;
+            ctx.fillStyle = pc.light;
+            ctx.beginPath();
+            ctx.roundRect(paddle.x + 8, paddle.y + paddle.h / 2 - 0.5, paddle.w - 16, 1, 1);
+            ctx.fill();
             ctx.restore();
         }
 
-        // Power-ups — falling candy drops
+        // Power-ups — glowing capsule design
         powerups.forEach(pu => {
             ctx.save();
-            const glowPulse = 6 + Math.sin(pu.glow) * 3;
+            const glowPulse = 8 + Math.sin(pu.glow) * 4;
+            const capsuleW = pu.size * 2.2;
+            const capsuleH = pu.size * 1.2;
+
+            // Outer glow
             ctx.shadowColor = pu.type.color;
             ctx.shadowBlur = glowPulse;
-            ctx.fillStyle = pu.type.color;
+
+            // Capsule body with gradient
+            const capGrad = ctx.createLinearGradient(pu.x, pu.y - capsuleH / 2, pu.x, pu.y + capsuleH / 2);
+            capGrad.addColorStop(0, pu.type.color);
+            capGrad.addColorStop(0.5, pu.type.color);
+            capGrad.addColorStop(1, shadeColor(pu.type.color, -40));
+            ctx.fillStyle = capGrad;
             ctx.beginPath();
-            ctx.arc(pu.x, pu.y, pu.size, 0, Math.PI * 2);
+            ctx.roundRect(pu.x - capsuleW / 2, pu.y - capsuleH / 2, capsuleW, capsuleH, capsuleH / 2);
             ctx.fill();
-            // Inner highlight
-            ctx.globalAlpha = 0.4;
+
+            // Neon edge
+            ctx.strokeStyle = shadeColor(pu.type.color, 40);
+            ctx.lineWidth = 1;
+            ctx.shadowBlur = glowPulse * 0.5;
+            ctx.beginPath();
+            ctx.roundRect(pu.x - capsuleW / 2, pu.y - capsuleH / 2, capsuleW, capsuleH, capsuleH / 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Glossy highlight
+            ctx.globalAlpha = 0.35;
             ctx.fillStyle = '#FFF';
             ctx.beginPath();
-            ctx.arc(pu.x - 3, pu.y - 3, pu.size * 0.35, 0, Math.PI * 2);
+            ctx.ellipse(pu.x, pu.y - capsuleH * 0.18, capsuleW * 0.35, capsuleH * 0.2, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.globalAlpha = 1;
+
+            // Label
             ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 14px "Segoe UI", sans-serif';
+            ctx.font = 'bold 12px "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(pu.type.label, pu.x, pu.y + 1);
             ctx.restore();
         });
 
-        // Particles
+        // Particles with glow
         particles.forEach(p => {
             ctx.save();
-            ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+            const lifeRatio = Math.max(0, p.life / p.maxLife);
+            ctx.globalAlpha = lifeRatio;
             ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size * (p.life / p.maxLife), 0, Math.PI * 2);
-            ctx.fill();
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 6;
+            const sz = p.size * lifeRatio;
+            // Some particles are debris (rectangular)
+            if (Math.random() > 0.7 && sz > 2) {
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.life * 5);
+                ctx.fillRect(-sz / 2, -sz / 2, sz, sz * 0.6);
+            } else {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
+                ctx.fill();
+            }
             ctx.restore();
         });
 
-        // Floating texts
+        // Floating texts with glow
         floatingTexts.forEach(ft => {
             ctx.save();
-            ctx.globalAlpha = Math.max(0, ft.life);
+            const alpha = Math.max(0, ft.life);
+            const scale = 1 + (1 - alpha) * 0.25;
+            ctx.globalAlpha = alpha;
+            ctx.translate(ft.x, ft.y);
+            ctx.scale(scale, scale);
+            ctx.shadowColor = ft.color;
+            ctx.shadowBlur = 10;
             ctx.fillStyle = ft.color;
-            ctx.font = 'bold 13px "Segoe UI", sans-serif';
+            ctx.font = 'bold 14px "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(ft.text, ft.x, ft.y);
+            ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+            ctx.lineWidth = 2;
+            ctx.strokeText(ft.text, 0, 0);
+            ctx.fillText(ft.text, 0, 0);
             ctx.restore();
         });
+
+        // Vignette overlay
+        const vigGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.8);
+        vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        vigGrad.addColorStop(1, 'rgba(0,0,0,0.25)');
+        ctx.fillStyle = vigGrad;
+        ctx.fillRect(0, 0, W, H);
 
         drawHUD();
 
@@ -1032,6 +1203,20 @@ window.Maekout = (() => {
             canvas.width = Math.max(200, parent.clientWidth || 480);
             canvas.height = Math.max(300, parent.clientHeight || 640);
         }
+        if (canvas.width < 100) canvas.width = 480;
+        if (canvas.height < 100) canvas.height = 640;
+
+        // Delayed refit for container layout settling
+        requestAnimationFrame(() => {
+            if (!canvas || !canvas.parentElement) return;
+            const p = canvas.parentElement;
+            const pw = Math.max(200, p.clientWidth || 480);
+            const ph = Math.max(300, p.clientHeight || 640);
+            if (pw !== canvas.width || ph !== canvas.height) {
+                canvas.width = pw; canvas.height = ph;
+                calcLayout();
+            }
+        });
 
         score = 0; level = 1; lives = LIVES_MAX;
         gameActive = true; paused = false; waitingLaunch = true;

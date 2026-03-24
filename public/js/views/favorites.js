@@ -315,7 +315,7 @@ window.FavoritesView = {
             let displayName = g.name;
             let icon = g.icon;
             if (p.name && typeof ArcadeThemes !== 'undefined') {
-                displayName = ArcadeThemes.gameName(p.name, p.theme || 'retro', g.id);
+                displayName = ArcadeThemes.gameName(p.name, p.theme || 'retro', g.id) || g.name;
                 const thm = ArcadeThemes.get(p.theme || 'retro');
                 icon = thm.icon;
             }

@@ -9,6 +9,7 @@ const batch = {
     running: false, stop: false,
     total: 0, done: 0, errors: 0,
     current: null, startedAt: null, finishedAt: null,
+    concurrency: 1, activeWorkers: 0, workerStatus: [],
 };
 
 // ── Helper: backfill metadata.description from game_intel bios ───────────────
@@ -125,6 +126,107 @@ One punchy closing paragraph on why this game holds up and deserves a place in a
 
 Write with enthusiasm and depth. Be accurate — don't fabricate specific facts you're unsure of. Write like a collector who genuinely loves this era of gaming.`;
 
+    } else if (type === 'trivia') {
+        return `You are a video game trivia expert writing for a private family arcade encyclopedia. Write a collection of fascinating trivia facts for "${gameTitle}" (${info.year}) published by ${info.publisher}${devLine}. Genre: ${info.genre} | ${info.players}
+
+Available on: ${platformList}.${descLine}
+
+Format your response in clean markdown. Each fact should be a standalone nugget — the kind of thing that makes someone say "wait, really?"
+
+## Development Secrets
+3-5 facts about how the game was made — cut features, placeholder names, engine quirks, budget constraints, crunch stories, prototype versions.
+
+## Hidden Content
+3-5 facts about secrets in the game itself — easter eggs, debug menus, hidden characters, unused sprites or levels found in the ROM, developer messages, cheat codes and what they unlock.
+
+## Cultural Connections
+3-5 facts about the game's place in pop culture — references it makes, references TO it in other media, banned/censored versions, regional differences between Japanese and Western releases, name changes.
+
+## Records & Firsts
+2-3 facts about any records, firsts, or notable achievements — first game to do X, highest score ever recorded, speedrun records, tournament moments, sales milestones.
+
+## The One Thing Nobody Knows
+One deep-cut fact that even hardcore fans might not know. Make it the best one.
+
+Be accurate — never fabricate facts. If you're not confident about a specific detail, skip it rather than guess. Every fact should be genuinely interesting, not filler. Write with the energy of someone sharing cool stuff they discovered, not a textbook.`;
+
+    } else if (type === 'movelist') {
+        // Only meaningful for fighters/brawlers, but we generate a lighter version for action games too
+        const isFighter = /fight|beat|battle|vs|combat|brawl|martial|wrestling|boxing/i.test(info.genre);
+        const isAction  = /action|hack|slash|beat.*em|shoot/i.test(info.genre);
+
+        if (isFighter) {
+            return `You are a fighting game expert writing a comprehensive move list for "${gameTitle}" (${info.year}) published by ${info.publisher}${devLine}. Genre: ${info.genre} | ${info.players}
+
+Available on: ${platformList}.${descLine}
+
+This is a reference document players keep open while playing. Format for quick scanning — tables and shorthand notation.
+
+Use standard fighting game notation:
+- **Directions**: ↑ ↓ ← → ↗ ↘ ↖ ↙ (or U D B F for Up Down Back Forward)
+- **Buttons**: Use the game's actual button names if known, otherwise LP/HP/LK/HK or A/B/C/D
+- **Motions**: QCF (quarter circle forward ↓↘→), QCB (quarter circle back ↓↙←), DP (dragon punch →↓↘), HCF (half circle forward ←↙↓↘→), 360 (full rotation)
+- **Charge**: [Hold ←] → + Button
+- **Close/Far**: cl. / far.
+
+## Universal Mechanics
+System-wide mechanics that apply to all characters — blocking, throws, supers, meter, guard crush, recovery, etc.
+
+## Character Move Lists
+For EACH playable character, provide a section with:
+
+### [Character Name]
+**Style**: One-line description of their playstyle
+
+| Move | Input | Notes |
+|------|-------|-------|
+| Special moves | Notation | Properties (overhead, low, anti-air, projectile, etc.) |
+| Super/Desperation moves | Notation | Conditions (meter, low health, etc.) |
+| Notable normals | Button | Why it matters (range, speed, combo starter) |
+
+## Combo Guide
+3-5 practical combos per character (or universal combos if the game doesn't vary much). Format:
+- **Basic**: Input sequence → damage/result
+- **Advanced**: Input sequence → damage/result
+- **Punish**: Input sequence → when to use
+
+## Tier Notes
+Brief competitive tier overview if applicable. Who's strong, who's tricky, who's beginner-friendly.
+
+Be accurate with inputs. If you're unsure of exact inputs for a specific character, note it rather than guessing. Players rely on move lists being correct.`;
+        }
+
+        // Action/beat-em-up/general — lighter movelist focused on moves + combos
+        return `You are a video game combat guide writer for a private family arcade. Write a moves and combat reference for "${gameTitle}" (${info.year}). Genre: ${info.genre} | ${info.players}
+
+Available on: ${platformList}.${descLine}
+
+Format for quick reference — players will check this while playing.
+
+## Controls & Actions
+Complete button/input mapping. What each button does. Format as a clean table:
+
+| Action | Input | Notes |
+|--------|-------|-------|
+| ... | ... | ... |
+
+## Move List
+All special moves, charged attacks, power-ups, and unique abilities. Include input sequences.
+
+## Combos & Chains
+Practical attack combinations that deal extra damage or have special properties. Number them for quick reference.
+
+## Power-Ups & Items
+What each collectible/power-up does, how long it lasts, strategic value.
+
+## Character Differences
+If the game has multiple playable characters, briefly note how each one plays differently — unique moves, stats, or abilities.
+
+## Quick Reference
+The 5 most important things to remember mid-game, formatted as a tight bullet list.
+
+Be specific to this game. If it doesn't have combos, say so briefly and focus on what it does have.`;
+
     } else { // guide
         const isFighter  = /fight|beat|battle|vs|combat|brawl/i.test(info.genre);
         const isShooter  = /shoot|shmup|blast|gun/i.test(info.genre);
@@ -173,9 +275,13 @@ Be specific and practical. Write for real players who want to get good at this g
 
 // ── GET /api/intel/batch — status ─────────────────────────────────────────────
 router.get('/batch', (req, res) => {
+    const elapsed = batch.startedAt ? Math.round((Date.now() - new Date(batch.startedAt).getTime()) / 1000) : 0;
+    const rate = elapsed > 0 ? (batch.done / elapsed * 60).toFixed(1) : 0;
     res.json({
         ...batch,
         pct: batch.total > 0 ? Math.round(batch.done / batch.total * 100) : 0,
+        elapsed,
+        rate: parseFloat(rate),
     });
 });
 
@@ -201,12 +307,13 @@ router.post('/batch', async (req, res) => {
         return res.status(503).json({ error: `${missingKey} not set. Add it to your .env file then restart the server.` });
     }
 
-    const { types = ['bio', 'guide'], delay = 500, strategy = 'quality' } = req.body;
+    const ALL_TYPES = ['bio', 'guide', 'trivia', 'movelist'];
+    const { types = ['bio', 'guide'], delay = 200, strategy = 'quality', concurrency = 4 } = req.body;
     const db = getDB();
 
     // One query: all (romId, type) pairs where intel doesn't exist yet,
     // ordered by romId then type so each game gets bio+guide before moving on.
-    const typeList = types.filter(t => ['bio', 'guide'].includes(t));
+    const typeList = types.filter(t => ALL_TYPES.includes(t));
     if (typeList.length === 0) return res.status(400).json({ error: 'No valid types requested' });
 
     // Build queue of unique game titles that still need intel
@@ -225,50 +332,70 @@ router.post('/batch', async (req, res) => {
         });
     }
 
+    const workers = Math.min(Math.max(1, concurrency), 8); // clamp 1-8
     Object.assign(batch, {
         running: true, stop: false,
         total: queue.length, done: 0, errors: 0,
-        current: null,
+        current: null, concurrency: workers, activeWorkers: 0,
+        workerStatus: Array(workers).fill(null),
         startedAt: new Date().toISOString(), finishedAt: null,
     });
 
-    res.json({ ok: true, started: true, total: queue.length, types: typeList });
+    res.json({ ok: true, started: true, total: queue.length, types: typeList, concurrency: workers });
 
-    // Background loop — runs after response is sent
+    // Background parallel processing — runs after response is sent
     (async () => {
         const insertStmt = db.prepare(`
             INSERT OR REPLACE INTO game_intel (game_title, doc_type, content_md, model, tokens_used)
             VALUES (?, ?, ?, ?, ?)
         `);
 
-        for (const { game_title: cleanName, type } of queue) {
-            if (batch.stop) break;
+        // Shared queue index — each worker grabs next item atomically
+        let queueIdx = 0;
 
-            const info = gatherGameInfo(db, cleanName);
-            if (!info) { batch.done++; continue; }
+        async function worker(workerId) {
+            batch.activeWorkers++;
+            while (!batch.stop) {
+                const idx = queueIdx++;
+                if (idx >= queue.length) break;
 
-            const promptTitle = info.displayTitle || cleanName;
-            batch.current = { title: promptTitle, type, systems: info.systems.length };
+                const { game_title: cleanName, type } = queue[idx];
+                const info = gatherGameInfo(db, cleanName);
+                if (!info) { batch.done++; continue; }
 
-            try {
-                const prompt = buildPrompt(promptTitle, info, type);
-                const { content, modelName, tokensUsed } = await callAI(prompt, { strategy });
-                insertStmt.run(cleanName, type, content, modelName, tokensUsed);
-                console.log(`[Intel Batch] ${batch.done + 1}/${batch.total} ✓ ${type} — "${promptTitle}" via ${modelName} (${tokensUsed} tok)`);
-            } catch (err) {
-                console.error(`[Intel Batch] ✗ "${promptTitle}" ${type}:`, err.message);
-                batch.errors++;
+                const promptTitle = info.displayTitle || cleanName;
+                batch.workerStatus[workerId] = { title: promptTitle, type };
+                batch.current = { title: promptTitle, type, systems: info.systems.length };
+
+                try {
+                    const prompt = buildPrompt(promptTitle, info, type);
+                    const { content, modelName, tokensUsed } = await callAI(prompt, { strategy });
+                    insertStmt.run(cleanName, type, content, modelName, tokensUsed);
+                    console.log(`[Intel W${workerId}] ${batch.done + 1}/${batch.total} ✓ ${type} — "${promptTitle}" via ${modelName} (${tokensUsed} tok)`);
+                } catch (err) {
+                    console.error(`[Intel W${workerId}] ✗ "${promptTitle}" ${type}:`, err.message);
+                    batch.errors++;
+                }
+
+                batch.done++;
+
+                // Every 50 bios, backfill descriptions into metadata table
+                if (type === 'bio' && batch.done % 50 === 0) {
+                    backfillDescriptions(db);
+                }
+
+                if (delay > 0) await new Promise(r => setTimeout(r, delay));
             }
-
-            batch.done++;
-
-            // Every 50 bios, backfill descriptions into metadata table
-            if (type === 'bio' && batch.done % 50 === 0) {
-                backfillDescriptions(db);
-            }
-
-            if (delay > 0) await new Promise(r => setTimeout(r, delay));
+            batch.workerStatus[workerId] = null;
+            batch.activeWorkers--;
         }
+
+        console.log(`[Intel Batch] Starting ${workers} parallel workers for ${queue.length} items`);
+
+        // Launch all workers in parallel — they share the queue
+        await Promise.all(
+            Array.from({ length: workers }, (_, i) => worker(i))
+        );
 
         // Final backfill at end of batch
         backfillDescriptions(db);
@@ -277,7 +404,9 @@ router.post('/batch', async (req, res) => {
         batch.current    = null;
         batch.finishedAt = new Date().toISOString();
         const stopped = batch.stop ? ' (stopped early)' : '';
-        console.log(`[Intel Batch] Complete${stopped} — ${batch.done} processed, ${batch.errors} errors`);
+        const elapsed = Math.round((Date.now() - new Date(batch.startedAt).getTime()) / 1000);
+        const rate = elapsed > 0 ? (batch.done / elapsed * 60).toFixed(1) : '∞';
+        console.log(`[Intel Batch] Complete${stopped} — ${batch.done} processed, ${batch.errors} errors, ${elapsed}s, ${rate}/min`);
     })();
 });
 
@@ -297,19 +426,24 @@ router.get('/config', (req, res) => {
 router.get('/stats', (req, res) => {
     const db   = getDB();
     // Count unique game titles (not ROMs — one title = one bio)
-    const total  = db.prepare('SELECT COUNT(DISTINCT r.clean_name) as n FROM roms r WHERE r.clean_name IS NOT NULL').get().n;
-    const bios   = db.prepare("SELECT COUNT(DISTINCT game_title) as n FROM game_intel WHERE doc_type='bio'").get().n;
-    const guides = db.prepare("SELECT COUNT(DISTINCT game_title) as n FROM game_intel WHERE doc_type='guide'").get().n;
-    const both   = db.prepare(
+    const total   = db.prepare('SELECT COUNT(DISTINCT r.clean_name) as n FROM roms r WHERE r.clean_name IS NOT NULL').get().n;
+    const bios    = db.prepare("SELECT COUNT(DISTINCT game_title) as n FROM game_intel WHERE doc_type='bio'").get().n;
+    const guides  = db.prepare("SELECT COUNT(DISTINCT game_title) as n FROM game_intel WHERE doc_type='guide'").get().n;
+    const trivia  = db.prepare("SELECT COUNT(DISTINCT game_title) as n FROM game_intel WHERE doc_type='trivia'").get().n;
+    const movelists = db.prepare("SELECT COUNT(DISTINCT game_title) as n FROM game_intel WHERE doc_type='movelist'").get().n;
+    const complete = db.prepare(
         `SELECT COUNT(*) as n FROM (
             SELECT game_title FROM game_intel WHERE doc_type='bio'
             INTERSECT
             SELECT game_title FROM game_intel WHERE doc_type='guide'
+            INTERSECT
+            SELECT game_title FROM game_intel WHERE doc_type='trivia'
         )`
     ).get().n;
     res.json({
-        total_titles: total, bios, guides, both,
-        missing_bio: total - bios, missing_guide: total - guides, missing_both: total - both,
+        total_titles: total, bios, guides, trivia, movelists, complete,
+        missing_bio: total - bios, missing_guide: total - guides,
+        missing_trivia: total - trivia, missing_movelist: total - movelists,
     });
 });
 
@@ -327,15 +461,17 @@ router.get('/games', (req, res) => {
     const params = [];
 
     if (q) {
-        conds.push('(r.clean_name LIKE ? OR r.filename LIKE ? OR m.title LIKE ?)');
-        params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+        conds.push('(g.game_title LIKE ? OR g.filename LIKE ?)');
+        params.push(`%${q}%`, `%${q}%`);
     }
 
     const filterSQL = {
-        missing_bio:   'bio.game_title IS NULL',
-        missing_guide: 'guide.game_title IS NULL',
-        missing_both:  'bio.game_title IS NULL AND guide.game_title IS NULL',
-        complete:      'bio.game_title IS NOT NULL AND guide.game_title IS NOT NULL',
+        missing_bio:      'bio.game_title IS NULL',
+        missing_guide:    'guide.game_title IS NULL',
+        missing_trivia:   'triv.game_title IS NULL',
+        missing_movelist: 'ml.game_title IS NULL',
+        missing_both:     'bio.game_title IS NULL AND guide.game_title IS NULL',
+        complete:         'bio.game_title IS NOT NULL AND guide.game_title IS NOT NULL AND triv.game_title IS NOT NULL',
     };
     if (filterSQL[filter]) conds.push(filterSQL[filter]);
 
@@ -353,8 +489,10 @@ router.get('/games', (req, res) => {
             WHERE r.clean_name IS NOT NULL
             GROUP BY r.clean_name
         ) g
-        LEFT JOIN (SELECT game_title FROM game_intel WHERE doc_type='bio')   bio   ON bio.game_title   = g.game_title
-        LEFT JOIN (SELECT game_title FROM game_intel WHERE doc_type='guide') guide ON guide.game_title = g.game_title
+        LEFT JOIN (SELECT game_title FROM game_intel WHERE doc_type='bio')      bio   ON bio.game_title   = g.game_title
+        LEFT JOIN (SELECT game_title FROM game_intel WHERE doc_type='guide')    guide ON guide.game_title = g.game_title
+        LEFT JOIN (SELECT game_title FROM game_intel WHERE doc_type='trivia')   triv  ON triv.game_title  = g.game_title
+        LEFT JOIN (SELECT game_title FROM game_intel WHERE doc_type='movelist') ml    ON ml.game_title    = g.game_title
         ${where}
     `;
 
@@ -363,7 +501,9 @@ router.get('/games', (req, res) => {
         SELECT g.id, g.clean_name, g.filename, g.game_title,
                g.system_names, g.system_count,
                CASE WHEN bio.game_title   IS NOT NULL THEN 1 ELSE 0 END as has_bio,
-               CASE WHEN guide.game_title IS NOT NULL THEN 1 ELSE 0 END as has_guide
+               CASE WHEN guide.game_title IS NOT NULL THEN 1 ELSE 0 END as has_guide,
+               CASE WHEN triv.game_title  IS NOT NULL THEN 1 ELSE 0 END as has_trivia,
+               CASE WHEN ml.game_title    IS NOT NULL THEN 1 ELSE 0 END as has_movelist
         ${baseFrom}
         ORDER BY g.game_title
         LIMIT ? OFFSET ?
@@ -445,8 +585,8 @@ router.post('/:romId/generate', async (req, res) => {
     }
 
     const { type = 'bio', strategy = 'quality' } = req.body;
-    if (!['bio', 'guide'].includes(type)) {
-        return res.status(400).json({ error: 'type must be bio or guide' });
+    if (!['bio', 'guide', 'trivia', 'movelist'].includes(type)) {
+        return res.status(400).json({ error: 'type must be bio, guide, trivia, or movelist' });
     }
 
     const db   = getDB();

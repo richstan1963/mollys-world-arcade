@@ -22,6 +22,18 @@ window.PacMae = (() => {
     // Dot colors (cycle through, theme-overridable)
     let CANDY_COLORS = ['#FF69B4','#FFD700','#00FFAB','#06B6D4','#F97316','#A78BFA'];
 
+    // Fruit definitions for bonus items
+    const FRUITS = [
+        { name: 'cherry',     color: '#EF4444', accent: '#22C55E', score: 100 },
+        { name: 'strawberry', color: '#F43F5E', accent: '#4ADE80', score: 300 },
+        { name: 'orange',     color: '#F97316', accent: '#FCD34D', score: 500 },
+        { name: 'apple',      color: '#22C55E', accent: '#EF4444', score: 700 },
+        { name: 'grape',      color: '#8B5CF6', accent: '#C4B5FD', score: 1000 },
+        { name: 'galaxian',   color: '#3B82F6', accent: '#FACC15', score: 2000 },
+        { name: 'bell',       color: '#FACC15', accent: '#F59E0B', score: 3000 },
+        { name: 'key',        color: '#06B6D4', accent: '#E0E7FF', score: 5000 },
+    ];
+
     // Classic-inspired 21×22 maze
     const MAZE_TEMPLATE = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -73,10 +85,23 @@ window.PacMae = (() => {
     let deathTimer = 0;
     const DEATH_DURATION = 1500;
 
+    // Pac-Man trail
+    let pacTrail = [];
+    const PAC_TRAIL_MAX = 8;
+
     // Power pellet
     let powerActive = false, powerTimer = 0;
     let ghostsEatenThisPower = 0;
     let pelletPulse = 0;
+
+    // Screen flash
+    let screenFlashTimer = 0;
+    const SCREEN_FLASH_DURATION = 300;
+
+    // Fruit bonus
+    let activeFruit = null;
+    let fruitTimer = 0;
+    let fruitSpawnDots = 0; // dots eaten before fruit spawns
 
     // Level clear
     let levelClearing = false, levelClearTimer = 0;
@@ -241,13 +266,14 @@ window.PacMae = (() => {
     // ══════════════════════════════════════════════
     function initBgStars() {
         bgStars = [];
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0; i < 60; i++) {
             bgStars.push({
                 x: Math.random(), y: Math.random(),
-                r: 0.5 + Math.random() * 1.2,
-                a: 0.1 + Math.random() * 0.25,
+                r: 0.5 + Math.random() * 1.5,
+                a: 0.08 + Math.random() * 0.2,
                 speed: 0.2 + Math.random() * 0.6,
                 phase: Math.random() * Math.PI * 2,
+                hue: Math.random() * 60 + 220, // blue-purple range
             });
         }
     }
@@ -257,12 +283,34 @@ window.PacMae = (() => {
         for (const s of bgStars) {
             const twinkle = 0.5 + 0.5 * Math.sin(t * s.speed + s.phase);
             ctx.globalAlpha = s.a * twinkle;
-            ctx.fillStyle = '#C4B5FD';
+            ctx.fillStyle = `hsl(${s.hue}, 60%, 75%)`;
             ctx.beginPath();
             ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.globalAlpha = 1;
+    }
+
+    // ══════════════════════════════════════════════
+    // VIGNETTE + ATMOSPHERE
+    // ══════════════════════════════════════════════
+    function drawVignette(w, h) {
+        const gradient = ctx.createRadialGradient(w / 2, h / 2, w * 0.25, w / 2, h / 2, w * 0.75);
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(0.7, 'rgba(0,0,0,0.15)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.55)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, w, h);
+    }
+
+    function drawScreenFlash(w, h) {
+        if (screenFlashTimer <= 0) return;
+        const alpha = (screenFlashTimer / SCREEN_FLASH_DURATION) * 0.3;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = CANDY_COLORS[0] || '#FF69B4';
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
     }
 
     // ══════════════════════════════════════════════
@@ -401,6 +449,7 @@ window.PacMae = (() => {
         });
         powerActive = true;
         powerTimer = POWER_DURATION;
+        screenFlashTimer = SCREEN_FLASH_DURATION;
     }
 
     // ══════════════════════════════════════════════
@@ -413,6 +462,7 @@ window.PacMae = (() => {
         pacAlive = true;
         pacSpeed = 0.09 + level * 0.005;
         if (pacSpeed > 0.16) pacSpeed = 0.16;
+        pacTrail = [];
     }
 
     function getInputDir() {
@@ -440,6 +490,12 @@ window.PacMae = (() => {
 
         // Frame-rate independent movement: normalize to 60fps
         const move = pacSpeed * dt * 60;
+
+        // Record trail position
+        if (pacDir !== DIR.NONE && frameCount % 2 === 0) {
+            pacTrail.push({ x: pacX, y: pacY, life: 1.0 });
+            if (pacTrail.length > PAC_TRAIL_MAX) pacTrail.shift();
+        }
 
         const gx = Math.round(pacX), gy = Math.round(pacY);
         const nearCenter = Math.abs(pacX - gx) < move * 1.5 &&
@@ -494,6 +550,51 @@ window.PacMae = (() => {
     }
 
     // ══════════════════════════════════════════════
+    // FRUIT BONUS
+    // ══════════════════════════════════════════════
+    function spawnFruit() {
+        const fruitIdx = Math.min(level - 1, FRUITS.length - 1);
+        const fruit = FRUITS[fruitIdx];
+        activeFruit = {
+            x: 10, y: 13,
+            ...fruit,
+            timer: 8000, // 8 seconds visible
+            pulse: 0,
+        };
+    }
+
+    function updateFruit(dt) {
+        if (!activeFruit) {
+            // Spawn fruit at specific dot counts
+            if (!fruitSpawnDots && dotsEaten >= Math.floor(totalDots * 0.3)) {
+                fruitSpawnDots = 1;
+                spawnFruit();
+            } else if (fruitSpawnDots === 1 && dotsEaten >= Math.floor(totalDots * 0.7)) {
+                fruitSpawnDots = 2;
+                spawnFruit();
+            }
+            return;
+        }
+        activeFruit.timer -= dt * 1000;
+        activeFruit.pulse += dt * 5;
+        if (activeFruit.timer <= 0) {
+            activeFruit = null;
+            return;
+        }
+        // Check if pac eats fruit
+        const dist = Math.abs(pacX - activeFruit.x) + Math.abs(pacY - activeFruit.y);
+        if (dist < 0.8 && pacAlive) {
+            score += activeFruit.score;
+            scorePopups.push({
+                x: activeFruit.x, y: activeFruit.y,
+                text: `+${activeFruit.score}`, life: 1.5,
+                color: activeFruit.color
+            });
+            activeFruit = null;
+        }
+    }
+
+    // ══════════════════════════════════════════════
     // COLLISION
     // ══════════════════════════════════════════════
     function checkCollisions() {
@@ -529,23 +630,73 @@ window.PacMae = (() => {
         };
     }
 
-    // Pre-render walls to offscreen canvas (called once per level)
+    // Helper: parse hex color to RGB components
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 139, g: 92, b: 246 };
+    }
+
+    // Helper: lighten a hex color
+    function lightenColor(hex, amount) {
+        const rgb = hexToRgb(hex);
+        const r = Math.min(255, rgb.r + amount);
+        const g = Math.min(255, rgb.g + amount);
+        const b = Math.min(255, rgb.b + amount);
+        return `rgb(${r},${g},${b})`;
+    }
+
+    // Pre-render walls to offscreen canvas with gradient glow (called once per level)
     function prerenderMaze() {
         const offscreen = document.createElement('canvas');
         offscreen.width = canvas.width;
         offscreen.height = canvas.height;
         const oc = offscreen.getContext('2d');
 
-        const wallLineW = Math.max(1.5, tileSize * 0.08);
+        const wallLineW = Math.max(2, tileSize * 0.1);
         const isW = (c, r) => (r >= 0 && r < ROWS && c >= 0 && c < COLS && MAZE_TEMPLATE[r][c] === TILE_WALL);
 
-        // Draw walls with glow ONCE
-        oc.strokeStyle = WALL_COLOR;
-        oc.lineWidth = wallLineW;
+        const wallRgb = hexToRgb(WALL_COLOR);
+        const wallLight = lightenColor(WALL_COLOR, 80);
+
+        // Draw outer glow layer first
+        oc.strokeStyle = `rgba(${wallRgb.r},${wallRgb.g},${wallRgb.b},0.3)`;
+        oc.lineWidth = wallLineW + 4;
         oc.lineCap = 'round';
         oc.lineJoin = 'round';
         oc.shadowColor = WALL_COLOR;
-        oc.shadowBlur = 4;
+        oc.shadowBlur = 12;
+        drawWallLines(oc, isW, wallLineW + 4);
+
+        // Draw main wall with gradient stroke
+        oc.shadowBlur = 6;
+        oc.shadowColor = wallLight;
+        oc.lineWidth = wallLineW;
+
+        // Create gradient for walls
+        const wallGrad = oc.createLinearGradient(0, offsetY, 0, offsetY + ROWS * tileSize);
+        wallGrad.addColorStop(0, wallLight);
+        wallGrad.addColorStop(0.5, WALL_COLOR);
+        wallGrad.addColorStop(1, wallLight);
+        oc.strokeStyle = wallGrad;
+        drawWallLines(oc, isW, wallLineW);
+
+        // Inner bright highlight
+        oc.shadowBlur = 0;
+        oc.lineWidth = Math.max(1, wallLineW * 0.4);
+        oc.strokeStyle = `rgba(255,255,255,0.12)`;
+        drawWallLines(oc, isW, Math.max(1, wallLineW * 0.4));
+
+        mazeCache = offscreen;
+    }
+
+    // Shared wall line drawing logic
+    function drawWallLines(oc, isW, lineWidth) {
+        const half = tileSize * 0.48;
+        const rad = tileSize * 0.22;
 
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
@@ -554,8 +705,6 @@ window.PacMae = (() => {
                 const py = offsetY + r * tileSize;
                 const cx = px + tileSize / 2;
                 const cy = py + tileSize / 2;
-                const half = tileSize * 0.48;
-                const rad = tileSize * 0.22;
 
                 if (!isW(c, r-1)) { oc.beginPath(); oc.moveTo(cx-half, cy-half); oc.lineTo(cx+half, cy-half); oc.stroke(); }
                 if (!isW(c, r+1)) { oc.beginPath(); oc.moveTo(cx-half, cy+half); oc.lineTo(cx+half, cy+half); oc.stroke(); }
@@ -568,7 +717,6 @@ window.PacMae = (() => {
                 if (!isW(c,r+1) && !isW(c+1,r)) { oc.beginPath(); oc.arc(cx+half-rad, cy+half-rad, rad, 0, Math.PI*0.5); oc.stroke(); }
             }
         }
-        mazeCache = offscreen;
     }
 
     function drawMaze() {
@@ -592,57 +740,199 @@ window.PacMae = (() => {
                 if (t === TILE_DOT) {
                     const cIdx = (r * COLS + c) % CANDY_COLORS.length;
                     const dotR = tileSize * 0.14;
-                    ctx.fillStyle = CANDY_COLORS[cIdx];
+                    const dotColor = CANDY_COLORS[cIdx];
+
+                    // Subtle glow around dot
+                    ctx.save();
+                    ctx.shadowColor = dotColor;
+                    ctx.shadowBlur = tileSize * 0.25;
+                    ctx.fillStyle = dotColor;
                     ctx.beginPath();
                     ctx.arc(px, py, dotR, 0, Math.PI * 2);
                     ctx.fill();
-                    // Tiny white shine (no shadow)
-                    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                    ctx.restore();
+
+                    // Bright inner shine
+                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
                     ctx.beginPath();
-                    ctx.arc(px - dotR * 0.3, py - dotR * 0.3, dotR * 0.3, 0, Math.PI * 2);
+                    ctx.arc(px - dotR * 0.25, py - dotR * 0.25, dotR * 0.35, 0, Math.PI * 2);
                     ctx.fill();
                 } else if (t === TILE_POWER) {
-                    // Pulsing power pellet circle
-                    const pulseScale = 0.3 + Math.sin(pelletPulse) * 0.06;
+                    // Pulsing power pellet with enhanced glow
+                    const pulseScale = 0.3 + Math.sin(pelletPulse) * 0.08;
                     const pr = tileSize * pulseScale;
                     const pelletColor = CANDY_COLORS[0] || '#FF69B4';
+                    const glowIntensity = 0.6 + Math.sin(pelletPulse * 2) * 0.4;
 
-                    // Outer glow
+                    // Outer glow rings
                     ctx.save();
                     ctx.shadowColor = pelletColor;
-                    ctx.shadowBlur = tileSize * 0.4 + Math.sin(pelletPulse) * tileSize * 0.15;
-                    ctx.fillStyle = pelletColor;
+                    ctx.shadowBlur = tileSize * 0.8 * glowIntensity;
+                    const glowGrad = ctx.createRadialGradient(px, py, 0, px, py, pr * 2);
+                    glowGrad.addColorStop(0, pelletColor);
+                    glowGrad.addColorStop(0.5, pelletColor);
+                    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.globalAlpha = 0.3 * glowIntensity;
+                    ctx.fillStyle = glowGrad;
+                    ctx.beginPath();
+                    ctx.arc(px, py, pr * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+
+                    // Main pellet body
+                    ctx.save();
+                    ctx.shadowColor = pelletColor;
+                    ctx.shadowBlur = tileSize * 0.5;
+                    const bodyGrad = ctx.createRadialGradient(px - pr * 0.2, py - pr * 0.2, 0, px, py, pr);
+                    bodyGrad.addColorStop(0, '#FFFFFF');
+                    bodyGrad.addColorStop(0.3, pelletColor);
+                    bodyGrad.addColorStop(1, lightenColor(pelletColor, -40));
+                    ctx.fillStyle = bodyGrad;
                     ctx.beginPath();
                     ctx.arc(px, py, pr, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.restore();
 
-                    // Bright inner core
-                    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-                    ctx.beginPath();
-                    ctx.arc(px, py, pr * 0.45, 0, Math.PI * 2);
-                    ctx.fill();
+                    // Star sparkle effect
+                    const sparkleAngle = pelletPulse * 1.5;
+                    ctx.save();
+                    ctx.globalAlpha = 0.6 * glowIntensity;
+                    ctx.strokeStyle = '#FFF';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 4; i++) {
+                        const a = sparkleAngle + i * Math.PI / 4;
+                        const inner = pr * 0.6;
+                        const outer = pr * 1.4;
+                        ctx.beginPath();
+                        ctx.moveTo(px + Math.cos(a) * inner, py + Math.sin(a) * inner);
+                        ctx.lineTo(px + Math.cos(a) * outer, py + Math.sin(a) * outer);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
                 } else if (t === TILE_GHOST_DOOR) {
+                    // Glowing ghost door
+                    ctx.save();
+                    ctx.shadowColor = '#F472B6';
+                    ctx.shadowBlur = 6;
                     ctx.fillStyle = '#F472B6';
                     const doorPx = offsetX + c * tileSize;
                     const doorPy = offsetY + r * tileSize;
-                    ctx.fillRect(doorPx + 1, doorPy + tileSize / 2 - 1, tileSize - 2, 2);
+                    ctx.fillRect(doorPx + 1, doorPy + tileSize / 2 - 1.5, tileSize - 2, 3);
+                    ctx.restore();
                 }
             }
         }
     }
 
+    // ══════════════════════════════════════════════
+    // FRUIT DRAWING
+    // ══════════════════════════════════════════════
+    function drawFruit() {
+        if (!activeFruit) return;
+        const { px, py } = toPixel(activeFruit.x, activeFruit.y);
+        const r = tileSize * 0.38;
+        const pulse = 1 + Math.sin(activeFruit.pulse) * 0.08;
+        const fadeAlpha = activeFruit.timer < 2000 ? activeFruit.timer / 2000 : 1;
+
+        ctx.save();
+        ctx.globalAlpha = fadeAlpha;
+
+        // Glow
+        ctx.shadowColor = activeFruit.color;
+        ctx.shadowBlur = tileSize * 0.5;
+
+        // Body
+        const fruitGrad = ctx.createRadialGradient(px - r * 0.2, py - r * 0.2, 0, px, py, r * pulse);
+        fruitGrad.addColorStop(0, lightenColor(activeFruit.color, 60));
+        fruitGrad.addColorStop(0.6, activeFruit.color);
+        fruitGrad.addColorStop(1, lightenColor(activeFruit.color, -40));
+        ctx.fillStyle = fruitGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, r * pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Leaf / stem
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = activeFruit.accent;
+        ctx.beginPath();
+        ctx.ellipse(px, py - r * pulse * 0.85, r * 0.25, r * 0.15, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Specular highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath();
+        ctx.ellipse(px - r * 0.2, py - r * 0.3, r * 0.25, r * 0.15, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Score text beneath
+        ctx.font = `bold ${Math.max(8, tileSize * 0.35)}px "Segoe UI", system-ui`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = activeFruit.color;
+        ctx.fillText(`${activeFruit.score}`, px, py + r * pulse + tileSize * 0.4);
+
+        ctx.restore();
+    }
+
+    // ══════════════════════════════════════════════
+    // PAC-MAE DRAWING
+    // ══════════════════════════════════════════════
+    function drawPacTrail() {
+        if (pacTrail.length === 0) return;
+        // Decay trail
+        for (let i = pacTrail.length - 1; i >= 0; i--) {
+            pacTrail[i].life -= 0.04;
+            if (pacTrail[i].life <= 0) { pacTrail.splice(i, 1); continue; }
+            const t = pacTrail[i];
+            const { px, py } = toPixel(t.x, t.y);
+            const r = tileSize * 0.3 * t.life;
+            ctx.save();
+            ctx.globalAlpha = t.life * 0.3;
+            ctx.fillStyle = '#FACC15';
+            ctx.shadowColor = '#FACC15';
+            ctx.shadowBlur = tileSize * 0.3;
+            ctx.beginPath();
+            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
     function drawPacMae() {
         if (!pacAlive) {
+            // Enhanced death animation: shrink + spin + particles
             const progress = 1 - (deathTimer / DEATH_DURATION);
             const { px, py } = toPixel(pacX, pacY);
-            const radius = tileSize * 0.4 * (1 - progress);
+            const radius = tileSize * 0.42 * (1 - progress);
             if (radius <= 0) return;
 
             ctx.save();
             ctx.translate(px, py);
-            ctx.rotate(progress * Math.PI * 4);
+
+            // Particle burst during death
+            if (progress > 0.2) {
+                const particleCount = 8;
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = (i / particleCount) * Math.PI * 2 + progress * 3;
+                    const dist = tileSize * progress * 1.5;
+                    const pSize = tileSize * 0.06 * (1 - progress);
+                    if (pSize > 0) {
+                        ctx.globalAlpha = (1 - progress) * 0.8;
+                        ctx.fillStyle = i % 2 === 0 ? '#FACC15' : '#F97316';
+                        ctx.beginPath();
+                        ctx.arc(Math.cos(angle) * dist, Math.sin(angle) * dist, pSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // Spinning shrinking pac
+            ctx.globalAlpha = 1;
+            ctx.rotate(progress * Math.PI * 6);
             const mA = Math.PI * progress;
+
+            // Glow during death
+            ctx.shadowColor = '#FACC15';
+            ctx.shadowBlur = tileSize * 0.4 * (1 - progress);
             ctx.fillStyle = '#FACC15';
             ctx.beginPath();
             ctx.moveTo(0, 0);
@@ -665,14 +955,34 @@ window.PacMae = (() => {
         ctx.translate(px, py);
         ctx.rotate(rotation);
 
-        // Body (no shadowBlur for performance)
+        // Glow behind pac
+        ctx.shadowColor = '#FACC15';
+        ctx.shadowBlur = tileSize * 0.4;
+
+        // Body with gradient
         const mA = pacMouthAngle * Math.PI;
-        ctx.fillStyle = '#FACC15';
+        const bodyGrad = ctx.createRadialGradient(-radius * 0.15, -radius * 0.1, 0, 0, 0, radius);
+        bodyGrad.addColorStop(0, '#FEF08A'); // bright center
+        bodyGrad.addColorStop(0.5, '#FACC15');
+        bodyGrad.addColorStop(1, '#EAB308');
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.arc(0, 0, radius, mA, -mA + Math.PI * 2);
         ctx.closePath();
         ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+        // Mouth interior gradient
+        if (mA > 0.1) {
+            ctx.fillStyle = 'rgba(120, 40, 0, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, radius * 0.8, mA * 0.5, -mA * 0.5 + Math.PI * 2);
+            ctx.closePath();
+            ctx.fill();
+        }
 
         // Player color bow accent
         if (player?.color) {
@@ -690,25 +1000,35 @@ window.PacMae = (() => {
             ctx.fill();
         }
 
-        // Eye
+        // Eye with more detail
         const eyeX = radius * 0.15, eyeY = -radius * 0.3;
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(eyeX, eyeY, radius * 0.12, 0, Math.PI * 2);
-        ctx.fill();
+        // Eye white
         ctx.fillStyle = '#FFF';
         ctx.beginPath();
-        ctx.arc(eyeX + radius * 0.04, eyeY - radius * 0.04, radius * 0.05, 0, Math.PI * 2);
+        ctx.ellipse(eyeX, eyeY, radius * 0.14, radius * 0.16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Pupil
+        ctx.fillStyle = '#1a1a2e';
+        ctx.beginPath();
+        ctx.arc(eyeX + radius * 0.02, eyeY + radius * 0.02, radius * 0.09, 0, Math.PI * 2);
+        ctx.fill();
+        // Eye highlight
+        ctx.fillStyle = '#FFF';
+        ctx.beginPath();
+        ctx.arc(eyeX + radius * 0.06, eyeY - radius * 0.05, radius * 0.04, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
     }
 
+    // ══════════════════════════════════════════════
+    // GHOST DRAWING
+    // ══════════════════════════════════════════════
     function drawGhost(ghost) {
         if (ghost.state === 'home' && ghost.homeTimer > 0) {
             const { px, py } = toPixel(ghost.x, ghost.y);
             ctx.globalAlpha = 0.5;
-            drawGhostShape(px, py, ghost.color, ghost.wobble, false);
+            drawGhostShape(px, py, ghost.color, ghost.wobble, false, ghost.name);
             ctx.globalAlpha = 1;
             return;
         }
@@ -716,6 +1036,12 @@ window.PacMae = (() => {
         const { px, py } = toPixel(ghost.x, ghost.y);
 
         if (ghost.state === 'eaten') {
+            // Ghostly transparent body rushing home
+            ctx.save();
+            ctx.globalAlpha = 0.15;
+            drawGhostShape(px, py, ghost.color, ghost.wobble, false, ghost.name);
+            ctx.globalAlpha = 1;
+            ctx.restore();
             drawGhostEyes(px, py, ghost.dir);
             return;
         }
@@ -733,37 +1059,140 @@ window.PacMae = (() => {
             }
         }
 
-        drawGhostShape(px, py, color, ghost.wobble, isFrightened);
-        if (!isFrightened) drawGhostEyes(px, py, ghost.dir);
-        else drawFrightenedFace(px, py, isBlinking);
+        drawGhostShape(px, py, color, ghost.wobble, isFrightened, ghost.name);
+        if (!isFrightened) {
+            drawGhostFace(px, py, ghost.dir, ghost.name);
+        } else {
+            drawFrightenedFace(px, py, isBlinking);
+        }
     }
 
-    function drawGhostShape(px, py, color, wobble, frightened) {
+    function drawGhostShape(px, py, color, wobble, frightened, name) {
         const r = tileSize * 0.42;
         const bodyBot = py + r * 0.7;
 
         ctx.save();
-        ctx.fillStyle = color;
+
+        // Ghost body glow
+        ctx.shadowColor = color;
+        ctx.shadowBlur = frightened ? tileSize * 0.3 : tileSize * 0.2;
+
+        // Gradient body
+        const bodyGrad = ctx.createLinearGradient(px - r, py - r, px + r, bodyBot);
+        bodyGrad.addColorStop(0, lightenColor(color, 50));
+        bodyGrad.addColorStop(0.4, color);
+        bodyGrad.addColorStop(1, lightenColor(color, -30));
+        ctx.fillStyle = bodyGrad;
 
         ctx.beginPath();
         ctx.arc(px, py - r * 0.15, r, Math.PI, 0);
         ctx.lineTo(px + r, bodyBot);
 
-        const waves = 3, waveW = (r * 2) / waves;
-        const waveH = tileSize * 0.12;
+        // More pronounced wavy bottom with 4 waves
+        const waves = 4, waveW = (r * 2) / waves;
+        const waveH = tileSize * 0.15;
         for (let i = 0; i < waves; i++) {
             const wx = px + r - waveW * i;
-            const wob = Math.sin(wobble + i * 1.5) * waveH * 0.3;
+            const wob = Math.sin(wobble + i * 1.8) * waveH * 0.5;
             ctx.quadraticCurveTo(wx - waveW * 0.5, bodyBot + waveH + wob, wx - waveW, bodyBot);
         }
         ctx.closePath();
         ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+        // Specular highlight on dome
+        const highlightGrad = ctx.createRadialGradient(px - r * 0.3, py - r * 0.5, 0, px, py - r * 0.15, r);
+        highlightGrad.addColorStop(0, 'rgba(255,255,255,0.25)');
+        highlightGrad.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+        highlightGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = highlightGrad;
+        ctx.beginPath();
+        ctx.arc(px, py - r * 0.15, r * 0.95, Math.PI, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    function drawGhostFace(px, py, dir, name) {
+        // Eyes (shared)
+        drawGhostEyes(px, py, dir);
+
+        // Distinct expression per ghost
+        const mouthY = py + tileSize * 0.1;
+        const mouthW = tileSize * 0.2;
+
+        ctx.save();
+        ctx.lineWidth = Math.max(1, tileSize * 0.04);
+        ctx.lineCap = 'round';
+
+        switch (name) {
+            case 'blinky':
+                // Angry - furrowed brows + frown
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                ctx.lineWidth = Math.max(1, tileSize * 0.05);
+                // Left brow (angled down inward)
+                ctx.beginPath();
+                ctx.moveTo(px - tileSize * 0.22, py - tileSize * 0.3);
+                ctx.lineTo(px - tileSize * 0.08, py - tileSize * 0.24);
+                ctx.stroke();
+                // Right brow
+                ctx.beginPath();
+                ctx.moveTo(px + tileSize * 0.22, py - tileSize * 0.3);
+                ctx.lineTo(px + tileSize * 0.08, py - tileSize * 0.24);
+                ctx.stroke();
+                // Frown
+                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                ctx.lineWidth = Math.max(1, tileSize * 0.04);
+                ctx.beginPath();
+                ctx.arc(px, mouthY + tileSize * 0.08, mouthW * 0.7, Math.PI * 1.2, Math.PI * 1.8);
+                ctx.stroke();
+                break;
+
+            case 'pinky':
+                // Cute - small smile + rosy cheeks
+                ctx.fillStyle = 'rgba(255,150,180,0.35)';
+                ctx.beginPath();
+                ctx.arc(px - tileSize * 0.2, py + tileSize * 0.02, tileSize * 0.06, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(px + tileSize * 0.2, py + tileSize * 0.02, tileSize * 0.06, 0, Math.PI * 2);
+                ctx.fill();
+                // Smile
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.arc(px, mouthY - tileSize * 0.02, mouthW * 0.5, 0.1, Math.PI - 0.1);
+                ctx.stroke();
+                break;
+
+            case 'inky':
+                // Surprised - small O mouth
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(px, mouthY + tileSize * 0.02, tileSize * 0.05, tileSize * 0.06, 0, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+
+            case 'clyde':
+                // Goofy - tongue out
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.arc(px, mouthY - tileSize * 0.02, mouthW * 0.5, 0.1, Math.PI - 0.1);
+                ctx.stroke();
+                // Tongue
+                ctx.fillStyle = 'rgba(255,100,100,0.5)';
+                ctx.beginPath();
+                ctx.ellipse(px + tileSize * 0.02, mouthY + tileSize * 0.06, tileSize * 0.05, tileSize * 0.04, 0, 0, Math.PI);
+                ctx.fill();
+                break;
+        }
         ctx.restore();
     }
 
     function drawGhostEyes(px, py, dir) {
         const eyeOffX = tileSize * 0.14;
-        const eyeR = tileSize * 0.1;
+        const eyeR = tileSize * 0.11;
         const pupilR = tileSize * 0.055;
         const pupilOff = tileSize * 0.04;
 
@@ -775,65 +1204,124 @@ window.PacMae = (() => {
 
         for (let side = -1; side <= 1; side += 2) {
             const ex = px + side * eyeOffX;
-            const ey = py - tileSize * 0.15;
-            ctx.fillStyle = '#FFF';
+            const ey = py - tileSize * 0.12;
+            // Eye white with slight gradient
+            const eyeGrad = ctx.createRadialGradient(ex - eyeR * 0.2, ey - eyeR * 0.2, 0, ex, ey, eyeR * 1.2);
+            eyeGrad.addColorStop(0, '#FFFFFF');
+            eyeGrad.addColorStop(1, '#E8E8F0');
+            ctx.fillStyle = eyeGrad;
             ctx.beginPath();
-            ctx.ellipse(ex, ey, eyeR, eyeR * 1.2, 0, 0, Math.PI * 2);
+            ctx.ellipse(ex, ey, eyeR, eyeR * 1.25, 0, 0, Math.PI * 2);
             ctx.fill();
+            // Iris
             ctx.fillStyle = '#1E40AF';
             ctx.beginPath();
-            ctx.arc(ex + pdx, ey + pdy, pupilR, 0, Math.PI * 2);
+            ctx.arc(ex + pdx, ey + pdy, pupilR * 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Pupil
+            ctx.fillStyle = '#0a0a1a';
+            ctx.beginPath();
+            ctx.arc(ex + pdx, ey + pdy, pupilR * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+            // Eye highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.beginPath();
+            ctx.arc(ex + pdx * 0.3 + pupilR * 0.3, ey + pdy * 0.3 - pupilR * 0.3, pupilR * 0.35, 0, Math.PI * 2);
             ctx.fill();
         }
     }
 
     function drawFrightenedFace(px, py, blinking) {
         const color = blinking ? '#F43F5E' : '#FFF';
+
+        // Scared eyes - wider, with swirls when blinking
         ctx.fillStyle = color;
         for (let side = -1; side <= 1; side += 2) {
-            ctx.beginPath();
-            ctx.arc(px + side * tileSize * 0.12, py - tileSize * 0.15, tileSize * 0.05, 0, Math.PI * 2);
-            ctx.fill();
+            const ex = px + side * tileSize * 0.12;
+            const ey = py - tileSize * 0.12;
+            if (blinking) {
+                // X eyes when about to wear off
+                ctx.strokeStyle = color;
+                ctx.lineWidth = Math.max(1, tileSize * 0.04);
+                const s = tileSize * 0.05;
+                ctx.beginPath();
+                ctx.moveTo(ex - s, ey - s); ctx.lineTo(ex + s, ey + s);
+                ctx.moveTo(ex + s, ey - s); ctx.lineTo(ex - s, ey + s);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.arc(ex, ey, tileSize * 0.055, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
+
+        // Wavy worried mouth
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = Math.max(1.5, tileSize * 0.04);
         ctx.beginPath();
-        const mY = py + tileSize * 0.05;
-        const mW = tileSize * 0.3;
+        const mY = py + tileSize * 0.08;
+        const mW = tileSize * 0.28;
+        const teeth = 5;
         ctx.moveTo(px - mW, mY);
-        for (let i = 0; i <= 6; i++) {
-            ctx.lineTo(px - mW + (mW * 2 / 6) * i, mY + (i % 2 === 0 ? -2 : 2));
+        for (let i = 0; i <= teeth; i++) {
+            const wobble = Math.sin(frameCount * 0.15 + i) * 1.5;
+            ctx.lineTo(px - mW + (mW * 2 / teeth) * i, mY + (i % 2 === 0 ? -2.5 : 2.5) + wobble);
         }
         ctx.stroke();
     }
 
+    // ══════════════════════════════════════════════
+    // SCORE POPUPS
+    // ══════════════════════════════════════════════
     function drawScorePopups(dt) {
         scorePopups = scorePopups.filter(p => {
-            p.life -= dt * 0.8;
+            p.life -= dt * 0.6;
             if (p.life <= 0) return false;
             const { px, py } = toPixel(p.x, p.y);
-            const floatY = py - (1 - p.life) * tileSize * 2;
+            const floatY = py - (1 - p.life) * tileSize * 2.5;
+            const scale = p.life > 0.7 ? 1 + (1 - (p.life - 0.7) / 0.3) * 0.3 : 1;
+
             ctx.save();
-            ctx.globalAlpha = p.life;
-            ctx.font = `bold ${Math.max(10, tileSize * 0.7)}px "Segoe UI", system-ui`;
+            ctx.globalAlpha = Math.min(p.life * 1.5, 1);
+            ctx.translate(px, floatY);
+            ctx.scale(scale, scale);
+
+            const fontSize = Math.max(11, tileSize * 0.75);
+            ctx.font = `bold ${fontSize}px "Orbitron", "Press Start 2P", monospace`;
             ctx.textAlign = 'center';
+
+            // Glow
+            ctx.shadowColor = p.color || '#FFF';
+            ctx.shadowBlur = 8;
+
+            // Outline
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 3;
             ctx.lineJoin = 'round';
-            ctx.strokeText(p.text, px, floatY);
-            ctx.fillStyle = p.color || '#FFF';
-            ctx.fillText(p.text, px, floatY);
+            ctx.strokeText(p.text, 0, 0);
+
+            // Fill with gradient
+            const textGrad = ctx.createLinearGradient(0, -fontSize * 0.5, 0, fontSize * 0.3);
+            textGrad.addColorStop(0, '#FFF');
+            textGrad.addColorStop(1, p.color || '#FFF');
+            ctx.fillStyle = textGrad;
+            ctx.fillText(p.text, 0, 0);
+
             ctx.restore();
             return true;
         });
     }
 
+    // ══════════════════════════════════════════════
+    // HUD
+    // ══════════════════════════════════════════════
     function drawHUD(w, h) {
         const hudH = offsetY - 4;
 
+        // HUD background with gradient
         const hudGrad = ctx.createLinearGradient(0, 0, 0, hudH);
-        hudGrad.addColorStop(0, 'rgba(10, 5, 21, 0.95)');
-        hudGrad.addColorStop(1, 'rgba(10, 5, 21, 0.6)');
+        hudGrad.addColorStop(0, 'rgba(10, 5, 21, 0.97)');
+        hudGrad.addColorStop(1, 'rgba(10, 5, 21, 0.7)');
         ctx.fillStyle = hudGrad;
         ctx.fillRect(0, 0, w, hudH);
 
@@ -846,14 +1334,24 @@ window.PacMae = (() => {
         titleGrad.addColorStop(0, `hsl(${hue}, 90%, 65%)`);
         titleGrad.addColorStop(0.5, `hsl(${(hue + 60) % 360}, 90%, 75%)`);
         titleGrad.addColorStop(1, `hsl(${(hue + 120) % 360}, 90%, 65%)`);
+
+        ctx.save();
+        ctx.shadowColor = `hsl(${hue}, 80%, 60%)`;
+        ctx.shadowBlur = 8;
         ctx.fillStyle = titleGrad;
         ctx.fillText('PAC CHASE', w / 2, hudH * 0.42);
+        ctx.restore();
 
-        // Score
-        ctx.font = `bold ${Math.max(11, tileSize * 0.6)}px "Segoe UI", system-ui`;
-        ctx.fillStyle = '#FFF';
+        // Score with glow
+        const scoreSize = Math.max(12, tileSize * 0.65);
+        ctx.font = `bold ${scoreSize}px "Orbitron", "Press Start 2P", monospace`;
+        ctx.save();
+        ctx.shadowColor = '#FACC15';
+        ctx.shadowBlur = 4;
+        ctx.fillStyle = '#FACC15';
         ctx.textAlign = 'center';
-        ctx.fillText(`Score: ${score.toLocaleString()}`, w / 2, hudH * 0.78);
+        ctx.fillText(score.toLocaleString(), w / 2, hudH * 0.78);
+        ctx.restore();
 
         // Player info (left)
         ctx.textAlign = 'left';
@@ -861,31 +1359,71 @@ window.PacMae = (() => {
         ctx.fillStyle = player?.color || '#A855F7';
         ctx.fillText(`${player?.emoji || ''} ${player?.name || 'Player'}`, 8, hudH * 0.55);
 
-        // Level (right)
+        // Level (right) with glow
         ctx.textAlign = 'right';
+        ctx.save();
+        ctx.shadowColor = '#67E8F9';
+        ctx.shadowBlur = 4;
         ctx.fillStyle = '#67E8F9';
+        ctx.font = `bold ${Math.max(11, tileSize * 0.55)}px "Segoe UI", system-ui`;
         ctx.fillText(`Level ${level}`, w - 8, hudH * 0.42);
+        ctx.restore();
 
-        // Lives (right, pac-man icons)
-        ctx.fillStyle = '#FACC15';
-        const lifeSize = Math.max(6, tileSize * 0.3);
+        // Lives as mini Pac-Man icons with glow
+        ctx.save();
+        ctx.shadowColor = '#FACC15';
+        ctx.shadowBlur = 3;
+        const lifeSize = Math.max(7, tileSize * 0.32);
         for (let i = 0; i < lives; i++) {
             const lx = w - 12 - (lives - 1 - i) * (lifeSize * 2.5);
             const ly = hudH * 0.72;
+
+            // Mini pac body with gradient
+            const miniGrad = ctx.createRadialGradient(lx - lifeSize * 0.2, ly - lifeSize * 0.2, 0, lx, ly, lifeSize);
+            miniGrad.addColorStop(0, '#FEF08A');
+            miniGrad.addColorStop(1, '#EAB308');
+            ctx.fillStyle = miniGrad;
             ctx.beginPath();
             ctx.arc(lx, ly, lifeSize, 0.25 * Math.PI, 1.75 * Math.PI);
             ctx.lineTo(lx, ly);
             ctx.closePath();
             ctx.fill();
-        }
 
-        // HUD bottom border
+            // Mini eye
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(lx + lifeSize * 0.15, ly - lifeSize * 0.35, lifeSize * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // HUD bottom border with glow
+        ctx.save();
         const borderGrad = ctx.createLinearGradient(0, 0, w, 0);
         borderGrad.addColorStop(0, 'rgba(139, 92, 246, 0)');
-        borderGrad.addColorStop(0.5, 'rgba(139, 92, 246, 0.6)');
+        borderGrad.addColorStop(0.3, `rgba(139, 92, 246, 0.4)`);
+        borderGrad.addColorStop(0.5, `rgba(139, 92, 246, 0.8)`);
+        borderGrad.addColorStop(0.7, `rgba(139, 92, 246, 0.4)`);
         borderGrad.addColorStop(1, 'rgba(139, 92, 246, 0)');
         ctx.fillStyle = borderGrad;
-        ctx.fillRect(0, hudH - 1, w, 1);
+        ctx.shadowColor = WALL_COLOR;
+        ctx.shadowBlur = 6;
+        ctx.fillRect(0, hudH - 1, w, 2);
+        ctx.restore();
+
+        // Power mode indicator
+        if (powerActive) {
+            const blinkAlpha = 0.5 + Math.sin(frameCount * 0.3) * 0.5;
+            ctx.save();
+            ctx.globalAlpha = blinkAlpha;
+            ctx.font = `bold ${Math.max(9, tileSize * 0.4)}px "Segoe UI", system-ui`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#3B82F6';
+            ctx.shadowColor = '#3B82F6';
+            ctx.shadowBlur = 6;
+            ctx.fillText('POWER!', w / 2, hudH * 0.95);
+            ctx.restore();
+        }
     }
 
     function drawReadyScreen() {
@@ -893,11 +1431,17 @@ window.PacMae = (() => {
         const alpha = Math.min(readyTimer / 500, 1);
         ctx.save();
         ctx.globalAlpha = alpha;
+
+        // "READY!" with glow
+        ctx.shadowColor = '#FACC15';
+        ctx.shadowBlur = 15;
         ctx.font = `bold ${Math.max(18, tileSize * 1.2)}px "Orbitron", "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
         ctx.fillStyle = '#FACC15';
         const { py } = toPixel(10, 13);
         ctx.fillText('READY!', canvas.width / 2, py);
+
+        ctx.shadowBlur = 0;
         ctx.font = `${Math.max(9, tileSize * 0.45)}px "Segoe UI", system-ui`;
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
         ctx.fillText('Use Arrow Keys or Swipe to Move', canvas.width / 2, py + Math.max(16, tileSize * 0.9));
@@ -906,19 +1450,35 @@ window.PacMae = (() => {
 
     function drawGameOver(w, h) {
         ctx.save();
-        ctx.fillStyle = 'rgba(10, 5, 21, 0.7)';
+        // Darker overlay
+        ctx.fillStyle = 'rgba(10, 5, 21, 0.8)';
         ctx.fillRect(0, 0, w, h);
 
+        // GAME OVER with glow
+        ctx.shadowColor = '#F43F5E';
+        ctx.shadowBlur = 20;
         ctx.font = `bold ${Math.max(22, tileSize * 1.5)}px "Orbitron", "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#F43F5E';
+        const goGrad = ctx.createLinearGradient(w / 2 - 80, h / 2 - 30, w / 2 + 80, h / 2);
+        goGrad.addColorStop(0, '#F43F5E');
+        goGrad.addColorStop(0.5, '#FF6B8A');
+        goGrad.addColorStop(1, '#F43F5E');
+        ctx.fillStyle = goGrad;
         ctx.fillText('GAME OVER', w / 2, h / 2 - 20);
-        ctx.font = `bold ${Math.max(14, tileSize * 0.8)}px "Segoe UI", system-ui`;
-        ctx.fillStyle = '#FFF';
-        ctx.fillText(`Final Score: ${score.toLocaleString()}`, w / 2, h / 2 + 20);
+
+        ctx.shadowBlur = 0;
+
+        // Score
+        ctx.font = `bold ${Math.max(14, tileSize * 0.8)}px "Orbitron", "Press Start 2P", monospace`;
+        ctx.fillStyle = '#FACC15';
+        ctx.shadowColor = '#FACC15';
+        ctx.shadowBlur = 6;
+        ctx.fillText(`${score.toLocaleString()}`, w / 2, h / 2 + 20);
+
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#94A3B8';
         ctx.font = `${Math.max(11, tileSize * 0.6)}px "Segoe UI", system-ui`;
-        ctx.fillText(`Level ${level} • ${dotsEaten} candies eaten`, w / 2, h / 2 + 45);
+        ctx.fillText(`Level ${level} \u2022 ${dotsEaten} candies eaten`, w / 2, h / 2 + 45);
         ctx.restore();
     }
 
@@ -927,6 +1487,9 @@ window.PacMae = (() => {
     // ══════════════════════════════════════════════
     function update(dt) {
         frameCount++;
+
+        // Update screen flash
+        if (screenFlashTimer > 0) screenFlashTimer -= dt * 1000;
 
         if (readyTimer > 0) {
             readyTimer -= dt * 1000;
@@ -943,6 +1506,8 @@ window.PacMae = (() => {
                 initPacMae();
                 initGhosts();
                 readyTimer = READY_DURATION;
+                activeFruit = null;
+                fruitSpawnDots = 0;
                 if (typeof Confetti !== 'undefined') Confetti.rain(2000);
             }
             return;
@@ -984,6 +1549,7 @@ window.PacMae = (() => {
 
         updatePacMae(dt);
         ghosts.forEach(g => updateGhost(g, dt));
+        updateFruit(dt);
         checkCollisions();
 
         if (dotsEaten >= totalDots) {
@@ -1013,9 +1579,13 @@ window.PacMae = (() => {
         }
 
         drawMaze();
+        drawFruit();
+        drawPacTrail();
         drawPacMae();
         ghosts.forEach(g => drawGhost(g));
         drawScorePopups(dt);
+        drawVignette(w, h);
+        drawScreenFlash(w, h);
         drawHUD(w, h);
         drawReadyScreen();
 
@@ -1094,8 +1664,8 @@ window.PacMae = (() => {
         onGameOver = gameOverCallback;
 
         const container = canvas.parentElement;
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
+        canvas.width = container ? (container.clientWidth || 480) : 480;
+        canvas.height = container ? (container.clientHeight || 640) : 640;
 
         // Ensure canvas has minimum usable dimensions
         if (canvas.width < 100) canvas.width = 480;
@@ -1118,6 +1688,10 @@ window.PacMae = (() => {
         levelClearing = false; pelletPulse = 0;
         scorePopups = [];
         pacMouthAngle = 0.2; pacMouthDir = 1;
+        pacTrail = [];
+        screenFlashTimer = 0;
+        activeFruit = null;
+        fruitSpawnDots = 0;
         keys = {};
 
         // Load theme colors before maze prerender (WALL_COLOR bakes into offscreen canvas)

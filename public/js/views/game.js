@@ -322,13 +322,15 @@ window.GameView = {
                    .replace(/(<\/(?:h[1-4]|ul|ol|p)>)<br>/g, '$1');
     },
 
-    /** Render the full intel panel (tabs: Bio + Guide) */
+    /** Render the full intel panel (tabs: Bio + Guide + Trivia + Moves) */
     renderIntelPanel(romId, gameTitle, intel) {
         const wrap = document.getElementById('game-intel-wrap');
         if (!wrap) return;
 
-        const hasBio   = !!intel.bio;
-        const hasGuide = !!intel.guide;
+        const hasBio      = !!intel.bio;
+        const hasGuide    = !!intel.guide;
+        const hasTrivia   = !!intel.trivia;
+        const hasMovelist = !!intel.movelist;
 
         const genBtn = (type, label) => `
             <div class="intel-empty-state">
@@ -359,36 +361,37 @@ window.GameView = {
                 </div>`;
         };
 
+        const tabs = [
+            { key: 'bio',      icon: '📖', label: 'Game Bio',        has: hasBio },
+            { key: 'guide',    icon: '🕹️', label: 'Gameplay Guide',  has: hasGuide },
+            { key: 'trivia',   icon: '🎯', label: 'Trivia',          has: hasTrivia },
+            { key: 'movelist', icon: '⚔️', label: 'Moves & Combat',  has: hasMovelist },
+        ];
+
         wrap.innerHTML = `
             <div class="game-intel-panel">
                 <div class="intel-tabs">
-                    <button class="intel-tab ${hasBio ? 'has-content' : ''} active" id="itab-bio"
-                            onclick="GameView.switchIntelTab('bio')">
-                        <span class="intel-tab-icon">📖</span>
-                        <span class="intel-tab-label">Game Bio</span>
-                        ${hasBio ? '<span class="intel-tab-dot"></span>' : ''}
-                    </button>
-                    <button class="intel-tab ${hasGuide ? 'has-content' : ''}" id="itab-guide"
-                            onclick="GameView.switchIntelTab('guide')">
-                        <span class="intel-tab-icon">🕹️</span>
-                        <span class="intel-tab-label">Gameplay Guide</span>
-                        ${hasGuide ? '<span class="intel-tab-dot"></span>' : ''}
-                    </button>
+                    ${tabs.map((t, i) => `
+                        <button class="intel-tab ${t.has ? 'has-content' : ''} ${i === 0 ? 'active' : ''}" id="itab-${t.key}"
+                                onclick="GameView.switchIntelTab('${t.key}')">
+                            <span class="intel-tab-icon">${t.icon}</span>
+                            <span class="intel-tab-label">${t.label}</span>
+                            ${t.has ? '<span class="intel-tab-dot"></span>' : ''}
+                        </button>`).join('')}
                 </div>
-                <div class="intel-tab-body" id="intel-body-bio">
-                    ${tabContent('bio', 'Game Bio', intel.bio)}
-                </div>
-                <div class="intel-tab-body" id="intel-body-guide" style="display:none">
-                    ${tabContent('guide', 'Gameplay Guide', intel.guide)}
-                </div>
+                ${tabs.map((t, i) => `
+                    <div class="intel-tab-body" id="intel-body-${t.key}" ${i > 0 ? 'style="display:none"' : ''}>
+                        ${tabContent(t.key, t.label, intel[t.key])}
+                    </div>`).join('')}
             </div>`;
     },
 
     switchIntelTab(tab) {
-        document.getElementById('intel-body-bio')  ?.style.setProperty('display', tab === 'bio'   ? '' : 'none');
-        document.getElementById('intel-body-guide')?.style.setProperty('display', tab === 'guide' ? '' : 'none');
-        document.getElementById('itab-bio')  ?.classList.toggle('active', tab === 'bio');
-        document.getElementById('itab-guide')?.classList.toggle('active', tab === 'guide');
+        const allTabs = ['bio', 'guide', 'trivia', 'movelist'];
+        for (const t of allTabs) {
+            document.getElementById(`intel-body-${t}`)?.style.setProperty('display', tab === t ? '' : 'none');
+            document.getElementById(`itab-${t}`)?.classList.toggle('active', tab === t);
+        }
     },
 
     async loadIntel(romId, gameTitle) {
@@ -438,14 +441,15 @@ window.GameView = {
         if (bodyEl) bodyEl.innerHTML = `
             <div class="intel-generating">
                 <div class="intel-gen-spinner"></div>
-                <div class="intel-gen-msg">✨ Downloading ${type === 'bio' ? 'Game Bio' : 'Gameplay Guide'}…<br>
+                <div class="intel-gen-msg">✨ Downloading ${{bio:'Game Bio',guide:'Gameplay Guide',trivia:'Trivia',movelist:'Moves & Combat'}[type]}…<br>
                     <small>This may take ~15–30 seconds</small></div>
             </div>`;
 
         try {
             await API.generateGameIntel(romId, type);
             SFX?.coin?.();
-            H.toast(`${type === 'bio' ? '📖 Bio' : '🕹️ Guide'} downloaded!`, 'success');
+            const typeLabel = {bio:'📖 Bio',guide:'🕹️ Guide',trivia:'🎯 Trivia',movelist:'⚔️ Moves'}[type] || type;
+            H.toast(`${typeLabel} downloaded!`, 'success');
             // Reload intel panel with new content
             const intel = await API.gameIntel(romId);
             this.renderIntelPanel(romId, this._lastGameTitle || '', intel);

@@ -5,7 +5,28 @@ const ORIGINAL_GAME_MAP = {
     mollypop: 'MollyPop', tictacmae: 'TicTacMae', maetris: 'Maetris',
     maeteoroids: 'Maeteoroids', maekout: 'Maekout', flappymae: 'FlappyMae',
     pacmae: 'PacMae', mollypong: 'MollyPong', molliped: 'Molliped',
-    mollycontrol: 'MollyControl',
+    mollycontrol: 'MollyControl', spaceinvaders: 'SpaceInvaders',
+    contra: 'Contra', frogger: 'Frogger', snake: 'Snake',
+    galaga: 'Galaga', donkeykong: 'DonkeyKong', defender: 'Defender',
+    digdug: 'DigDug', qix: 'Qix', joust: 'Joust',
+    bomberman: 'Bomberman', bubbleblaster: 'BubbleBlaster',
+    gravitydash: 'GravityDash', mspacman: 'MsPacMan',
+minniepac: 'MinniePac', mickeypop: 'MickeyPop',
+    princessrun: 'PrincessRun', sparklematch: 'SparkleMatch',
+    jumpdash: 'JumpDash', goofypogo: 'GoofyPogo',
+    slingshot: 'Slingshot', skyjump: 'SkyJump',
+    cannonblast: 'CannonBlast', toycrush: 'ToyCrush',
+    blockshooter: 'BlockShooter', centipedestrike: 'CentipedeStrike',
+    coasterride: 'CoasterRide',
+    railblaster: 'RailBlaster', pickleball: 'Pickleball',
+    triviatac: 'TriviaTac', savekenny: 'SaveKenny',
+    pool: 'Pool', bowling: 'Bowling', minigolf: 'MiniGolf',
+    ministroke: 'MiniStroke', rubegoldberg: 'RubeGoldberg',
+    wordlegame: 'WordleGame', whackamole: 'WhackAMole',
+    connect4: 'Connect4', fishing: 'Fishing',
+    pixelracer: 'PixelRacer', towerdefense: 'TowerDefense',
+    rhythmtap: 'RhythmTap', memorymatch: 'MemoryMatch',
+    pixelfighter: 'PixelFighter', aquarium: 'Aquarium',
 };
 
 window.arcade = {
@@ -602,15 +623,8 @@ window.arcade = {
             const game = games.find(g => g.id === gameId);
             if (!game) throw new Error('Game not found');
 
-            // Use themed game name if player has a theme
-            const activeP = window.ArcadeEngine?.getActivePlayer();
-            const pTheme = activeP?.theme || 'retro';
-            const pName = activeP?.name || '';
-            if (pName && typeof ArcadeThemes !== 'undefined') {
-                titleEl.textContent = ArcadeThemes.gameName(pName, pTheme, gameId);
-            } else {
-                titleEl.textContent = game.name;
-            }
+            // Always show real game name in the player overlay title
+            titleEl.textContent = game.name;
 
             // Dismiss attract mode if active
             const attractEl = document.getElementById('attractOverlay');
@@ -635,6 +649,8 @@ window.arcade = {
                 mollypong:    [['← → / Mouse', 'Move paddle'], ['Space', 'Launch ball']],
                 molliped:     [['Arrow Keys', 'Move ship'], ['W A S D', 'Move (alt)'], ['Space', 'Fire'], ['Mouse', 'Aim & fire']],
                 mollycontrol: [['Click / Tap', 'Launch missile'], ['1 2 3', 'Select battery'], ['Space', 'Start game']],
+                spaceinvaders: [['← →', 'Move ship'], ['Space', 'Fire'], ['Touch', 'Left/Right/Center']],
+                contra: [['← →', 'Move'], ['↑', 'Jump'], ['↓', 'Prone'], ['Z / X / J', 'Fire'], ['Arrows', 'Aim 8-way']],
             };
             const keys = CONTROLS[gameId] || [];
 

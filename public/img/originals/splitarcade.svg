@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 180" width="500" height="180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="rgb(47,13,13)"/>
+      <stop offset="50%" stop-color="rgb(71,20,20)"/>
+      <stop offset="100%" stop-color="rgb(28,8,8)"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#EF4444" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="textGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="500" height="180" fill="url(#bg)"/>
+  <rect width="500" height="180" fill="url(#glow)"/>
+  <!-- Stars -->
+  <circle cx="35" cy="16" r="0.7" fill="white" opacity="0.68"/>
+  <circle cx="196" cy="132" r="1.0" fill="white" opacity="0.64"/>
+  <circle cx="450" cy="131" r="1.7" fill="white" opacity="0.26"/>
+  <circle cx="111" cy="79" r="0.8" fill="white" opacity="0.69"/>
+  <circle cx="318" cy="18" r="0.6" fill="white" opacity="0.48"/>
+  <circle cx="92" cy="27" r="0.8" fill="white" opacity="0.24"/>
+  <circle cx="49" cy="28" r="1.2" fill="white" opacity="0.21"/>
+  <circle cx="348" cy="78" r="0.8" fill="white" opacity="0.56"/>
+  <circle cx="39" cy="105" r="0.6" fill="white" opacity="0.22"/>
+  <circle cx="428" cy="39" r="0.6" fill="white" opacity="0.26"/>
+  <circle cx="86" cy="51" r="1.0" fill="white" opacity="0.52"/>
+  <circle cx="273" cy="104" r="1.4" fill="white" opacity="0.48"/>
+  <circle cx="290" cy="150" r="1.5" fill="white" opacity="0.57"/>
+  <circle cx="253" cy="35" r="1.5" fill="white" opacity="0.42"/>
+  <circle cx="252" cy="26" r="1.1" fill="white" opacity="0.31"/>
+  <circle cx="218" cy="40" r="1.3" fill="white" opacity="0.32"/>
+  <circle cx="419" cy="145" r="1.4" fill="white" opacity="0.33"/>
+  <circle cx="280" cy="95" r="1.2" fill="white" opacity="0.39"/>
+  <circle cx="66" cy="121" r="0.9" fill="white" opacity="0.42"/>
+  <circle cx="199" cy="93" r="0.6" fill="white" opacity="0.40"/>
+  <circle cx="234" cy="70" r="1.6" fill="white" opacity="0.43"/>
+  <circle cx="181" cy="71" r="1.1" fill="white" opacity="0.47"/>
+  <circle cx="341" cy="97" r="0.8" fill="white" opacity="0.50"/>
+  <circle cx="202" cy="117" r="0.8" fill="white" opacity="0.70"/>
+  <circle cx="164" cy="136" r="0.6" fill="white" opacity="0.51"/>
+  <!-- Icon -->
+  <text x="250" y="58" text-anchor="middle" font-size="48" fill="white" opacity="0.9">⚔️</text>
+  <!-- Title -->
+  <text x="250" y="105" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="26" fill="#EF4444" filter="url(#textGlow)">SPLIT ARCADE</text>
+  <!-- Subtitle -->
+  <text x="250" y="130" text-anchor="middle" font-family="monospace" font-size="10" fill="white" opacity="0.4">YOUR WORLD ARCADE</text>
+  <!-- Accent line -->
+  <rect x="170" y="142" width="160" height="1.5" rx="1" fill="#EF4444" opacity="0.3"/>
+</svg>
