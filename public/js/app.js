@@ -14,7 +14,7 @@ const ORIGINAL_GAME_MAP = {
 minniepac: 'MinniePac', mickeypop: 'MickeyPop',
     princessrun: 'PrincessRun', sparklematch: 'SparkleMatch',
     jumpdash: 'JumpDash', goofypogo: 'GoofyPogo',
-    slingshot: 'Slingshot', skyjump: 'SkyJump',
+    slingshot: 'Slingshot', slingpool: 'SlingPool', skyjump: 'SkyJump',
     cannonblast: 'CannonBlast', toycrush: 'ToyCrush',
     blockshooter: 'BlockShooter', centipedestrike: 'CentipedeStrike',
     coasterride: 'CoasterRide',
@@ -651,6 +651,15 @@ window.arcade = {
                 mollycontrol: [['Click / Tap', 'Launch missile'], ['1 2 3', 'Select battery'], ['Space', 'Start game']],
                 spaceinvaders: [['← →', 'Move ship'], ['Space', 'Fire'], ['Touch', 'Left/Right/Center']],
                 contra: [['← →', 'Move'], ['↑', 'Jump'], ['↓', 'Prone'], ['Z / X / J', 'Fire'], ['Arrows', 'Aim 8-way']],
+                pool: [['Drag from cue ball', 'Aim & set power'], ['Release', 'Shoot']],
+                bowling: [['← → / Tap', 'Position ball'], ['Space / Tap', 'Set aim & power'], ['← → during roll', 'Hook/spin']],
+                minigolf: [['Drag from ball', 'Aim & set power'], ['Release', 'Putt']],
+                ministroke: [['Drag from ball', 'Aim & power'], ['Release', 'Shoot']],
+                slingshot: [['Drag slingshot', 'Aim & pull back'], ['Release', 'Launch'], ['Tap during flight', 'Special ability']],
+                slingpool: [['Drag from ball', 'Aim & power'], ['Release', 'Flick shot']],
+                pickleball: [['↑ ↓ / Mouse', 'Move player'], ['Space / Click', 'Swing paddle'], ['↑ + Swing', 'Smash']],
+                rubegoldberg: [['Click / Tap', 'Place piece'], ['Rotate', 'Rotate piece']],
+                fishing: [['Hold Space / Tap', 'Charge cast'], ['Release', 'Cast line'], ['Space / Tap', 'Hook & reel']],
             };
             const keys = CONTROLS[gameId] || [];
 

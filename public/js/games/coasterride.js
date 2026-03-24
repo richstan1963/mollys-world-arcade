@@ -1781,9 +1781,14 @@ window.CoasterRide = (() => {
 
         if (score > bestScore) {
             bestScore = score;
+            try { localStorage.setItem('ywa_coasterride_best', Math.floor(bestScore)); } catch(e) {}
             ctx.fillStyle = '#FFD700';
             ctx.font = 'bold 12px monospace';
             ctx.fillText('NEW BEST!', GAME_W / 2, 275);
+        } else if (bestScore > 0) {
+            ctx.fillStyle = '#AAAAAA';
+            ctx.font = '12px monospace';
+            ctx.fillText('BEST: ' + Math.floor(bestScore), GAME_W / 2, 275);
         }
 
         if (deathTimer > 40) {
@@ -1889,7 +1894,7 @@ window.CoasterRide = (() => {
         state = ST_TITLE;
         frameCount = 0;
         keys = {};
-        bestScore = 0;
+        bestScore = parseInt(localStorage.getItem('ywa_coasterride_best') || '0', 10);
 
         W = canvas.width || 960;
         H = canvas.height || 600;

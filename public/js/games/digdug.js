@@ -41,6 +41,8 @@ window.DigDug = (() => {
 
     // States
     const ST_TITLE = 0, ST_PLAYING = 1, ST_DYING = 2, ST_LEVEL_SPLASH = 3, ST_GAMEOVER = 4;
+    const LS_KEY = 'ywa_digdug_hiscore';
+    let hiScore = 0;
     const DIR_NONE = -1, DIR_UP = 0, DIR_RIGHT = 1, DIR_DOWN = 2, DIR_LEFT = 3;
     const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 
@@ -1592,20 +1594,26 @@ window.DigDug = (() => {
         ctx.textAlign = 'center';
         ctx.fillStyle = '#EF4444';
         ctx.font = `bold ${gs(36)}px monospace`;
-        ctx.fillText('GAME OVER', W / 2, H * 0.35);
+        ctx.fillText('GAME OVER', W / 2, H * 0.32);
 
         ctx.fillStyle = '#FBBF24';
         ctx.font = `bold ${gs(20)}px monospace`;
-        ctx.fillText(`SCORE: ${score}`, W / 2, H * 0.48);
+        ctx.fillText(`SCORE: ${score}`, W / 2, H * 0.45);
 
         ctx.fillStyle = '#E0E7FF';
         ctx.font = `${gs(13)}px monospace`;
-        ctx.fillText(`ROUND ${level}`, W / 2, H * 0.56);
+        ctx.fillText(`ROUND ${level}`, W / 2, H * 0.53);
+
+        if (hiScore > 0) {
+            ctx.fillStyle = score >= hiScore ? '#22C55E' : '#FBBF24';
+            ctx.font = `bold ${gs(13)}px monospace`;
+            ctx.fillText(score >= hiScore ? 'NEW HIGH SCORE!' : `HIGH SCORE: ${hiScore}`, W / 2, H * 0.62);
+        }
 
         if (Math.floor(frameCount / 30) % 2 === 0) {
             ctx.fillStyle = '#22C55E';
             ctx.font = `bold ${gs(14)}px monospace`;
-            ctx.fillText('PRESS SPACE TO RETRY', W / 2, H * 0.72);
+            ctx.fillText('PRESS SPACE TO RETRY', W / 2, H * 0.74);
         }
     }
 
@@ -1639,6 +1647,7 @@ window.DigDug = (() => {
                 if (deathTimer <= 0) {
                     if (lives <= 0) {
                         state = ST_GAMEOVER;
+                        if (score > hiScore) { hiScore = score; try { localStorage.setItem(LS_KEY, hiScore); } catch {} }
                         if (gameOverCB) gameOverCB(score);
                     } else {
                         // Reset player position, keep level
@@ -1677,6 +1686,7 @@ window.DigDug = (() => {
         activePlayer = playerData;
         playerColor = playerData?.color || '#3B82F6';
         playerTheme = playerData?.theme || 'retro';
+        try { hiScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { hiScore = 0; }
         gameActive = true;
         state = ST_TITLE;
         frameCount = 0;

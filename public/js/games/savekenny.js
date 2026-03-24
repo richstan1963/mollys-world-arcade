@@ -57,7 +57,7 @@ window.SaveKenny = (() => {
     let state, animFrame, gameActive = false;
     let activePlayer, gameOverCB, accentColor;
     let frameCount, lastTime;
-    let score, coins, hp, ammo, shieldTimer;
+    let score, coins, hp, ammo, shieldTimer, bestScore;
     let scrollX, scrollSpeed, difficulty;
     let environment, envTimer;
 
@@ -1130,6 +1130,12 @@ window.SaveKenny = (() => {
         ctx.fillStyle = '#FF8844';
         ctx.fillText(`Kenny was ${deathNames[causeIdx]}`, gs(GAME_W / 2), gs(GAME_H / 2 + 45));
 
+        if (bestScore > 0) {
+            ctx.font = `${gs(12)}px monospace`;
+            ctx.fillStyle = score >= bestScore ? '#FFD700' : '#888';
+            ctx.fillText(score >= bestScore ? `NEW BEST: ${bestScore}` : `Best: ${bestScore}`, gs(GAME_W / 2), gs(GAME_H / 2 + 62));
+        }
+
         const blink2 = Math.sin(frameCount * 0.06) > 0;
         if (blink2) {
             ctx.font = `${gs(12)}px monospace`;
@@ -1563,6 +1569,10 @@ window.SaveKenny = (() => {
 
         if (deathTimer > 160) {
             state = ST_GAMEOVER;
+            if (score > bestScore) {
+                bestScore = score;
+                try { localStorage.setItem('ywa_savekenny_best', bestScore); } catch(e) {}
+            }
             if (gameOverCB) gameOverCB(score);
         }
 
@@ -1745,6 +1755,7 @@ window.SaveKenny = (() => {
         SCALE = W / GAME_W;
         DPR = Math.min(window.devicePixelRatio || 1, 3);
 
+        bestScore = parseInt(localStorage.getItem('ywa_savekenny_best') || '0', 10);
         resetGame();
         state = ST_SPLASH;
 

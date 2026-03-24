@@ -38,6 +38,7 @@ window.CannonBlast = (() => {
     let keys = {}, mouseX = GAME_W / 2, mouseY = GAME_H / 2;
     let touchActive = false;
     let gameOverCB, activePlayer, playerColor;
+    let highScore = parseInt(localStorage.getItem('ywa_cannonblast_hi') || '0');
     let screenShake;
     let bgGradient;
     let buntingPhase;
@@ -1072,8 +1073,7 @@ window.CannonBlast = (() => {
                     spawnParticles(GAME_W / 2, CANNON_Y, 15, ['#EF4444', '#F97316', '#FFF']);
                     if (lives <= 0) {
                         state = ST_DEAD;
-                        gameActive = false;
-                        if (gameOverCB) gameOverCB(score);
+                        if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_cannonblast_hi', String(highScore)); } catch {} }
                     }
                 }
                 enemyProjectiles.splice(i, 1);
@@ -1323,8 +1323,7 @@ window.CannonBlast = (() => {
         if (waveTimer <= 0 && targets.length === 0 && enemyProjectiles.length === 0) {
             if (wave >= WAVE_COUNT) {
                 state = ST_OVER;
-                gameActive = false;
-                if (gameOverCB) gameOverCB(score);
+                if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_cannonblast_hi', String(highScore)); } catch {} }
                 return;
             }
             state = ST_WAVE_CLEAR;
@@ -1475,16 +1474,31 @@ window.CannonBlast = (() => {
         drawBackdrop();
         drawVignette();
         ctx.fillStyle = '#EF4444';
+        ctx.shadowColor = '#EF4444'; ctx.shadowBlur = gs(12);
         ctx.font = 'bold ' + gs(28) + 'px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('GAME OVER', gx(GAME_W / 2), gy(GAME_H / 2 - 40));
+        ctx.fillText('GAME OVER', gx(GAME_W / 2), gy(GAME_H / 2 - 60));
+        ctx.shadowBlur = 0;
         ctx.fillStyle = COL_ACCENT;
         ctx.font = 'bold ' + gs(18) + 'px monospace';
-        ctx.fillText('SCORE: ' + score, gx(GAME_W / 2), gy(GAME_H / 2 + 10));
+        ctx.fillText('SCORE: ' + score.toLocaleString(), gx(GAME_W / 2), gy(GAME_H / 2 - 15));
+        if (score >= highScore && score > 0) {
+            ctx.fillStyle = '#FBBF24'; ctx.font = 'bold ' + gs(12) + 'px monospace';
+            ctx.fillText('\u2605 NEW HIGH SCORE! \u2605', gx(GAME_W / 2), gy(GAME_H / 2 + 10));
+        } else {
+            ctx.fillStyle = '#666'; ctx.font = gs(11) + 'px monospace';
+            ctx.fillText('BEST: ' + highScore.toLocaleString(), gx(GAME_W / 2), gy(GAME_H / 2 + 10));
+        }
         ctx.fillStyle = hexAlpha(COL_HUD, 0.5 + 0.3 * Math.sin(frameCount * 0.06));
         ctx.font = gs(12) + 'px monospace';
-        ctx.fillText('Wave ' + wave + '/' + WAVE_COUNT, gx(GAME_W / 2), gy(GAME_H / 2 + 40));
+        ctx.fillText('Wave ' + wave + '/' + WAVE_COUNT, gx(GAME_W / 2), gy(GAME_H / 2 + 35));
+        const blink = Math.sin(frameCount * 0.08) > 0;
+        if (blink) {
+            ctx.fillStyle = '#06B6D4';
+            ctx.font = gs(13) + 'px monospace';
+            ctx.fillText(HAS_TOUCH ? 'TAP TO PLAY AGAIN' : 'CLICK TO PLAY AGAIN', gx(GAME_W / 2), gy(GAME_H / 2 + 70));
+        }
     }
 
     function drawVictory() {
@@ -1495,10 +1509,22 @@ window.CannonBlast = (() => {
         ctx.font = 'bold ' + gs(28) + 'px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('VICTORY!', gx(GAME_W / 2), gy(GAME_H / 2 - 40 + bounce));
+        ctx.fillText('VICTORY!', gx(GAME_W / 2), gy(GAME_H / 2 - 60 + bounce));
         ctx.fillStyle = COL_ACCENT;
         ctx.font = 'bold ' + gs(18) + 'px monospace';
-        ctx.fillText('FINAL SCORE: ' + score, gx(GAME_W / 2), gy(GAME_H / 2 + 10));
+        ctx.fillText('FINAL SCORE: ' + score.toLocaleString(), gx(GAME_W / 2), gy(GAME_H / 2 - 15));
+        if (score >= highScore && score > 0) {
+            ctx.fillStyle = '#FBBF24'; ctx.font = 'bold ' + gs(12) + 'px monospace';
+            ctx.fillText('\u2605 NEW HIGH SCORE! \u2605', gx(GAME_W / 2), gy(GAME_H / 2 + 10));
+        } else {
+            ctx.fillStyle = '#666'; ctx.font = gs(11) + 'px monospace';
+            ctx.fillText('BEST: ' + highScore.toLocaleString(), gx(GAME_W / 2), gy(GAME_H / 2 + 10));
+        }
+        const blink2 = Math.sin(frameCount * 0.08) > 0;
+        if (blink2) {
+            ctx.fillStyle = '#22C55E'; ctx.font = gs(13) + 'px monospace';
+            ctx.fillText(HAS_TOUCH ? 'TAP TO CONTINUE' : 'CLICK TO CONTINUE', gx(GAME_W / 2), gy(GAME_H / 2 + 50));
+        }
     }
 
     // ═══════════════════════════════════════════
@@ -1517,13 +1543,17 @@ window.CannonBlast = (() => {
         mouseX = c.x; mouseY = c.y;
     }
 
+    function endGame() {
+        if (gameOverCB) gameOverCB(score);
+    }
+
     function onMouseDown(e) {
         ensureAudio();
         if (state === ST_TITLE) {
             startGame();
             return;
         }
-        if (state === ST_DEAD || state === ST_OVER) return;
+        if (state === ST_DEAD || state === ST_OVER) { endGame(); return; }
         if (e.button === 2 || e.shiftKey) {
             useShield();
             return;
@@ -1546,6 +1576,10 @@ window.CannonBlast = (() => {
         if (state === ST_TITLE && (e.key === ' ' || e.key === 'Enter')) {
             ensureAudio();
             startGame();
+        }
+        if ((state === ST_DEAD || state === ST_OVER) && (e.key === ' ' || e.key === 'Enter')) {
+            e.preventDefault();
+            endGame();
         }
         if (state === ST_PLAY) {
             if (e.key === ' ') {
@@ -1571,6 +1605,7 @@ window.CannonBlast = (() => {
         mouseX = c.x; mouseY = c.y;
         touchActive = true;
         if (state === ST_TITLE) { startGame(); return; }
+        if (state === ST_DEAD || state === ST_OVER) { endGame(); return; }
         if (state === ST_PLAY) { charging = true; chargeTimer = 0; }
     }
 

@@ -65,7 +65,7 @@ window.PixelRacer = (() => {
     const ST_OVER    = 2;
     let state = ST_TITLE;
 
-    let score, distance, speed, baseSpeed, maxSpeed;
+    let score, distance, speed, baseSpeed, maxSpeed, bestScore;
     let lane;               // 0..NUM_LANES-1
     let playerY;            // vertical position (fixed near bottom)
     let playerX;            // computed from lane
@@ -964,6 +964,13 @@ window.PixelRacer = (() => {
         // Calculate final score
         score += coinCount * 10;
         score += Math.floor(distance);
+        if (score > bestScore) {
+            bestScore = score;
+            try { localStorage.setItem('ywa_pixelracer_best', bestScore); } catch(e) {}
+        }
+        if (onGameOver) {
+            onGameOver({ score, distance: Math.floor(distance), coins: coinCount, carsAvoided });
+        }
     }
 
     // ── Main draw ──
@@ -1126,6 +1133,12 @@ window.PixelRacer = (() => {
         ctx.fillText('Coins: ' + coinCount, GAME_W / 2, GAME_H / 2 + 30);
         ctx.fillText('Cars Passed: ' + carsAvoided, GAME_W / 2, GAME_H / 2 + 55);
 
+        if (bestScore > 0) {
+            ctx.font = '16px "Segoe UI", system-ui, sans-serif';
+            ctx.fillStyle = score >= bestScore ? '#FFD700' : '#888';
+            ctx.fillText(score >= bestScore ? 'NEW BEST: ' + bestScore : 'Best: ' + bestScore, GAME_W / 2, GAME_H / 2 + 80);
+        }
+
         // Restart prompt
         const blink = Math.sin((time || 0) * 0.005) * 0.3 + 0.7;
         ctx.globalAlpha = blink;
@@ -1263,6 +1276,7 @@ window.PixelRacer = (() => {
         scenery = [];
         state = ST_TITLE;
         gameActive = false;
+        bestScore = parseInt(localStorage.getItem('ywa_pixelracer_best') || '0', 10);
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });

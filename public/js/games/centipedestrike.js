@@ -59,6 +59,7 @@ window.CentipedeStrike = (() => {
     let animFrame, lastTime, state, gameActive = false;
     let score, wave, lives;
     let activePlayer, gameOverCB, playerColor;
+    let highScore = parseInt(localStorage.getItem('ywa_centipedestrike_hi') || '0');
     let frameCount = 0, screenShake = 0;
     let mouseX = GAME_W / 2, mouseY = GAME_H / 2;
     let keys = {};
@@ -775,6 +776,7 @@ window.CentipedeStrike = (() => {
             updatePopups(dt);
             if (deathTimer <= 0) {
                 state = ST_GAMEOVER;
+                if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_centipedestrike_hi', String(highScore)); } catch {} }
             }
             return;
         }
@@ -1363,18 +1365,29 @@ window.CentipedeStrike = (() => {
 
         ctx.textAlign = 'center';
         ctx.fillStyle = '#EF4444';
-        ctx.font = `bold ${gs(28)}px monospace`;
-        ctx.fillText('GAME OVER', W / 2, H * 0.35);
+        ctx.shadowColor = '#EF4444'; ctx.shadowBlur = gs(12);
+        ctx.font = `bold ${gs(30)}px monospace`;
+        ctx.fillText('GAME OVER', W / 2, H * 0.30);
+        ctx.shadowBlur = 0;
 
         ctx.fillStyle = CLR_HUD;
-        ctx.font = `bold ${gs(14)}px monospace`;
-        ctx.fillText(`SCORE: ${score}`, W / 2, H * 0.45);
-        ctx.fillText(`WAVE ${wave}`, W / 2, H * 0.52);
+        ctx.font = `bold ${gs(16)}px monospace`;
+        ctx.fillText(`SCORE: ${score.toLocaleString()}`, W / 2, H * 0.41);
+        if (score >= highScore && score > 0) {
+            ctx.fillStyle = '#FBBF24'; ctx.font = `bold ${gs(11)}px monospace`;
+            ctx.fillText('\u2605 NEW HIGH SCORE! \u2605', W / 2, H * 0.47);
+        } else {
+            ctx.fillStyle = '#666'; ctx.font = `${gs(10)}px monospace`;
+            ctx.fillText(`BEST: ${highScore.toLocaleString()}`, W / 2, H * 0.47);
+        }
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = `${gs(12)}px monospace`;
+        ctx.fillText(`WAVE ${wave}`, W / 2, H * 0.54);
 
         if (Math.floor(frameCount / 30) % 2 === 0) {
-            ctx.fillStyle = '#94A3B8';
-            ctx.font = `${gs(10)}px monospace`;
-            ctx.fillText(HAS_TOUCH ? 'TAP TO CONTINUE' : 'CLICK TO CONTINUE', W / 2, H * 0.65);
+            ctx.fillStyle = '#06B6D4';
+            ctx.font = `${gs(12)}px monospace`;
+            ctx.fillText(HAS_TOUCH ? 'TAP TO PLAY AGAIN' : 'CLICK TO PLAY AGAIN', W / 2, H * 0.65);
         }
         ctx.restore();
     }
@@ -1507,18 +1520,24 @@ window.CentipedeStrike = (() => {
     // ═══════════════════════════════════════════
     function fitCanvas() {
         if (!canvas) return;
+        let pw = canvas.width || 480;
+        let ph = canvas.height || 640;
         const parent = canvas.parentElement;
-        if (!parent) return;
-        const pw = parent.clientWidth, ph = parent.clientHeight;
+        if (parent && parent.clientWidth > 50 && parent.clientHeight > 50) {
+            pw = parent.clientWidth;
+            ph = parent.clientHeight;
+        }
         const aspect = GAME_W / GAME_H;
         let cw, ch;
         if (pw / ph > aspect) { ch = ph; cw = ch * aspect; }
         else { cw = pw; ch = cw / aspect; }
+        cw = Math.max(cw, 320);
+        ch = Math.max(ch, 400);
         DPR = Math.min(window.devicePixelRatio || 1, 3);
         canvas.width = Math.round(cw * DPR);
         canvas.height = Math.round(ch * DPR);
-        canvas.style.width = `${cw}px`;
-        canvas.style.height = `${ch}px`;
+        canvas.style.width = `${Math.round(cw)}px`;
+        canvas.style.height = `${Math.round(ch)}px`;
         W = canvas.width;
         H = canvas.height;
         SCALE = W / GAME_W;

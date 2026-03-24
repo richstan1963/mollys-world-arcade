@@ -58,7 +58,7 @@ window.PrincessRun = (() => {
     let canvas, ctx, W, H, SCALE, animFrame, gameActive = false;
     let activePlayer, gameOverCB, princessColor, princessColorLight;
     let state, frameCount, lastTime;
-    let distance, score, scrollSpeed;
+    let distance, score, scrollSpeed, bestScore;
     let princess; // { y, vy, onGround, jumping, doubleJumped, sliding, slideTimer, health, maxHealth, invincible, invTimer }
     let gems, hearts, cages, obstacles, platforms, powerups, sparkles;
     let particles, ambientParticles;
@@ -403,6 +403,10 @@ window.PrincessRun = (() => {
     function die() {
         state = ST_DEAD;
         spawnSparkles(PRINCESS_X, princess.y + PRINCESS_H / 2, 20, princessColor);
+        if (score > bestScore) {
+            bestScore = score;
+            try { localStorage.setItem('ywa_princessrun_best', bestScore); } catch(e) {}
+        }
         if (gameOverCB) {
             setTimeout(() => gameOverCB({ score, distance: Math.floor(distance / 6.4) }), 1500);
         }
@@ -1309,6 +1313,12 @@ window.PrincessRun = (() => {
         ctx.fillStyle = '#FFF';
         ctx.fillText(`Distance: ${Math.floor(distance / 6.4)}m`, gs(GAME_W / 2), gs(GAME_H / 2 + 25));
 
+        if (bestScore > 0) {
+            ctx.font = `${gs(11)}px sans-serif`;
+            ctx.fillStyle = score >= bestScore ? '#FFD700' : '#AAA';
+            ctx.fillText(score >= bestScore ? `NEW BEST: ${bestScore}` : `Best: ${bestScore}`, gs(GAME_W / 2), gs(GAME_H / 2 + 43));
+        }
+
         const pulse = 0.6 + Math.sin(frameCount * 0.06) * 0.4;
         ctx.globalAlpha = pulse;
         ctx.fillStyle = '#FFD700';
@@ -1526,6 +1536,7 @@ window.PrincessRun = (() => {
         runFrame = 0;
         hairWave = 0;
         distance = 0; score = 0; scrollSpeed = BASE_SPEED;
+        bestScore = parseInt(localStorage.getItem('ywa_princessrun_best') || '0', 10);
         combo = 0; comboTimer = 0;
         envIndex = 0; envProgress = 0; envTransition = 0;
         bossActive = false; boss = null;

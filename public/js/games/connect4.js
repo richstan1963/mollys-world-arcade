@@ -62,6 +62,12 @@ window.Connect4 = (() => {
     let TEXT_CLR     = '#FFFFFF';
     let HOLE_CLR     = '#0F172A';
 
+    // High score tracking
+    const LS_KEY = 'connect4_highscore';
+    function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
+    function saveHighScore(s) { try { localStorage.setItem(LS_KEY, s); } catch {} }
+    let highScore = 0;
+
     // ── Module-level variables ────────────────────────────────
     let canvas, ctx, W, H, scale;
     let state;
@@ -526,6 +532,7 @@ window.Connect4 = (() => {
                             score += 500;
                             level++;
                         }
+                        if (score > highScore) { highScore = score; saveHighScore(highScore); }
                     } else {
                         state = ST_WIN;
                         roundPauseTimer = 2200;
@@ -542,6 +549,7 @@ window.Connect4 = (() => {
                             score += 300;
                             level++;
                         }
+                        if (score > highScore) { highScore = score; saveHighScore(highScore); }
                     }
                 } else {
                     // Next turn
@@ -752,6 +760,10 @@ window.Connect4 = (() => {
             ctx.font = '10px "Press Start 2P", monospace';
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
             ctx.fillText(`SCORE: ${score}`, BASE_W / 2, msgY + 24);
+            if (highScore > 0) {
+                ctx.fillStyle = score >= highScore ? '#FFD700' : 'rgba(255,255,255,0.35)';
+                ctx.fillText(score >= highScore ? 'NEW BEST!' : `BEST: ${highScore}`, BASE_W / 2, msgY + 42);
+            }
         } else if (state === ST_WIN) {
             ctx.font = 'bold 14px "Press Start 2P", monospace';
             const winner = winCells ? board[winCells[0][0]][winCells[0][1]] : 0;
@@ -1094,6 +1106,7 @@ window.Connect4 = (() => {
             if (_t.colors[3]) AI_CLR     = _t.colors[3];
         }
 
+        highScore = loadHighScore();
         keys = {};
         particles = [];
         frameCount = 0;

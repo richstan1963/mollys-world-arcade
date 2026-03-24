@@ -1368,7 +1368,7 @@ window.Fishing = (() => {
                     onGameOver({
                         score,
                         level: totalCaught,
-                        time: Math.floor((Date.now() - startTime) / 1000),
+                        duration: Math.floor((Date.now() - startTime) / 1000),
                         stats: { fishCaught: totalCaught, speciesFound: collection.size }
                     });
                 }

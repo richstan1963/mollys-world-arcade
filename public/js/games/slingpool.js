@@ -2177,9 +2177,9 @@ window.SlingPool = (() => {
                     onGameOver({
                         score,
                         level,
+                        duration: Math.floor((Date.now() - startTime) / 1000),
                         ballsPotted: totalBallsPotted,
                         stars: totalStars,
-                        time: Math.floor((Date.now() - startTime) / 1000),
                     });
                 }
             } else {

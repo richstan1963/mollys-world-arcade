@@ -46,15 +46,17 @@ window.TowerDefense = (() => {
         const waves = [];
         for (let w = 0; w < 20; w++) {
             const wave = [];
-            const diff = 1 + w * 0.4;
-            // Base soldiers
-            wave.push({ type: 0, count: 5 + Math.floor(w * 1.2), delay: 40 - Math.min(w, 15) });
-            // Runners from wave 3
-            if (w >= 2) wave.push({ type: 1, count: 3 + Math.floor(w * 0.8), delay: 30 });
-            // Tanks from wave 5
-            if (w >= 4) wave.push({ type: 2, count: 1 + Math.floor(w * 0.3), delay: 60 });
-            // Flyers from wave 7
-            if (w >= 6) wave.push({ type: 3, count: 2 + Math.floor(w * 0.4), delay: 45 });
+            // Gentle difficulty curve: first 5 waves are easy
+            const diff = w < 5 ? 0.7 + w * 0.15 : 1 + (w - 3) * 0.4;
+            // Base soldiers — fewer in early waves
+            const soldierCount = w < 3 ? 3 + w : 5 + Math.floor(w * 1.2);
+            wave.push({ type: 0, count: soldierCount, delay: 45 - Math.min(w, 15) });
+            // Runners from wave 4 (was wave 3)
+            if (w >= 3) wave.push({ type: 1, count: 2 + Math.floor((w - 2) * 0.8), delay: 35 });
+            // Tanks from wave 6 (was wave 5)
+            if (w >= 5) wave.push({ type: 2, count: 1 + Math.floor((w - 4) * 0.3), delay: 60 });
+            // Flyers from wave 8 (was wave 7)
+            if (w >= 7) wave.push({ type: 3, count: 2 + Math.floor((w - 6) * 0.4), delay: 45 });
 
             // Scale HP with wave
             for (const g of wave) {
@@ -765,8 +767,8 @@ window.TowerDefense = (() => {
     function startGame() {
         state = ST_PLAYING;
         gameActive = true;
-        money = 200;
-        lives = 20;
+        money = 300;
+        lives = 25;
         score = 0;
         waveNum = 0;
         WAVES = buildWaves();
@@ -1107,6 +1109,14 @@ window.TowerDefense = (() => {
         state = won ? ST_WIN : ST_OVER;
         gameActive = false;
         if (won) playWin(); else playGameOver();
+        const duration = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
+        if (onGameOver) onGameOver({
+            score,
+            level: waveNum + 1,
+            duration,
+            wavesCleared: waveNum,
+            won
+        });
     }
 
     // ── Drawing ──

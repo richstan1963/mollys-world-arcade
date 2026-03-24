@@ -485,7 +485,11 @@ window.GoofyPogo = (() => {
         // Speed boost
         if (speedBoostTimer > 0) speedBoostTimer -= effectiveDt;
         if (Math.floor((distanceM - currentSpeed * effectiveDt / 10) / SPEED_BOOST_DIST) < Math.floor(distanceM / SPEED_BOOST_DIST)) {
-            if (distanceM > 10) speedBoostTimer = SPEED_BOOST_DUR;
+            if (distanceM > 10) {
+                speedBoostTimer = SPEED_BOOST_DUR;
+                const milestone = Math.floor(distanceM / SPEED_BOOST_DIST) * SPEED_BOOST_DIST;
+                addFloat(GAME_W / 2, GAME_H / 2 - 40, milestone + 'm!', '#FFD700', 24);
+            }
         }
 
         // Tilt input
@@ -760,6 +764,7 @@ window.GoofyPogo = (() => {
         sfx('die');
         addParticles(gx, gy, 15, '#FF4444', 5);
         bestScore = Math.max(bestScore, score);
+        try { localStorage.setItem('ywa_goofypogo_best', bestScore); } catch(e) {}
         setTimeout(() => {
             state = GAMEOVER;
             if (onGameOver) onGameOver(score);
@@ -1706,7 +1711,7 @@ window.GoofyPogo = (() => {
 
         // Reset
         state = SPLASH;
-        bestScore = 0;
+        bestScore = parseInt(localStorage.getItem('ywa_goofypogo_best') || '0', 10);
         lastTime = 0;
         splashBounce = 0;
         splashDir = 1;

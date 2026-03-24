@@ -83,6 +83,7 @@ window.SpaceInvaders = (() => {
     let deathTimer = 0, levelSplashTimer = 0;
     let nextBonusAt;
     let gameOverCB, activePlayer, playerColor;
+    let highScore = parseInt(localStorage.getItem('ywa_spaceinvaders_hi') || '0');
     let touchLeft = false, touchRight = false, touchFire = false;
     let frameCount = 0;
     let screenShake = 0;
@@ -1374,8 +1375,8 @@ window.SpaceInvaders = (() => {
             // Aliens reach player level → game over
             if (a.y + ALIEN_H >= GAME_H - 60) {
                 state = ST_GAMEOVER;
-                gameActive = false;
                 SND.die();
+                if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_spaceinvaders_hi', String(highScore)); } catch {} }
             }
         }
 
@@ -1406,7 +1407,7 @@ window.SpaceInvaders = (() => {
         activePowerup = null;
         if (lives <= 0) {
             state = ST_GAMEOVER;
-            gameActive = false;
+            if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_spaceinvaders_hi', String(highScore)); } catch {} }
         } else {
             state = ST_DYING;
             deathTimer = DEATH_ANIM_MS;
@@ -1722,17 +1723,36 @@ window.SpaceInvaders = (() => {
         // Game over
         if (state === ST_GAMEOVER) {
             ctx.fillStyle = '#000';
-            ctx.globalAlpha = 0.6;
+            ctx.globalAlpha = 0.65;
             ctx.fillRect(0, 0, W, H);
             ctx.globalAlpha = 1;
             ctx.fillStyle = '#F43F5E';
-            ctx.font = `bold ${gs(40)}px monospace`;
+            ctx.shadowColor = '#F43F5E'; ctx.shadowBlur = gs(15);
+            ctx.font = `bold ${gs(42)}px monospace`;
             ctx.textAlign = 'center';
-            ctx.fillText('GAME OVER', W / 2, H / 2 - gs(20));
+            ctx.fillText('GAME OVER', W / 2, H / 2 - gs(50));
+            ctx.shadowBlur = 0;
             ctx.fillStyle = HUD_COLOR;
-            ctx.font = `${gs(18)}px monospace`;
-            ctx.fillText(`SCORE: ${score.toLocaleString()}`, W / 2, H / 2 + gs(20));
-            ctx.fillText(`WAVE: ${level}`, W / 2, H / 2 + gs(45));
+            ctx.font = `bold ${gs(20)}px monospace`;
+            ctx.fillText(`SCORE: ${score.toLocaleString()}`, W / 2, H / 2 - gs(5));
+            if (score >= highScore) {
+                ctx.fillStyle = '#FBBF24';
+                ctx.font = `bold ${gs(14)}px monospace`;
+                ctx.fillText('\u2605 NEW HIGH SCORE! \u2605', W / 2, H / 2 + gs(18));
+            } else {
+                ctx.fillStyle = '#888';
+                ctx.font = `${gs(13)}px monospace`;
+                ctx.fillText(`BEST: ${highScore.toLocaleString()}`, W / 2, H / 2 + gs(18));
+            }
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = `${gs(14)}px monospace`;
+            ctx.fillText(`WAVE: ${level}`, W / 2, H / 2 + gs(42));
+            const blink = Math.sin(frameCount * 0.08) > 0;
+            if (blink) {
+                ctx.fillStyle = '#06B6D4';
+                ctx.font = `${gs(15)}px monospace`;
+                ctx.fillText(HAS_TOUCH ? 'TAP TO PLAY AGAIN' : 'PRESS SPACE TO PLAY AGAIN', W / 2, H / 2 + gs(75));
+            }
         }
 
         if (state === ST_PLAYING || state === ST_BOSS) drawOnScreenControls(ctx, W, H, gs, ['FIRE'], 'LR');

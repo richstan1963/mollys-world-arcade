@@ -40,6 +40,12 @@ window.MemoryMatch = (() => {
         '#5C6BC0', '#66BB6A', '#FFA726', '#BDBDBD', '#AB47BC', '#EF5350'
     ];
 
+    // High score tracking
+    const LS_KEY = 'memorymatch_highscore';
+    function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
+    function saveHighScore(s) { try { localStorage.setItem(LS_KEY, s); } catch {} }
+    let highScore = 0;
+
     // ── State ──
     let canvas, ctx;
     let W, H, DPR;
@@ -942,6 +948,13 @@ window.MemoryMatch = (() => {
         ctx.font = `${Math.round(14 * DPR)}px monospace`;
         ctx.fillText(`Moves: ${moves}  |  Time: ${Math.floor(timer)}s`, cx, H * 0.6);
 
+        // High score
+        if (highScore > 0) {
+            ctx.fillStyle = score >= highScore ? '#FFD700' : 'rgba(255,255,255,0.5)';
+            ctx.font = `${Math.round(13 * DPR)}px monospace`;
+            ctx.fillText(score >= highScore ? '\u2B50 NEW HIGH SCORE!' : `Best: ${highScore}`, cx, H * 0.66);
+        }
+
         // Continue prompt
         if (elapsed > 1500) {
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -1027,6 +1040,9 @@ window.MemoryMatch = (() => {
         levelCompleteTimer = Date.now();
         playLevelComplete();
         spawnConfetti(W / 2, H / 2, 40);
+
+        // Track high score
+        if (score > highScore) { highScore = score; saveHighScore(highScore); }
 
         if (onGameOver && level >= LEVELS.length) {
             onGameOver({
@@ -1217,6 +1233,26 @@ window.MemoryMatch = (() => {
     }
 
     // ══════════════════════════════════════════════
+    //  CANVAS SIZING
+    // ══════════════════════════════════════════════
+
+    function fitCanvas() {
+        if (!canvas || !canvas.parentElement) return;
+        const parent = canvas.parentElement;
+        const pw = parent.clientWidth || 480;
+        const ph = parent.clientHeight || 640;
+        DPR = window.devicePixelRatio || 1;
+        W = Math.max(320, pw);
+        H = Math.max(480, ph);
+        canvas.width = W * DPR;
+        canvas.height = H * DPR;
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        if (cards.length) initCards();
+    }
+
+    // ══════════════════════════════════════════════
     //  INIT / DESTROY
     // ══════════════════════════════════════════════
 
@@ -1227,36 +1263,7 @@ window.MemoryMatch = (() => {
         onGameOver = gameOverCallback;
 
         loadTheme();
-
-        // Size canvas
-        const container = canvas.parentElement;
-        const cw = container ? container.clientWidth : GAME_W;
-        const ch = container ? container.clientHeight : GAME_H;
-        DPR = window.devicePixelRatio || 1;
-        W = Math.max(320, cw);
-        H = Math.max(480, ch);
-        canvas.width = W * DPR;
-        canvas.height = H * DPR;
-        canvas.style.width = W + 'px';
-        canvas.style.height = H + 'px';
-        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
-        // Delayed refit
-        requestAnimationFrame(() => {
-            if (!canvas || !canvas.parentElement) return;
-            const p = canvas.parentElement;
-            const pw = Math.max(320, p.clientWidth || GAME_W);
-            const ph = Math.max(480, p.clientHeight || GAME_H);
-            if (pw !== W || ph !== H) {
-                W = pw; H = ph;
-                canvas.width = W * DPR;
-                canvas.height = H * DPR;
-                canvas.style.width = W + 'px';
-                canvas.style.height = H + 'px';
-                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-                initCards(); // re-layout
-            }
-        });
+        highScore = loadHighScore();
 
         // Reset state
         level = 1; score = 0; moves = 0; timer = 0;
@@ -1267,12 +1274,16 @@ window.MemoryMatch = (() => {
         timerStart = Date.now();
         frameCount = 0;
 
+        fitCanvas();
+        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
         initCards();
 
         // Bind input
         canvas.addEventListener('click', handleClick);
         canvas.addEventListener('touchstart', handleTouch, { passive: true });
         document.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', fitCanvas);
 
         render();
     }
@@ -1286,6 +1297,7 @@ window.MemoryMatch = (() => {
             canvas.removeEventListener('touchstart', handleTouch);
         }
         document.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('resize', fitCanvas);
         canvas = null; ctx = null;
         cards = []; confettiParticles = [];
         flipped = []; shakeCards = [];

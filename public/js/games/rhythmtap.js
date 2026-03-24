@@ -17,7 +17,7 @@ window.RhythmTap = (() => {
 
     // Difficulty presets  { lanes, speed multiplier, spawn density }
     const DIFFICULTIES = {
-        easy:   { lanes: 2, speedMul: 0.72, density: 0.55, label: 'EASY' },
+        easy:   { lanes: 2, speedMul: 0.55, density: 0.38, label: 'EASY', toleranceMul: 1.5 },
         normal: { lanes: 3, speedMul: 1.0,  density: 0.75, label: 'NORMAL' },
         hard:   { lanes: 4, speedMul: 1.3,  density: 1.0,  label: 'HARD' }
     };
@@ -920,7 +920,8 @@ window.RhythmTap = (() => {
         for (const note of notes) {
             if (note.hit || note.missed || note.lane !== lane) continue;
             const dist = Math.abs(note.y - hitY);
-            if (dist < GOOD_TOL + 20 && dist < closestDist) {
+            const tolMul2 = diffConfig.toleranceMul || 1;
+            if (dist < (GOOD_TOL + 20) * tolMul2 && dist < closestDist) {
                 closest = note;
                 closestDist = dist;
             }
@@ -929,10 +930,11 @@ window.RhythmTap = (() => {
 
         closest.hit = true;
         const dist = closestDist;
+        const tolMul = diffConfig.toleranceMul || 1;
         let judgement, pts, color;
-        if (dist <= HIT_TOLERANCE_PX) {
+        if (dist <= HIT_TOLERANCE_PX * tolMul) {
             judgement = 'PERFECT'; pts = 300; color = '#FFD700'; perfects++;
-        } else if (dist <= GREAT_TOL) {
+        } else if (dist <= GREAT_TOL * tolMul) {
             judgement = 'GREAT'; pts = 200; color = '#76FF03'; greats++;
         } else {
             judgement = 'GOOD'; pts = 100; color = '#00E5FF'; goods++;
@@ -979,10 +981,11 @@ window.RhythmTap = (() => {
         if (onGameOver) {
             onGameOver({
                 score,
+                level: difficulty === 'easy' ? 1 : difficulty === 'normal' ? 2 : 3,
+                duration: Math.floor(songDuration),
                 grade: getGrade(),
                 combo: maxCombo,
-                perfects, greats, goods, misses,
-                time: Math.floor(songDuration)
+                perfects, greats, goods, misses
             });
         }
     }
@@ -1224,8 +1227,26 @@ window.RhythmTap = (() => {
         document.addEventListener('keyup', handleKeyUp);
         canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
         canvas.addEventListener('click', handleClick);
+        window.addEventListener('resize', onResize);
 
         render();
+    }
+
+    function onResize() {
+        if (!canvas || !canvas.parentElement) return;
+        const p = canvas.parentElement;
+        const pw = Math.max(320, p.clientWidth || GAME_W);
+        const ph = Math.max(480, p.clientHeight || GAME_H);
+        if (pw !== W || ph !== H) {
+            W = pw; H = ph;
+            canvas.width = W * DPR;
+            canvas.height = H * DPR;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            laneW = W / laneCount;
+            hitY = H * HIT_Y_RATIO;
+        }
     }
 
     function destroy() {
@@ -1235,6 +1256,7 @@ window.RhythmTap = (() => {
         animFrame = null;
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
+        window.removeEventListener('resize', onResize);
         if (canvas) {
             canvas.removeEventListener('touchstart', handleTouchStart);
             canvas.removeEventListener('click', handleClick);

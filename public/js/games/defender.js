@@ -44,6 +44,7 @@ window.Defender = (() => {
     // Game state
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
     let activePlayer, gameOverCB, playerColor, themeAccent;
+    let highScore = parseInt(localStorage.getItem('ywa_defender_hi') || '0');
     let state, frameCount, lastTime, keys = {};
     let score, lives, level, bombs;
     let ship, lasers, enemies, particles, scorePopups;
@@ -634,6 +635,7 @@ window.Defender = (() => {
         if (lives < 0) {
             state = ST_GAMEOVER;
             deathTimer = 120;
+            if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_defender_hi', String(highScore)); } catch {} }
         } else {
             state = ST_DEAD;
             deathTimer = 90;
@@ -1347,20 +1349,31 @@ window.Defender = (() => {
         ctx.fillRect(0, 0, W, H);
         ctx.textAlign = 'center';
         ctx.fillStyle = '#EF4444';
+        ctx.shadowColor = '#EF4444'; ctx.shadowBlur = gs(12);
         ctx.font = `bold ${gs(36)}px monospace`;
-        ctx.fillText('GAME OVER', gs(GAME_W / 2), gs(GAME_H * 0.38));
+        ctx.fillText('GAME OVER', gs(GAME_W / 2), gs(GAME_H * 0.32));
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#fff';
-        ctx.font = `${gs(20)}px monospace`;
-        ctx.fillText(`SCORE: ${score}`, gs(GAME_W / 2), gs(GAME_H * 0.48));
+        ctx.font = `bold ${gs(20)}px monospace`;
+        ctx.fillText(`SCORE: ${score.toLocaleString()}`, gs(GAME_W / 2), gs(GAME_H * 0.43));
+        if (score >= highScore && score > 0) {
+            ctx.fillStyle = '#FBBF24'; ctx.font = `bold ${gs(12)}px monospace`;
+            ctx.fillText('\u2605 NEW HIGH SCORE! \u2605', gs(GAME_W / 2), gs(GAME_H * 0.49));
+        } else {
+            ctx.fillStyle = '#666'; ctx.font = `${gs(11)}px monospace`;
+            ctx.fillText(`BEST: ${highScore.toLocaleString()}`, gs(GAME_W / 2), gs(GAME_H * 0.49));
+        }
         ctx.fillStyle = '#888';
         ctx.font = `${gs(14)}px monospace`;
-        ctx.fillText(`WAVE ${level}`, gs(GAME_W / 2), gs(GAME_H * 0.55));
+        ctx.fillText(`WAVE ${level}`, gs(GAME_W / 2), gs(GAME_H * 0.57));
         const rescued = humanoids.filter(h => h.alive).length;
-        ctx.fillText(`HUMANOIDS SAVED: ${rescued}`, gs(GAME_W / 2), gs(GAME_H * 0.61));
-        ctx.fillStyle = '#888';
-        ctx.font = `${gs(13)}px monospace`;
+        ctx.fillText(`HUMANOIDS SAVED: ${rescued}`, gs(GAME_W / 2), gs(GAME_H * 0.63));
         const blink = Math.sin(frameCount * 0.08) > 0;
-        if (blink && deathTimer <= 0) ctx.fillText('PRESS SPACE TO CONTINUE', gs(GAME_W / 2), gs(GAME_H * 0.73));
+        if (blink && deathTimer <= 0) {
+            ctx.fillStyle = '#06B6D4';
+            ctx.font = `${gs(14)}px monospace`;
+            ctx.fillText(HAS_TOUCH ? 'TAP TO PLAY AGAIN' : 'PRESS SPACE TO PLAY AGAIN', gs(GAME_W / 2), gs(GAME_H * 0.76));
+        }
     }
 
     // ── Game Loop ──

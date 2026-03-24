@@ -80,9 +80,17 @@ window.Maetris = (() => {
     // ── Scoring ──
     const LINE_SCORES = [0, 100, 300, 500, 800];
     const LINES_PER_LEVEL = 10;
-    const BASE_SPEED = 800;
+    const BASE_SPEED = 1000;
     const MIN_SPEED = 80;
-    const SPEED_FACTOR = 60;
+    const SPEED_FACTOR = 55;
+
+    // DAS (Delayed Auto-Shift) for snappy horizontal movement
+    const DAS_DELAY = 170;  // ms before auto-repeat starts
+    const ARR_RATE  = 50;   // ms between auto-repeat moves
+    let dasDir = 0;         // -1 left, 1 right, 0 none
+    let dasTimer = 0;
+    let arrTimer = 0;
+    let softDropHeld = false;
 
     // ── State ──
     let canvas, ctx;
@@ -1050,7 +1058,7 @@ window.Maetris = (() => {
         }
     }
 
-    // ── Input handling ──
+    // ── Input handling with DAS ──
     function handleKeyDown(e) {
         if (!gameActive) return;
         if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
@@ -1064,12 +1072,24 @@ window.Maetris = (() => {
         if (paused || !current) return;
 
         switch (e.key) {
-            case 'ArrowLeft':  e.preventDefault(); moveLeft(); break;
-            case 'ArrowRight': e.preventDefault(); moveRight(); break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                if (dasDir !== -1) { moveLeft(); dasDir = -1; dasTimer = 0; arrTimer = 0; }
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                if (dasDir !== 1) { moveRight(); dasDir = 1; dasTimer = 0; arrTimer = 0; }
+                break;
             case 'ArrowUp':    e.preventDefault(); tryRotate(); break;
-            case 'ArrowDown':  e.preventDefault(); softDrop(); break;
+            case 'ArrowDown':  e.preventDefault(); softDropHeld = true; softDrop(); break;
             case ' ':          e.preventDefault(); hardDrop(); break;
         }
+    }
+
+    function handleKeyUp(e) {
+        if (e.key === 'ArrowLeft' && dasDir === -1) dasDir = 0;
+        if (e.key === 'ArrowRight' && dasDir === 1) dasDir = 0;
+        if (e.key === 'ArrowDown') softDropHeld = false;
     }
 
     function handleTouchStart(e) {
@@ -1141,6 +1161,24 @@ window.Maetris = (() => {
         }
 
         if (!current) { render(dt); return; }
+
+        // DAS auto-repeat
+        if (dasDir !== 0 && current) {
+            dasTimer += dt;
+            if (dasTimer >= DAS_DELAY) {
+                arrTimer += dt;
+                while (arrTimer >= ARR_RATE) {
+                    arrTimer -= ARR_RATE;
+                    if (dasDir === -1) moveLeft();
+                    else if (dasDir === 1) moveRight();
+                }
+            }
+        }
+
+        // Soft drop auto-repeat
+        if (softDropHeld && current) {
+            softDrop();
+        }
 
         // Gravity
         dropTimer += dt;
@@ -1219,6 +1257,7 @@ window.Maetris = (() => {
         screenShake = 0;
         comboCount = 0;
         gridPulse = 0;
+        dasDir = 0; dasTimer = 0; arrTimer = 0; softDropHeld = false;
 
         computeLayout();
 
@@ -1246,6 +1285,7 @@ window.Maetris = (() => {
 
         // Listeners
         document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
         canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
         canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
         canvas.addEventListener('touchend', handleTouchEnd);
@@ -1264,6 +1304,7 @@ window.Maetris = (() => {
         if (animFrame) cancelAnimationFrame(animFrame);
         animFrame = null;
         document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
         if (canvas) {
             canvas.removeEventListener('touchstart', handleTouchStart);
             canvas.removeEventListener('touchmove', handleTouchMove);

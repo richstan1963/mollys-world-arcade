@@ -155,6 +155,7 @@ window.Galaga = (() => {
     let deathTimer = 0, levelSplashTimer = 0;
     let nextBonusAt;
     let gameOverCB, activePlayer, playerColor, playerShipKey;
+    let highScore = parseInt(localStorage.getItem('ywa_galaga_hi') || '0');
     let touchLeft = false, touchRight = false, touchFire = false, touchBomb = false;
     let frameCount = 0;
     let screenShake = 0;
@@ -1367,7 +1368,7 @@ window.Galaga = (() => {
         if (state === ST_DYING) {
             deathTimer -= dt * 1000;
             if (deathTimer <= 0) {
-                if (lives <= 0) { state = ST_GAMEOVER; return; }
+                if (lives <= 0) { state = ST_GAMEOVER; if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_galaga_hi', String(highScore)); } catch {} } return; }
                 dualFighter = false;
                 playerX = GAME_W / 2;
                 state = ST_PLAYING;
@@ -1389,7 +1390,7 @@ window.Galaga = (() => {
                 tractorBeam = null;
             }
             if (capturePhase === 1 && captureTimer > 1000) {
-                if (lives <= 0) { state = ST_GAMEOVER; return; }
+                if (lives <= 0) { state = ST_GAMEOVER; if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_galaga_hi', String(highScore)); } catch {} } return; }
                 playerX = GAME_W / 2;
                 state = ST_PLAYING;
                 enemyBullets = [];
@@ -1873,19 +1874,27 @@ window.Galaga = (() => {
     }
 
     function drawGameOver() {
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
         ctx.fillRect(0, 0, W, H);
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#EF4444'; ctx.shadowColor = '#EF4444'; ctx.shadowBlur = gs(12);
-        ctx.font = `bold ${gs(36)}px monospace`;
-        ctx.fillText('GAME OVER', gx(GAME_W / 2), gy(GAME_H / 2 - 30));
+        ctx.fillStyle = '#EF4444'; ctx.shadowColor = '#EF4444'; ctx.shadowBlur = gs(15);
+        ctx.font = `bold ${gs(38)}px monospace`;
+        ctx.fillText('GAME OVER', gx(GAME_W / 2), gy(GAME_H / 2 - 50));
         ctx.shadowBlur = 0;
-        ctx.fillStyle = HUD_COLOR; ctx.font = `${gs(16)}px monospace`;
-        ctx.fillText(`FINAL SCORE: ${score}`, gx(GAME_W / 2), gy(GAME_H / 2 + 15));
-        ctx.fillText(`STAGE: ${level}`, gx(GAME_W / 2), gy(GAME_H / 2 + 40));
+        ctx.fillStyle = HUD_COLOR; ctx.font = `bold ${gs(18)}px monospace`;
+        ctx.fillText(`FINAL SCORE: ${score.toLocaleString()}`, gx(GAME_W / 2), gy(GAME_H / 2 - 5));
+        if (score >= highScore && score > 0) {
+            ctx.fillStyle = '#FBBF24'; ctx.font = `bold ${gs(13)}px monospace`;
+            ctx.fillText('\u2605 NEW HIGH SCORE! \u2605', gx(GAME_W / 2), gy(GAME_H / 2 + 18));
+        } else {
+            ctx.fillStyle = '#888'; ctx.font = `${gs(12)}px monospace`;
+            ctx.fillText(`BEST: ${highScore.toLocaleString()}`, gx(GAME_W / 2), gy(GAME_H / 2 + 18));
+        }
+        ctx.fillStyle = '#94A3B8'; ctx.font = `${gs(14)}px monospace`;
+        ctx.fillText(`STAGE: ${level}`, gx(GAME_W / 2), gy(GAME_H / 2 + 42));
         if (Math.floor(frameCount / 30) % 2 === 0) {
-            ctx.fillStyle = '#FBBF24'; ctx.font = `${gs(13)}px monospace`;
-            ctx.fillText('PRESS SPACE TO CONTINUE', gx(GAME_W / 2), gy(GAME_H / 2 + 80));
+            ctx.fillStyle = '#FBBF24'; ctx.font = `${gs(14)}px monospace`;
+            ctx.fillText(HAS_TOUCH ? 'TAP TO PLAY AGAIN' : 'PRESS SPACE TO PLAY AGAIN', gx(GAME_W / 2), gy(GAME_H / 2 + 78));
         }
     }
 
@@ -1974,18 +1983,24 @@ window.Galaga = (() => {
 
     function fitCanvas() {
         if (!canvas) return;
+        let pw = canvas.width || 480;
+        let ph = canvas.height || 640;
         const parent = canvas.parentElement;
-        if (!parent) return;
-        const pw = parent.clientWidth, ph = parent.clientHeight;
+        if (parent && parent.clientWidth > 50 && parent.clientHeight > 50) {
+            pw = parent.clientWidth;
+            ph = parent.clientHeight;
+        }
         const aspect = GAME_W / GAME_H;
         let cw, ch;
         if (pw / ph > aspect) { ch = ph; cw = ch * aspect; }
         else { cw = pw; ch = cw / aspect; }
+        cw = Math.max(cw, 320);
+        ch = Math.max(ch, 400);
         DPR = Math.min(window.devicePixelRatio || 1, 3);
         canvas.width = Math.round(cw * DPR);
         canvas.height = Math.round(ch * DPR);
-        canvas.style.width = `${cw}px`;
-        canvas.style.height = `${ch}px`;
+        canvas.style.width = `${Math.round(cw)}px`;
+        canvas.style.height = `${Math.round(ch)}px`;
         W = canvas.width; H = canvas.height;
         SCALE = W / GAME_W;
     }

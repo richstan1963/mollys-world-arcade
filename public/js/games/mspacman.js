@@ -224,6 +224,8 @@ window.MsPacMan = (() => {
           ST_LEVEL_CLEAR = 4, ST_LEVEL_SPLASH = 5, ST_GAMEOVER = 6,
           ST_INTERMISSION = 7;
 
+    const LS_KEY = 'ywa_mspacman_hiscore';
+    let hiScore = 0;
     let canvas, ctx, audioCtx;
     let SCALE, DPR;
     let animFrame, lastTime, state;
@@ -705,6 +707,7 @@ window.MsPacMan = (() => {
                 lives--;
                 if (lives <= 0) {
                     state = ST_GAMEOVER;
+                    if (score > hiScore) { hiScore = score; try { localStorage.setItem(LS_KEY, hiScore); } catch {} }
                     setTimeout(() => { if (gameActive && gameOverCB) gameOverCB(score); }, 2500);
                 } else {
                     initMsPacMan();
@@ -1344,10 +1347,21 @@ window.MsPacMan = (() => {
         ctx.font = `bold ${gs(20)}px monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('GAME OVER', gx(GAME_W / 2), gy(GAME_H / 2 - 10));
+        ctx.fillText('GAME OVER', gx(GAME_W / 2), gy(GAME_H / 2 - 20));
         ctx.fillStyle = '#E0E7FF';
         ctx.font = `bold ${gs(12)}px monospace`;
-        ctx.fillText(`FINAL SCORE: ${score}`, gx(GAME_W / 2), gy(GAME_H / 2 + 20));
+        ctx.fillText(`FINAL SCORE: ${score}`, gx(GAME_W / 2), gy(GAME_H / 2 + 10));
+        if (hiScore > 0) {
+            ctx.fillStyle = score >= hiScore ? '#22C55E' : '#FBBF24';
+            ctx.font = `bold ${gs(10)}px monospace`;
+            ctx.fillText(score >= hiScore ? 'NEW HIGH SCORE!' : `HIGH SCORE: ${hiScore}`, gx(GAME_W / 2), gy(GAME_H / 2 + 30));
+        }
+        const blink = Math.sin(frameCount * 0.08) > 0;
+        if (blink) {
+            ctx.fillStyle = '#64748B';
+            ctx.font = `${gs(9)}px monospace`;
+            ctx.fillText('PRESS ANY KEY TO RESTART', gx(GAME_W / 2), gy(GAME_H / 2 + 50));
+        }
     }
 
     function drawIntermission() {
@@ -1423,11 +1437,12 @@ window.MsPacMan = (() => {
     let touchStartX = 0, touchStartY = 0, touchActive = false;
     function handleTouchStart(e) {
         e.preventDefault();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        if (state === ST_GAMEOVER) { restartGame(); return; }
         const t = e.touches[0];
         touchStartX = t.clientX;
         touchStartY = t.clientY;
         touchActive = true;
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }
     function handleTouchMove(e) {
         e.preventDefault();
@@ -1469,14 +1484,25 @@ window.MsPacMan = (() => {
     }
 
     // ── Input ──
+    function restartGame() {
+        score = 0; level = 1; lives = START_LIVES;
+        bonusGiven = false; nextBonusAt = BONUS_LIFE_AT;
+        frameCount = 0; startTime = Date.now();
+        scorePopups = []; particles = [];
+        startLevel();
+        state = ST_LEVEL_SPLASH;
+        levelSplashTimer = LEVEL_SPLASH_MS;
+    }
+
     function handleKeyDown(e) {
         keys[e.key] = true;
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        if (state === ST_GAMEOVER) { restartGame(); e.preventDefault(); return; }
         const k = e.key;
         if (k === 'ArrowLeft' || k === 'a' || k === 'A') { msNextDir = DIR.LEFT; e.preventDefault(); }
         if (k === 'ArrowRight' || k === 'd' || k === 'D') { msNextDir = DIR.RIGHT; e.preventDefault(); }
         if (k === 'ArrowUp' || k === 'w' || k === 'W') { msNextDir = DIR.UP; e.preventDefault(); }
         if (k === 'ArrowDown' || k === 's' || k === 'S') { msNextDir = DIR.DOWN; e.preventDefault(); }
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }
     function handleKeyUp(e) {
         keys[e.key] = false;
@@ -1536,6 +1562,9 @@ window.MsPacMan = (() => {
         if (theme) {
             candyColors = theme.colors.slice(0, 6);
         }
+
+        // Load high score
+        try { hiScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { hiScore = 0; }
 
         // Init state
         score = 0;

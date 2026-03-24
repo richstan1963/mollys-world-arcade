@@ -152,6 +152,12 @@ window.SparkleMatch = (() => {
         return null;
     }
 
+    // High score tracking
+    const LS_KEY = 'sparklematch_highscore';
+    function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
+    function saveHighScore(s) { try { localStorage.setItem(LS_KEY, s); } catch {} }
+    let highScore = 0;
+
     // ── State ──
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
     let activePlayer, gameOverCB, playerColor;
@@ -1559,6 +1565,13 @@ window.SparkleMatch = (() => {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText(rating, W / 2, H * 0.62);
 
+        // High score
+        if (highScore > 0) {
+            ctx.font = gs(13) + 'px "Segoe UI", sans-serif';
+            ctx.fillStyle = score >= highScore ? '#FFD700' : 'rgba(255,255,255,0.5)';
+            ctx.fillText(score >= highScore ? '\u2B50 NEW HIGH SCORE!' : 'Best: ' + highScore.toLocaleString(), W / 2, H * 0.68);
+        }
+
         // Restart
         const blink = Math.sin(frameCount * 0.06) * 0.3 + 0.7;
         ctx.globalAlpha = blink;
@@ -1755,6 +1768,7 @@ window.SparkleMatch = (() => {
 
     function endGame() {
         state = ST_GAMEOVER;
+        if (score > highScore) { highScore = score; saveHighScore(highScore); }
         if (gameOverCB) gameOverCB(score);
     }
 
@@ -1910,6 +1924,7 @@ window.SparkleMatch = (() => {
         gameOverCB = onGameOverCB;
         playerColor = (playerData && playerData.color) || '#FFD700';
         gameActive = true;
+        highScore = loadHighScore();
         frameCount = 0;
         lastTime = null;
         state = ST_TITLE;

@@ -14,6 +14,12 @@ window.WhackAMole = (() => {
     const STUN_DURATION = 1500;
     const COMBO_WINDOW = 800;
 
+    // High score tracking
+    const LS_KEY = 'whackamole_highscore';
+    function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
+    function saveHighScore(s) { try { localStorage.setItem(LS_KEY, s); } catch {} }
+    let highScore = 0;
+
     // ── State ──
     let canvas, ctx;
     let player = null, onGameOver = null;
@@ -987,6 +993,13 @@ window.WhackAMole = (() => {
         const accuracy = totalHits + totalMisses > 0 ? Math.round(totalHits / (totalHits + totalMisses) * 100) : 0;
         ctx.fillText(`Accuracy: ${accuracy}%`, GAME_W / 2, GAME_H / 2 + 95);
 
+        // High score
+        if (highScore > 0) {
+            ctx.font = '16px "Segoe UI", Arial, sans-serif';
+            ctx.fillStyle = score >= highScore ? '#FFD700' : '#9CA3AF';
+            ctx.fillText(score >= highScore ? '\u2B50 NEW HIGH SCORE!' : `Best: ${highScore}`, GAME_W / 2, GAME_H / 2 + 118);
+        }
+
         // Play Again button
         roundRect(GAME_W / 2 - 70, GAME_H / 2 + 130, 140, 44, 12);
         ctx.fillStyle = '#22C55E';
@@ -1093,6 +1106,8 @@ window.WhackAMole = (() => {
                 gameOver = true;
                 // Clear all moles
                 for (const hole of holes) hole.mole = null;
+                // Save high score
+                if (score > highScore) { highScore = score; saveHighScore(highScore); }
 
                 if (onGameOver) {
                     setTimeout(() => {
@@ -1172,35 +1187,53 @@ window.WhackAMole = (() => {
     // ══════════════════════════════════════════════
     // INIT / DESTROY
     // ══════════════════════════════════════════════
+    function fitCanvas() {
+        if (!canvas || !canvas.parentElement) return;
+        const parent = canvas.parentElement;
+        const pw = parent.clientWidth || 480;
+        const ph = parent.clientHeight || 640;
+        const aspect = GAME_W / GAME_H;
+        let cw, ch;
+        if (pw / ph > aspect) { ch = ph; cw = ch * aspect; }
+        else { cw = pw; ch = cw / aspect; }
+        const dpr = window.devicePixelRatio || 1;
+        canvas.style.width = cw + 'px';
+        canvas.style.height = ch + 'px';
+        canvas.width = Math.round(GAME_W * dpr);
+        canvas.height = Math.round(GAME_H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        SCALE = cw / GAME_W;
+    }
+
     function init(cvs, pl, cb) {
         canvas = cvs;
         player = pl;
         onGameOver = cb;
-
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = GAME_W * dpr;
-        canvas.height = GAME_H * dpr;
-        canvas.style.width = GAME_W + 'px';
-        canvas.style.height = GAME_H + 'px';
         ctx = canvas.getContext('2d');
         canvas.style.cursor = 'none';
 
         loadTheme();
+        highScore = loadHighScore();
         initBgFlowers();
         resetGame();
 
         gameActive = true;
         startTime = performance.now();
 
+        fitCanvas();
+        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
         // Bind events
         canvas._wam_mousemove = handleMouseMove;
         canvas._wam_click = handleClick;
         canvas._wam_touchstart = handleTouch;
         canvas._wam_touchmove = handleTouchMove;
+        canvas._wam_resize = fitCanvas;
         canvas.addEventListener('mousemove', canvas._wam_mousemove);
         canvas.addEventListener('click', canvas._wam_click);
         canvas.addEventListener('touchstart', canvas._wam_touchstart, { passive: false });
         canvas.addEventListener('touchmove', canvas._wam_touchmove, { passive: false });
+        window.addEventListener('resize', canvas._wam_resize);
 
         animFrame = requestAnimationFrame(gameLoop);
     }
@@ -1216,10 +1249,12 @@ window.WhackAMole = (() => {
             if (canvas._wam_click) canvas.removeEventListener('click', canvas._wam_click);
             if (canvas._wam_touchstart) canvas.removeEventListener('touchstart', canvas._wam_touchstart);
             if (canvas._wam_touchmove) canvas.removeEventListener('touchmove', canvas._wam_touchmove);
+            if (canvas._wam_resize) window.removeEventListener('resize', canvas._wam_resize);
             delete canvas._wam_mousemove;
             delete canvas._wam_click;
             delete canvas._wam_touchstart;
             delete canvas._wam_touchmove;
+            delete canvas._wam_resize;
         }
 
         if (audioCtx) {

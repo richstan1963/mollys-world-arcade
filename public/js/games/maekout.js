@@ -20,8 +20,8 @@ window.Maekout = (() => {
     const PADDLE_WIDTH_RATIO = 0.15;
     const PADDLE_HEIGHT = 14;
     const BALL_RADIUS = 7;
-    const BALL_SPEED_BASE = 320;
-    const BALL_SPEED_INCREMENT = 18;
+    const BALL_SPEED_BASE = 240;
+    const BALL_SPEED_INCREMENT = 22;
     const BRICK_ROWS = 6;
     const BRICK_COLS = 8;
     const BRICK_PAD = 3;

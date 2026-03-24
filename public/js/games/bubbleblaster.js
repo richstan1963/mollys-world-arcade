@@ -45,7 +45,7 @@ window.BubbleBlaster = (() => {
 
     // Game state
     let canvas, ctx, W, H, SCALE, animFrame, gameActive = false;
-    let activePlayer, gameOverCB, playerColor, themeHue;
+    let activePlayer, gameOverCB, playerColor, themeHue, startTime = 0;
     let state, frameCount, lastTime, keys = {};
     let score, lives, wave, level, combo;
     let player, bubbles, enemies, particles, scorePopups, fruits, ambientBubbles;
@@ -1793,6 +1793,7 @@ window.BubbleBlaster = (() => {
     // ── Game Flow ──
     function startGame() {
         score = 0;
+        startTime = Date.now();
         lives = INITIAL_LIVES;
         wave = 0;
         level = 1;
@@ -1819,7 +1820,8 @@ window.BubbleBlaster = (() => {
     }
 
     function endGame() {
-        if (gameOverCB) gameOverCB({ score, waves: wave, level });
+        const duration = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
+        if (gameOverCB) gameOverCB({ score, waves: wave, level, duration });
         state = ST_TITLE;
     }
 

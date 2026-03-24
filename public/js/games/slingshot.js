@@ -131,6 +131,7 @@ window.Slingshot = (() => {
     let settleTimer = 0;
     let stars = 0;
     let totalScore = 0;
+    let startTime = 0;
 
     // Clouds
     let clouds = [];
@@ -2124,7 +2125,11 @@ window.Slingshot = (() => {
                 loadLevel(currentLevel + 1);
             } else if (won) {
                 totalScore = score + levelScore;
-                if (onGameOver) onGameOver(totalScore);
+                if (onGameOver) onGameOver({
+                    score: totalScore,
+                    level: currentLevel + 1,
+                    duration: Math.floor((Date.now() - startTime) / 1000),
+                });
             } else {
                 loadLevel(currentLevel);
             }
@@ -2192,7 +2197,11 @@ window.Slingshot = (() => {
                     loadLevel(currentLevel + 1);
                 } else if (won) {
                     totalScore = score + levelScore;
-                    if (onGameOver) onGameOver(totalScore);
+                    if (onGameOver) onGameOver({
+                    score: totalScore,
+                    level: currentLevel + 1,
+                    duration: Math.floor((Date.now() - startTime) / 1000),
+                });
                 } else {
                     loadLevel(currentLevel);
                 }
@@ -2262,6 +2271,7 @@ window.Slingshot = (() => {
         state = ST_LOADING;
         score = 0;
         totalScore = 0;
+        startTime = Date.now();
         currentLevel = 0;
         bodies = [];
         particles = [];

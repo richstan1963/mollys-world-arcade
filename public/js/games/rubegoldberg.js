@@ -2451,5 +2451,11 @@ window.RubeGoldberg = (() => {
         window.removeEventListener('resize', fitCanvas);
     }
 
-    return { init, destroy };
+    return {
+        init,
+        destroy,
+        getScore()  { return totalScore || 0; },
+        getLevel()  { return (level || 0) + 1; },
+        isActive()  { return gameActive; }
+    };
 })();

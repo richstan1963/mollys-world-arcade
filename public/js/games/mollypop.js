@@ -26,6 +26,12 @@ window.MollyPop = (() => {
     const VIGNETTE_STRENGTH = 0.45;    // Edge darkening intensity
     let bgHueOffset = 0;              // Animated background hue shift
 
+    // High score tracking
+    const LS_KEY = 'mollypop_highscore';
+    function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
+    function saveHighScore(s) { try { localStorage.setItem(LS_KEY, s); } catch {} }
+    let highScore = 0;
+
     // ── State ──
     let canvas, ctx;
     let grid = [];
@@ -513,6 +519,7 @@ window.MollyPop = (() => {
     function endGame() {
         gameActive = false;
         const duration = Math.round((Date.now() - startTime) / 1000);
+        if (score > highScore) { highScore = score; saveHighScore(highScore); }
         if (window.Confetti) Confetti.highScore();
         if (player?.id) {
             API.submitOriginalScore(player.id, 'mollypop', score, level, {
@@ -1357,6 +1364,23 @@ window.MollyPop = (() => {
 
     function handleLeave() { hoveredGroup = []; }
 
+    // ── Canvas sizing ──
+    function fitCanvas() {
+        if (!canvas || !canvas.parentElement) return;
+        const parent = canvas.parentElement;
+        const pw = Math.max(320, parent.clientWidth || 480);
+        const ph = Math.max(400, parent.clientHeight || 640);
+        canvas.width = pw;
+        canvas.height = ph;
+        const hudSpace = 60;
+        const availH = canvas.height - hudSpace - 20;
+        const availW = canvas.width - 20;
+        blockSize = Math.floor(Math.min(availW / COLS, availH / ROWS));
+        gridOffsetX = Math.round((canvas.width - blockSize * COLS) / 2);
+        gridOffsetY = hudSpace;
+        buildEmojiCache(blockSize);
+    }
+
     // ── Public API ──
     function init(canvasEl, activePlayer, gameOverCallback) {
         canvas = canvasEl;
@@ -1369,35 +1393,7 @@ window.MollyPop = (() => {
         theme = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(themeId) : null;
         buildBlockColors();
 
-        const container = canvas.parentElement;
-        canvas.width = Math.max(320, container.clientWidth || 480);
-        canvas.height = Math.max(400, container.clientHeight || 640);
-
-        // Delayed refit for container layout settling
-        requestAnimationFrame(() => {
-            if (!canvas || !canvas.parentElement) return;
-            const p = canvas.parentElement;
-            const pw = Math.max(320, p.clientWidth || 480);
-            const ph = Math.max(400, p.clientHeight || 640);
-            if (pw !== canvas.width || ph !== canvas.height) {
-                canvas.width = pw; canvas.height = ph;
-                const hs = 60;
-                const aH = canvas.height - hs - 20;
-                const aW = canvas.width - 20;
-                blockSize = Math.floor(Math.min(aW / COLS, aH / ROWS));
-                gridOffsetX = Math.round((canvas.width - blockSize * COLS) / 2);
-                gridOffsetY = hs;
-                buildEmojiCache(blockSize);
-            }
-        });
-
-        const hudSpace = 60;
-        const availH = canvas.height - hudSpace - 20;
-        const availW = canvas.width - 20;
-        blockSize = Math.floor(Math.min(availW / COLS, availH / ROWS));
-        gridOffsetX = Math.round((canvas.width - blockSize * COLS) / 2);
-        gridOffsetY = hudSpace;
-
+        highScore = loadHighScore();
         score = 0; level = 1; target = 500;
         combo = 0; lastPopTime = 0;
         totalPopped = 0; maxCombo = 0;
@@ -1408,8 +1404,9 @@ window.MollyPop = (() => {
         boardGlow = 0; comboFlashAlpha = 0;
         levelUpAnim = null;
 
-        // Build emoji cache at block size for fast rendering
-        buildEmojiCache(blockSize);
+        fitCanvas();
+        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
         loadSprites();
         initBgStars();
         generateGrid();
@@ -1419,6 +1416,7 @@ window.MollyPop = (() => {
         canvas.addEventListener('mouseleave', handleLeave);
         canvas.addEventListener('touchstart', handleClick, { passive: true });
         canvas.addEventListener('touchmove', handleMove, { passive: true });
+        window.addEventListener('resize', fitCanvas);
 
         render();
     }
@@ -1427,6 +1425,7 @@ window.MollyPop = (() => {
         gameActive = false;
         if (animFrame) cancelAnimationFrame(animFrame);
         animFrame = null;
+        window.removeEventListener('resize', fitCanvas);
         if (canvas) {
             canvas.removeEventListener('click', handleClick);
             canvas.removeEventListener('mousemove', handleMove);

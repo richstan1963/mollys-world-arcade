@@ -269,9 +269,16 @@ window.Aquarium = (() => {
         // Movement based on state
         switch (f.state) {
             case 'idle':
-                // Gentle sine wave swimming
+                // Gentle sine wave swimming with periodic direction changes
                 f.vx += (Math.random() - 0.5) * 0.1;
                 f.vy = Math.sin(f.animFrame * 0.03) * 0.3;
+                // Periodically change direction to avoid monotone movement
+                if (f.stateTime % 180 === 0 && Math.random() < 0.35) {
+                    f.vx = (Math.random() - 0.5) * f.speed * 1.2;
+                }
+                // Gently drift toward center if near edges
+                if (f.x < 80) f.vx += 0.04;
+                if (f.x > GAME_W - 80) f.vx -= 0.04;
                 f.vx = Math.max(-f.speed, Math.min(f.speed, f.vx));
                 break;
 
@@ -1287,7 +1294,12 @@ window.Aquarium = (() => {
         // Score callback after 5 minutes
         if (!scoreCallbackSent && frameCount >= SCORE_CALLBACK_TIME) {
             scoreCallbackSent = true;
-            if (onGameOver) onGameOver(Math.floor(score));
+            if (onGameOver) onGameOver({
+                score: Math.floor(score),
+                duration: Math.floor((Date.now() - (startTime || Date.now())) / 1000),
+                fishCount: fish.length,
+                happiness: Math.round(totalHappiness * 100) / 100
+            });
         }
     }
 

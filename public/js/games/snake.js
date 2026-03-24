@@ -337,8 +337,11 @@ window.Snake = (() => {
     }
 
     // ── Game Setup ──
+    let startTime = 0;
+
     function resetGame() {
         score = 0;
+        startTime = Date.now();
         level = 1;
         foodEaten = 0;
         speedMs = BASE_SPEED_MS;
@@ -1647,7 +1650,8 @@ window.Snake = (() => {
             if (deathTimer <= 0) {
                 state = ST_GAMEOVER;
                 deathScatterSegments = null;
-                if (gameOverCB) gameOverCB({ score, level, length: snake.length });
+                const duration = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
+                if (gameOverCB) gameOverCB({ score, level, duration, length: snake.length });
             }
         }
     }

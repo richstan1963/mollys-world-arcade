@@ -1624,7 +1624,10 @@ window.FlappyMae = (() => {
         playHit();
         setTimeout(playFall, 200);
         deathTimer = 60; // frames before allowing retry
-        if (score > bestScore) bestScore = score;
+        if (score > bestScore) {
+            bestScore = score;
+            try { localStorage.setItem('ywa_flappy_best', bestScore); } catch(e) {}
+        }
         // Spawn feather burst
         spawnFeathers(70, birdY, TC[0] || playerColor());
         spawnFeathers(70, birdY, TC[2] || '#FFFFFF');
@@ -1844,7 +1847,7 @@ window.FlappyMae = (() => {
         state = SPLASH;
         score = 0;
         level = 1;
-        bestScore = 0;
+        bestScore = parseInt(localStorage.getItem('ywa_flappy_best') || '0', 10);
         pipes = [];
         floats = [];
         feathers = [];

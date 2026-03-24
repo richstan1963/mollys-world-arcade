@@ -61,11 +61,14 @@ window.MinniePac = (() => {
     ];
 
     // ── State ──
+    const LS_KEY = 'ywa_minniepac_hiscore';
+    const ST_TITLE = 0, ST_PLAYING = 1;
     let canvas, ctx;
     let tileSize = 0, offsetX = 0, offsetY = 0;
     let maze = [];
-    let score = 0, level = 1, lives = START_LIVES;
+    let score = 0, level = 1, lives = START_LIVES, hiScore = 0;
     let totalDots = 0, dotsEaten = 0;
+    let gameState = ST_TITLE;
     let gameActive = false;
     let animFrame = null;
     let player = null;
@@ -106,6 +109,10 @@ window.MinniePac = (() => {
     // Level clear
     let levelClearing = false, levelClearTimer = 0;
     const LEVEL_CLEAR_DURATION = 2000;
+
+    // Level splash
+    let levelSplash = false, levelSplashTimer = 0;
+    const LEVEL_SPLASH_DURATION = 1500;
 
     // Ready countdown
     let readyTimer = 0;
@@ -1473,12 +1480,12 @@ window.MinniePac = (() => {
         ctx.shadowBlur = 20;
         ctx.font = `bold ${Math.max(22, tileSize * 1.5)}px "Orbitron", "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
-        const goGrad = ctx.createLinearGradient(w / 2 - 80, h / 2 - 30, w / 2 + 80, h / 2);
+        const goGrad = ctx.createLinearGradient(w / 2 - 80, h / 2 - 50, w / 2 + 80, h / 2 - 20);
         goGrad.addColorStop(0, '#E91E63');
         goGrad.addColorStop(0.5, '#FF69B4');
         goGrad.addColorStop(1, '#E91E63');
         ctx.fillStyle = goGrad;
-        ctx.fillText('GAME OVER', w / 2, h / 2 - 20);
+        ctx.fillText('GAME OVER', w / 2, h / 2 - 40);
 
         ctx.shadowBlur = 0;
 
@@ -1486,25 +1493,200 @@ window.MinniePac = (() => {
         ctx.fillStyle = '#FF69B4';
         ctx.shadowColor = '#FF69B4';
         ctx.shadowBlur = 6;
-        ctx.fillText(`${score.toLocaleString()}`, w / 2, h / 2 + 20);
+        ctx.fillText(`${score.toLocaleString()}`, w / 2, h / 2);
 
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#94A3B8';
         ctx.font = `${Math.max(11, tileSize * 0.6)}px "Segoe UI", system-ui`;
-        ctx.fillText(`Level ${level} \u2022 ${dotsEaten} treats eaten`, w / 2, h / 2 + 45);
+        ctx.fillText(`Level ${level} \u2022 ${dotsEaten} treats eaten`, w / 2, h / 2 + 25);
+
+        // High score
+        if (hiScore > 0) {
+            ctx.fillStyle = score >= hiScore ? '#22C55E' : '#FF69B4';
+            ctx.font = `bold ${Math.max(12, tileSize * 0.65)}px "Orbitron", monospace`;
+            ctx.fillText(score >= hiScore ? 'NEW HIGH SCORE!' : `HIGH SCORE: ${hiScore.toLocaleString()}`, w / 2, h / 2 + 55);
+        }
+
+        // Play again prompt
+        const blink = Math.sin(frameCount * 0.08) > 0;
+        if (blink) {
+            ctx.fillStyle = '#FF69B4';
+            ctx.font = `bold ${Math.max(11, tileSize * 0.5)}px "Orbitron", monospace`;
+            ctx.fillText('PRESS ANY KEY OR TAP TO PLAY AGAIN', w / 2, h / 2 + 85);
+        }
+
         ctx.restore();
+    }
+
+    // ══════════════════════════════════════════════
+    // TITLE SCREEN
+    // ══════════════════════════════════════════════
+    function drawTitleScreen(w, h) {
+        ctx.fillStyle = BG_COLOR;
+        ctx.fillRect(0, 0, w, h);
+        drawBgStars(w, h);
+
+        const titleY = h * 0.25;
+        const titleSize = Math.max(22, w * 0.07);
+        ctx.save();
+        ctx.shadowColor = '#FF69B4';
+        ctx.shadowBlur = 20;
+        ctx.font = `bold ${titleSize}px "Orbitron", "Press Start 2P", monospace`;
+        ctx.textAlign = 'center';
+        const hue = (frameCount * 2) % 360;
+        const tGrad = ctx.createLinearGradient(w / 2 - 100, titleY - 20, w / 2 + 100, titleY + 20);
+        tGrad.addColorStop(0, '#FF69B4');
+        tGrad.addColorStop(0.5, '#FF85C8');
+        tGrad.addColorStop(1, '#E91E63');
+        ctx.fillStyle = tGrad;
+        ctx.fillText('MINNIE PAC', w / 2, titleY);
+        ctx.restore();
+
+        // Animated Minnie character
+        const pacY = h * 0.42;
+        const pacR = w * 0.06;
+        const mouth = 0.2 + Math.abs(Math.sin(frameCount * 0.1)) * 0.25;
+        const pacXPos = w * 0.3 + (frameCount * 1.5) % (w * 0.4);
+        ctx.save();
+        ctx.shadowColor = '#FF69B4';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#FF69B4';
+        ctx.beginPath();
+        ctx.moveTo(pacXPos, pacY);
+        ctx.arc(pacXPos, pacY, pacR, mouth * Math.PI, -mouth * Math.PI + Math.PI * 2);
+        ctx.closePath();
+        ctx.fill();
+        // Bow
+        ctx.fillStyle = '#E91E63';
+        ctx.beginPath();
+        ctx.ellipse(pacXPos - pacR * 0.3, pacY - pacR * 0.9, pacR * 0.4, pacR * 0.25, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(pacXPos + pacR * 0.3, pacY - pacR * 0.9, pacR * 0.4, pacR * 0.25, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(pacXPos, pacY - pacR * 0.9, pacR * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Trailing dots
+        for (let i = 1; i <= 4; i++) {
+            const dx = pacXPos - i * pacR * 1.5;
+            if (dx > w * 0.2 && dx < w * 0.8) {
+                ctx.fillStyle = CANDY_COLORS[i % CANDY_COLORS.length];
+                ctx.beginPath();
+                ctx.arc(dx, pacY, pacR * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = `${Math.max(12, w * 0.028)}px "Segoe UI", system-ui`;
+        ctx.textAlign = 'center';
+        ctx.fillText('Arrow Keys / WASD / Swipe to Move', w / 2, h * 0.56);
+
+        if (hiScore > 0) {
+            ctx.fillStyle = '#FF69B4';
+            ctx.font = `bold ${Math.max(13, w * 0.03)}px "Orbitron", monospace`;
+            ctx.fillText(`HIGH SCORE: ${hiScore.toLocaleString()}`, w / 2, h * 0.66);
+        }
+
+        const blink = Math.sin(frameCount * 0.08) > 0;
+        if (blink) {
+            ctx.fillStyle = '#FF69B4';
+            ctx.font = `bold ${Math.max(14, w * 0.032)}px "Orbitron", monospace`;
+            ctx.fillText('PRESS ANY KEY OR TAP TO START', w / 2, h * 0.78);
+        }
+        drawVignette(w, h);
+    }
+
+    // ══════════════════════════════════════════════
+    // LEVEL SPLASH
+    // ══════════════════════════════════════════════
+    function drawLevelSplash(w, h) {
+        const progress = 1 - (levelSplashTimer / LEVEL_SPLASH_DURATION);
+        ctx.fillStyle = BG_COLOR;
+        ctx.fillRect(0, 0, w, h);
+        drawBgStars(w, h);
+
+        const scale = progress < 0.3 ? progress / 0.3 : 1;
+        const alpha = progress > 0.7 ? (1 - progress) / 0.3 : 1;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(scale, scale);
+
+        ctx.shadowColor = '#FF69B4';
+        ctx.shadowBlur = 25;
+        ctx.font = `bold ${Math.max(28, w * 0.08)}px "Orbitron", "Press Start 2P", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#FF69B4';
+        ctx.fillText(`LEVEL ${level}`, 0, -10);
+
+        ctx.shadowBlur = 0;
+        ctx.font = `${Math.max(13, w * 0.032)}px "Segoe UI", system-ui`;
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText('GET READY!', 0, 30);
+        ctx.restore();
+        drawVignette(w, h);
+    }
+
+    // ══════════════════════════════════════════════
+    // ON-SCREEN D-PAD (touch devices)
+    // ══════════════════════════════════════════════
+    function drawTouchDpad(w, h) {
+        if (!('ontouchstart' in window)) return;
+        const cx = w * 0.15, cy = h - w * 0.15;
+        const sz = Math.max(16, w * 0.06);
+        ctx.save();
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = '#FFF';
+        ctx.beginPath(); ctx.moveTo(cx, cy - sz * 1.6); ctx.lineTo(cx - sz * 0.7, cy - sz * 0.6); ctx.lineTo(cx + sz * 0.7, cy - sz * 0.6); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx, cy + sz * 1.6); ctx.lineTo(cx - sz * 0.7, cy + sz * 0.6); ctx.lineTo(cx + sz * 0.7, cy + sz * 0.6); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx - sz * 1.6, cy); ctx.lineTo(cx - sz * 0.6, cy - sz * 0.7); ctx.lineTo(cx - sz * 0.6, cy + sz * 0.7); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx + sz * 1.6, cy); ctx.lineTo(cx + sz * 0.6, cy - sz * 0.7); ctx.lineTo(cx + sz * 0.6, cy + sz * 0.7); ctx.closePath(); ctx.fill();
+        ctx.restore();
+    }
+
+    // ══════════════════════════════════════════════
+    // CANVAS SIZING
+    // ══════════════════════════════════════════════
+    function fitCanvas() {
+        if (!canvas) return;
+        const parent = canvas.parentElement;
+        const pw = parent ? (parent.clientWidth || 480) : 480;
+        const ph = parent ? (parent.clientHeight || 640) : 640;
+        if (pw < 50 || ph < 50) return;
+        canvas.width = pw;
+        canvas.height = ph;
+        const hudSpace = Math.max(50, canvas.height * 0.1);
+        const availH = canvas.height - hudSpace - 10;
+        const availW = canvas.width - 10;
+        tileSize = Math.floor(Math.min(availW / COLS, availH / ROWS));
+        if (tileSize < 8) tileSize = 8;
+        offsetX = Math.round((canvas.width - tileSize * COLS) / 2);
+        offsetY = Math.round(hudSpace);
+        if (maze.length > 0) prerenderMaze();
     }
 
     // ══════════════════════════════════════════════
     // GAME LOOP
     // ══════════════════════════════════════════════
     function update(dt) {
-        frameCount++;
 
         if (screenFlashTimer > 0) screenFlashTimer -= dt * 1000;
 
         if (readyTimer > 0) {
             readyTimer -= dt * 1000;
+            return;
+        }
+
+        if (levelSplash) {
+            levelSplashTimer -= dt * 1000;
+            if (levelSplashTimer <= 0) {
+                levelSplash = false;
+                readyTimer = READY_DURATION;
+            }
             return;
         }
 
@@ -1517,9 +1699,10 @@ window.MinniePac = (() => {
                 prerenderMaze();
                 initPacMae();
                 initGhosts();
-                readyTimer = READY_DURATION;
                 activeFruit = null;
                 fruitSpawnDots = 0;
+                levelSplash = true;
+                levelSplashTimer = LEVEL_SPLASH_DURATION;
                 if (typeof Confetti !== 'undefined') Confetti.rain(2000);
             }
             return;
@@ -1530,7 +1713,11 @@ window.MinniePac = (() => {
             if (deathTimer <= 0) {
                 lives--;
                 if (lives <= 0) {
-                    gameActive = false;
+                    // Save high score
+                    if (score > hiScore) {
+                        hiScore = score;
+                        try { localStorage.setItem(LS_KEY, hiScore); } catch {}
+                    }
                     if (onGameOver) {
                         const duration = Math.round((Date.now() - startTime) / 1000);
                         setTimeout(() => onGameOver({ score, level, duration, dotsEaten }), 1500);
@@ -1578,8 +1765,22 @@ window.MinniePac = (() => {
         const now = performance.now();
         const dt = Math.min((now - (lastTime || now)) / 1000, 0.05);
         lastTime = now;
+        frameCount++;
 
         const w = canvas.width, h = canvas.height;
+
+        // Title screen
+        if (gameState === ST_TITLE) {
+            drawTitleScreen(w, h);
+            return;
+        }
+
+        // Level splash
+        if (levelSplash) {
+            update(dt);
+            drawLevelSplash(w, h);
+            return;
+        }
 
         // Dark pink-tinted background
         ctx.fillStyle = BG_COLOR;
@@ -1600,6 +1801,7 @@ window.MinniePac = (() => {
         drawScreenFlash(w, h);
         drawHUD(w, h);
         drawReadyScreen();
+        drawTouchDpad(w, h);
 
         if (!gameActive && lives <= 0) {
             drawGameOver(w, h);
@@ -1609,7 +1811,30 @@ window.MinniePac = (() => {
     // ══════════════════════════════════════════════
     // INPUT
     // ══════════════════════════════════════════════
+    function startGame() {
+        score = 0; level = 1; lives = START_LIVES;
+        gameState = ST_PLAYING;
+        gameActive = true;
+        powerActive = false; powerTimer = 0;
+        levelClearing = false; levelSplash = false; pelletPulse = 0;
+        scorePopups = [];
+        pacMouthAngle = 0.2; pacMouthDir = 1;
+        pacTrail = [];
+        screenFlashTimer = 0;
+        activeFruit = null;
+        fruitSpawnDots = 0;
+        startTime = Date.now();
+        buildMaze();
+        initPacMae();
+        initGhosts();
+        prerenderMaze();
+        readyTimer = READY_DURATION;
+    }
+
     function handleKeyDown(e) {
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        if (gameState === ST_TITLE) { startGame(); e.preventDefault(); return; }
+        if (!gameActive && lives <= 0) { startGame(); e.preventDefault(); return; }
         if (!gameActive) return;
         const k = e.key;
         keys[k] = true;
@@ -1625,8 +1850,6 @@ window.MinniePac = (() => {
         e.preventDefault();
         e.stopPropagation();
         pacNextDir = dir;
-
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }
 
     function handleKeyUp(e) {
@@ -1634,12 +1857,14 @@ window.MinniePac = (() => {
     }
 
     function handleTouchStart(e) {
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        e.preventDefault();
+        if (gameState === ST_TITLE) { startGame(); return; }
+        if (!gameActive && lives <= 0) { startGame(); return; }
         if (!gameActive) return;
         const touch = e.touches[0];
         touchStartX = touch.clientX;
         touchStartY = touch.clientY;
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        e.preventDefault();
     }
 
     function handleTouchMove(e) {
@@ -1673,51 +1898,35 @@ window.MinniePac = (() => {
         player = activePlayer;
         onGameOver = gameOverCallback;
 
-        const container = canvas.parentElement;
-        canvas.width = container ? (container.clientWidth || 480) : 480;
-        canvas.height = container ? (container.clientHeight || 640) : 640;
+        // Load high score
+        try { hiScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { hiScore = 0; }
 
-        if (canvas.width < 100) canvas.width = 480;
-        if (canvas.height < 100) canvas.height = 640;
-
-        const hudSpace = Math.max(50, canvas.height * 0.1);
-        const availH = canvas.height - hudSpace - 10;
-        const availW = canvas.width - 10;
-        tileSize = Math.floor(Math.min(availW / COLS, availH / ROWS));
-        if (tileSize < 8) tileSize = 8;
-        offsetX = Math.round((canvas.width - tileSize * COLS) / 2);
-        offsetY = Math.round(hudSpace);
-
-        score = 0; level = 1; lives = START_LIVES;
-        gameActive = true;
-        frameCount = 0; lastTime = 0;
-        startTime = Date.now();
-        powerActive = false; powerTimer = 0;
-        levelClearing = false; pelletPulse = 0;
-        scorePopups = [];
-        pacMouthAngle = 0.2; pacMouthDir = 1;
-        pacTrail = [];
-        screenFlashTimer = 0;
-        activeFruit = null;
-        fruitSpawnDots = 0;
-        keys = {};
-
-        // Always use Minnie pink wall color (ignore theme override)
+        // Always use Minnie pink wall color
         WALL_COLOR = '#E91E8C';
         CANDY_COLORS = ['#FF69B4','#FF85C8','#FFB6D9','#FF4DA6','#FF1493','#FF6EB4'];
 
+        // Canvas sizing
+        fitCanvas();
+        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        // Init state for title screen
+        gameState = ST_TITLE;
+        gameActive = false;
+        frameCount = 0; lastTime = 0;
+        keys = {};
+        levelSplash = false;
+        initBgStars();
         buildMaze();
         initPacMae();
         initGhosts();
-        initBgStars();
         prerenderMaze();
-        readyTimer = READY_DURATION;
 
         document.addEventListener('keydown', handleKeyDown, true);
         document.addEventListener('keyup', handleKeyUp, true);
         canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
         canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
         canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+        window.addEventListener('resize', fitCanvas);
 
         canvas.setAttribute('tabindex', '0');
         canvas.style.outline = 'none';
@@ -1728,10 +1937,12 @@ window.MinniePac = (() => {
 
     function destroy() {
         gameActive = false;
+        gameState = ST_TITLE;
         if (animFrame) cancelAnimationFrame(animFrame);
         animFrame = null;
         document.removeEventListener('keydown', handleKeyDown, true);
         document.removeEventListener('keyup', handleKeyUp, true);
+        window.removeEventListener('resize', fitCanvas);
         if (canvas) {
             canvas.removeEventListener('touchstart', handleTouchStart);
             canvas.removeEventListener('touchmove', handleTouchMove);

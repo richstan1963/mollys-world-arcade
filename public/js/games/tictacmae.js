@@ -2,6 +2,12 @@
  * O = Themed circle + emoji   X = Themed crossed bars
  * Player vs AI with best-of-5 rounds. Canvas 2D, zero dependencies. */
 window.TicTacMae = (() => {
+    // High score tracking
+    const LS_KEY = 'tictacmae_highscore';
+    function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
+    function saveHighScore(s) { try { localStorage.setItem(LS_KEY, s); } catch {} }
+    let highScore = 0;
+
     let canvas, ctx;
     let player = null, onGameOver = null;
     let gameActive = false;
@@ -346,6 +352,8 @@ window.TicTacMae = (() => {
             if (playerWins >= 3 || aiWins >= 3 || roundNum >= MAX_ROUNDS) {
                 matchOver = true;
                 matchTimer = 0;
+                const finalScore = playerWins * 200 + draws * 50;
+                if (finalScore > highScore) { highScore = finalScore; saveHighScore(highScore); }
             }
         } else {
             currentTurn = who === 1 ? 2 : 1;
@@ -1106,6 +1114,13 @@ window.TicTacMae = (() => {
         ctx.fillText(`${totalScore} pts`, w / 2, h * 0.65);
         ctx.shadowBlur = 0;
 
+        // High score
+        if (highScore > 0) {
+            ctx.font = `${Math.max(10, 12 * SCALE)}px "Segoe UI", system-ui`;
+            ctx.fillStyle = totalScore >= highScore ? '#FFD700' : 'rgba(255,255,255,0.4)';
+            ctx.fillText(totalScore >= highScore ? '\u2B50 New Best!' : `Best: ${highScore}`, w / 2, h * 0.71);
+        }
+
         // Decorative separator line
         const sepW = Math.min(200, w * 0.4);
         const sepGrad = ctx.createLinearGradient(w/2 - sepW, 0, w/2 + sepW, 0);
@@ -1263,6 +1278,16 @@ window.TicTacMae = (() => {
     // ══════════════════════════════════════════════
     // PUBLIC API
     // ══════════════════════════════════════════════
+    function fitCanvas() {
+        if (!canvas || !canvas.parentElement) return;
+        const parent = canvas.parentElement;
+        const pw = parent.clientWidth || 480;
+        const ph = parent.clientHeight || 640;
+        canvas.width = Math.max(100, pw);
+        canvas.height = Math.max(100, ph);
+        computeLayout();
+    }
+
     function init(canvasEl, activePlayer, gameOverCallback) {
         destroy();
 
@@ -1283,26 +1308,10 @@ window.TicTacMae = (() => {
         THEME_EMOJI = TE;
         THEME_ICON = theme?.icon || '🎮';
 
-        const container = canvas.parentElement;
-        canvas.width = container ? (container.clientWidth || 480) : 480;
-        canvas.height = container ? (container.clientHeight || 640) : 640;
-        if (canvas.width < 100) canvas.width = 480;
-        if (canvas.height < 100) canvas.height = 640;
+        fitCanvas();
+        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        // Delayed refit for container layout settling
-        requestAnimationFrame(() => {
-            if (!canvas || !canvas.parentElement) return;
-            const p = canvas.parentElement;
-            const pw = p.clientWidth || 480;
-            const ph = p.clientHeight || 640;
-            if (pw > 100 && ph > 100 && (pw !== canvas.width || ph !== canvas.height)) {
-                canvas.width = pw; canvas.height = ph;
-                computeLayout();
-            }
-        });
-
-        computeLayout();
-
+        highScore = loadHighScore();
         score = 0; playerWins = 0; aiWins = 0; draws = 0;
         roundNum = 0; matchOver = false; matchTimer = 0;
         gameActive = true;
@@ -1317,6 +1326,7 @@ window.TicTacMae = (() => {
         canvas.addEventListener('click', handleClick);
         canvas.addEventListener('touchstart', handleTouch, { passive: false });
         document.addEventListener('keydown', handleKeyDown, true);
+        window.addEventListener('resize', fitCanvas);
 
         canvas.setAttribute('tabindex', '0');
         canvas.style.outline = 'none';
@@ -1329,6 +1339,7 @@ window.TicTacMae = (() => {
         gameActive = false;
         if (animFrame) cancelAnimationFrame(animFrame);
         animFrame = null;
+        window.removeEventListener('resize', fitCanvas);
         if (canvas) {
             canvas.removeEventListener('click', handleClick);
             canvas.removeEventListener('touchstart', handleTouch);

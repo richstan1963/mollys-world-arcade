@@ -37,6 +37,8 @@ window.Bomberman = (() => {
 
     // States
     const ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_GAMEOVER = 3, ST_WIN = 4, ST_CLEAR = 5;
+    const LS_KEY = 'ywa_bomberman_hiscore';
+    let hiScore = 0;
 
     // ── Mutable State ──
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -346,7 +348,7 @@ window.Bomberman = (() => {
     function update(dt) {
         frameCount++;
         if (state === ST_PLAY) updatePlay(dt);
-        else if (state === ST_DYING) { deathTimer -= dt; if (deathTimer <= 0) { if (lives <= 0) { state = ST_GAMEOVER; } else { resetLevel(); state = ST_PLAY; invulnTimer = INVULN_MS; } } }
+        else if (state === ST_DYING) { deathTimer -= dt; if (deathTimer <= 0) { if (lives <= 0) { state = ST_GAMEOVER; if (score > hiScore) { hiScore = score; try { localStorage.setItem(LS_KEY, hiScore); } catch {} } } else { resetLevel(); state = ST_PLAY; invulnTimer = INVULN_MS; } } }
         else if (state === ST_CLEAR) { clearTimer -= dt; victoryDanceTimer += dt; if (clearTimer <= 0) { level++; resetLevel(); state = ST_PLAY; } }
         // Particles always update
         updateParticles(dt);
@@ -1146,12 +1148,18 @@ window.Bomberman = (() => {
         ctx.fillStyle = '#EF4444';
         ctx.font = `bold ${gs(28)}px monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', W / 2, H * 0.38);
+        ctx.fillText('GAME OVER', W / 2, H * 0.35);
         ctx.fillStyle = '#E0E7FF';
         ctx.font = `${gs(14)}px monospace`;
-        ctx.fillText(`Final Score: ${score}`, W / 2, H * 0.50);
+        ctx.fillText(`Final Score: ${score}`, W / 2, H * 0.47);
+        if (hiScore > 0) {
+            ctx.fillStyle = score >= hiScore ? '#22C55E' : '#FBBF24';
+            ctx.font = `bold ${gs(12)}px monospace`;
+            ctx.fillText(score >= hiScore ? 'NEW HIGH SCORE!' : `HIGH SCORE: ${hiScore}`, W / 2, H * 0.56);
+        }
+        ctx.fillStyle = '#94A3B8';
         ctx.font = `${gs(11)}px monospace`;
-        ctx.fillText('Tap or press Space to restart', W / 2, H * 0.62);
+        ctx.fillText('Tap or press Space to restart', W / 2, H * 0.68);
     }
 
     function drawLevelClear() {
@@ -1290,6 +1298,7 @@ window.Bomberman = (() => {
         ctx = canvas.getContext('2d');
         activePlayer = playerData;
         gameOverCB = onGameOver;
+        try { hiScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { hiScore = 0; }
         gameActive = true;
         playerColor = playerData?.color || '#06B6D4';
         playerTheme = playerData?.theme || 'retro';

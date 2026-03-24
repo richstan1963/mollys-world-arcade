@@ -20,9 +20,9 @@ window.WordleGame = (() => {
         'ARENA','MAGIC','SWORD','ARMOR','BEAST','BLAZE','BRAVE','CLASH','CRAFT','CRYPT',
         'DODGE','DRIFT','DRIVE','DUNGS','ELITE','EMBER','EXTRA','FLAME','FLASH','FORGE',
         'FROST','GHOST','GIANT','GLEAM','GLIDE','GLOBE','GLOOM','GRACE','GRAND','GUARD',
-        'GUILD','HAVEN','HEART','JOUST','KNAVE','KNIGHT','LASER','LEAPS','LIGHT','LUNAR',
+        'GUILD','HAVEN','HEART','JOUST','KNAVE','KNIFE','LASER','LEAPS','LIGHT','LUNAR',
         'MATCH','METAL','MIGHT','MINES','MORPH','NIGHT','NINJA','NOBLE','ORBIT','PEARL',
-        'PHASE','PILOT','PIRATE','PLANT','PLATE','PLUME','PRIME','PRISM','PULSE','PUNCH',
+        'PHASE','PILOT','PIPER','PLANT','PLATE','PLUME','PRIME','PRISM','PULSE','PUNCH',
         'QUEEN','QUICK','RADAR','RACER','REALM','REIGN','RIDER','RISEN','ROGUE','ROYAL',
         'RUINS','SCALE','SCOUT','SHADE','SHARK','SHELL','SHIFT','SHINE','SHOCK','SIEGE',
         'SKILL','SLASH','SLIDE','SMASH','SNARE','SOLAR','SONIC','SPACE','SPARK','SPEED',
@@ -38,7 +38,7 @@ window.WordleGame = (() => {
         'FRUIT','GRAIL','GRAPE','GREEN','GRILL','GRIND','GROVE','HAPPY','HASTE','HEAVY',
         'HONOR','HOVER','HYPER','IMAGE','IVORY','JEWEL','JUDGE','JUICE','LABOR','LANCE',
         'LARGE','LEMON','LLAMA','LOTUS','LOWER','LUCKY','MEDAL','MERCY','MERRY','METRO',
-        'MINOR','MOCHA','MODEL','MONEY','MOUNT','MOVIE','MURAL','MUSIC','MYSTIC','NERVE',
+        'MINOR','MOCHA','MODEL','MONEY','MOUNT','MOVIE','MURAL','MUSIC','MISTY','NERVE',
         'NORTH','OCEAN','OLIVE','OPERA','ORDER','OTHER','OUTER','OXIDE','PAINT','PANEL',
         'PARTY','PEACE','PEACH','PIANO','PITCH','PLAID','PLAZA','POINT','POLAR','POUND',
         'PRESS','PRIDE','PRIZE','PROOF','PROUD','PROXY','PUPIL','QUIET','QUILT','QUOTE',
@@ -969,16 +969,28 @@ window.WordleGame = (() => {
     // ══════════════════════════════════════════════
     // INIT / DESTROY
     // ══════════════════════════════════════════════
+    function fitCanvas() {
+        if (!canvas || !canvas.parentElement) return;
+        const parent = canvas.parentElement;
+        const pw = parent.clientWidth || 480;
+        const ph = parent.clientHeight || 640;
+        const aspect = GAME_W / GAME_H;
+        let cw, ch;
+        if (pw / ph > aspect) { ch = ph; cw = ch * aspect; }
+        else { cw = pw; ch = cw / aspect; }
+        const dpr = window.devicePixelRatio || 1;
+        canvas.style.width = cw + 'px';
+        canvas.style.height = ch + 'px';
+        canvas.width = Math.round(GAME_W * dpr);
+        canvas.height = Math.round(GAME_H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        SCALE = cw / GAME_W;
+    }
+
     function init(cvs, pl, cb) {
         canvas = cvs;
         player = pl;
         onGameOver = cb;
-
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = GAME_W * dpr;
-        canvas.height = GAME_H * dpr;
-        canvas.style.width = GAME_W + 'px';
-        canvas.style.height = GAME_H + 'px';
         ctx = canvas.getContext('2d');
 
         loadTheme();
@@ -987,13 +999,18 @@ window.WordleGame = (() => {
 
         gameActive = true;
 
+        fitCanvas();
+        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
         // Bind events
         canvas._wg_keydown = handleKeyDown;
         canvas._wg_click = handleClick;
         canvas._wg_touch = handleTouch;
+        canvas._wg_resize = fitCanvas;
         document.addEventListener('keydown', canvas._wg_keydown);
         canvas.addEventListener('click', canvas._wg_click);
         canvas.addEventListener('touchstart', canvas._wg_touch, { passive: false });
+        window.addEventListener('resize', canvas._wg_resize);
 
         animFrame = requestAnimationFrame(gameLoop);
     }
@@ -1007,9 +1024,11 @@ window.WordleGame = (() => {
             if (canvas._wg_keydown) document.removeEventListener('keydown', canvas._wg_keydown);
             if (canvas._wg_click) canvas.removeEventListener('click', canvas._wg_click);
             if (canvas._wg_touch) canvas.removeEventListener('touchstart', canvas._wg_touch);
+            if (canvas._wg_resize) window.removeEventListener('resize', canvas._wg_resize);
             delete canvas._wg_keydown;
             delete canvas._wg_click;
             delete canvas._wg_touch;
+            delete canvas._wg_resize;
         }
 
         if (audioCtx) {

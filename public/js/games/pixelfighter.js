@@ -69,7 +69,7 @@ window.PixelFighter = (() => {
     let gameActive = false;
 
     // Round tracking
-    let round, playerWins, aiWins, score;
+    let round, playerWins, aiWins, score, bestScore;
     let stateTimer;
 
     // Fighters
@@ -1253,6 +1253,12 @@ window.PixelFighter = (() => {
         ctx.font = '18px monospace';
         ctx.fillText(`SCORE: ${score}`, GAME_W / 2, GAME_H / 2 + 10);
 
+        if (bestScore > 0) {
+            ctx.font = '14px monospace';
+            ctx.fillStyle = score >= bestScore ? '#FFD700' : '#888';
+            ctx.fillText(score >= bestScore ? `NEW BEST: ${bestScore}` : `BEST: ${bestScore}`, GAME_W / 2, GAME_H / 2 + 30);
+        }
+
         const blink = Math.sin(frameCount * 0.08) > 0;
         if (blink) {
             ctx.font = '14px monospace';
@@ -1522,6 +1528,10 @@ window.PixelFighter = (() => {
             if (playerWins >= ROUNDS_TO_WIN || aiWins >= ROUNDS_TO_WIN) {
                 state = ST_GAME_OVER;
                 stateTimer = 0;
+                if (score > bestScore) {
+                    bestScore = score;
+                    try { localStorage.setItem('ywa_pixelfighter_best', bestScore); } catch(e) {}
+                }
             } else {
                 round++;
                 stageIndex++;
@@ -1708,6 +1718,7 @@ window.PixelFighter = (() => {
         frameCount = 0;
         touchActive = false;
         state = ST_TITLE;
+        bestScore = parseInt(localStorage.getItem('ywa_pixelfighter_best') || '0', 10);
         stageIndex = 0;
         gameActive = false;
 

@@ -1025,6 +1025,7 @@ function seedOriginalGames(database) {
         ['bowling',      'Bowling',        '10-pin bowling with real pin physics! Position, aim, power — roll strikes and pick up spares.', '🎳', '#3B82F6'],
         ['minigolf',     'Mini Golf',      '9 holes of mini putt! Windmills, sand traps, water hazards, and bouncing bumpers.', '⛳', '#22C55E'],
         ['ministroke',   'MiniStroke',     'Pool table meets mini golf! Pot balls past windmills, bumpers, tunnels, and ice patches. 9 wild courses.', '🎱', '#A855F7'],
+        ['slingpool',    'Sling Pool',     'Flick-shot pool with bumpers, targets, and pockets! 10 levels, 3 shots each, star ratings.', '🎱', '#06B6D4'],
         ['rubegoldberg', 'Rube Goldberg',  'The ball is rolling — build the machine ahead of it! Place ramps, seesaws, and catapults before time runs out.', '⚙️', '#F59E0B'],
         ['wordlegame',   'Wordle',         '5-letter word guess in 6 tries! Daily challenge mode plus free play. Arcade-themed word list.', '📝', '#22C55E'],
         ['whackamole',   'Whac-A-Mole',   'Whack the moles! Golden moles for bonus, bombs to avoid. 60 seconds of pure reaction speed.', '🔨', '#F59E0B'],

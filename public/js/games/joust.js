@@ -52,6 +52,8 @@ window.Joust = (() => {
 
     // States
     const ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_WAVE_SPLASH = 3, ST_GAMEOVER = 4;
+    const LS_KEY = 'ywa_joust_hiscore';
+    let hiScore = 0;
 
     // ── Mutable State ──
     let canvas, ctx, audioCtx;
@@ -739,6 +741,7 @@ window.Joust = (() => {
         if (deathTimer <= 0) {
             if (lives <= 0) {
                 state = ST_GAMEOVER;
+                if (score > hiScore) { hiScore = score; try { localStorage.setItem(LS_KEY, hiScore); } catch {} }
                 if (gameOverCB) gameOverCB(score);
             } else {
                 resetPlayer();
@@ -1656,11 +1659,17 @@ window.Joust = (() => {
         ctx.font = `${gs(12)}px monospace`;
         ctx.fillText(`Reached Wave ${wave}`, W / 2, H * 0.53);
 
+        if (hiScore > 0) {
+            ctx.fillStyle = score >= hiScore ? '#22C55E' : '#FFD700';
+            ctx.font = `bold ${gs(12)}px monospace`;
+            ctx.fillText(score >= hiScore ? 'NEW HIGH SCORE!' : `HIGH SCORE: ${hiScore}`, W / 2, H * 0.61);
+        }
+
         const blink = Math.sin(frameCount * 0.08) > 0;
         if (blink) {
             ctx.fillStyle = '#64748B';
             ctx.font = `${gs(11)}px monospace`;
-            ctx.fillText('PRESS SPACE TO CONTINUE', W / 2, H * 0.65);
+            ctx.fillText('PRESS SPACE TO CONTINUE', W / 2, H * 0.71);
         }
     }
 
@@ -1776,6 +1785,7 @@ window.Joust = (() => {
         gameOverCB = onGameOver;
         playerColor = (playerData && playerData.color) || '#06B6D4';
         playerTheme = (playerData && playerData.theme) || 'retro';
+        try { hiScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { hiScore = 0; }
 
         gameActive = true;
         frameCount = 0;

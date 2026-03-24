@@ -39,6 +39,7 @@ window.Frogger = (() => {
 
     // States
     const ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_LEVEL_SPLASH = 3, ST_GAMEOVER = 4, ST_WIN = 5;
+    const LS_KEY = 'ywa_frogger_hiscore';
 
     // ── Game State ──
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -2066,6 +2067,11 @@ window.Frogger = (() => {
         ctx.font = `${gs(14)}px "Press Start 2P", monospace`;
         ctx.fillText(`SCORE: ${score}`, gx(GAME_W / 2), gy(GAME_H * 0.48));
         ctx.fillText(`LEVEL: ${level}`, gx(GAME_W / 2), gy(GAME_H * 0.55));
+        if (bestScore > 0) {
+            ctx.fillStyle = score >= bestScore ? '#22C55E' : '#FBBF24';
+            ctx.font = `${gs(10)}px "Press Start 2P", monospace`;
+            ctx.fillText(score >= bestScore ? 'NEW HIGH SCORE!' : `HIGH SCORE: ${bestScore}`, gx(GAME_W / 2), gy(GAME_H * 0.62));
+        }
         // Restart prompt
         const blink = Math.sin(frameCount * 0.08) > 0;
         if (blink) {
@@ -2235,6 +2241,7 @@ window.Frogger = (() => {
 
     function triggerGameOver() {
         if (!gameActive) return;
+        if (score > bestScore) { bestScore = score; try { localStorage.setItem(LS_KEY, bestScore); } catch {} }
         const duration = Math.floor((Date.now() - startTime) / 1000);
         if (gameOverCB) {
             gameOverCB({ score, level, duration, lives });
@@ -2290,6 +2297,7 @@ window.Frogger = (() => {
             playerColor = _t.colors[0] || playerColor;
         }
 
+        try { bestScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { bestScore = 0; }
         state = ST_TITLE;
         frameCount = 0;
         lastTime = 0;

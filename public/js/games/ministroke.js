@@ -195,6 +195,7 @@ window.MiniStroke = (() => {
     let totalStrokes = 0;
     let coursesCompleted = [];
     let trickShots = 0;
+    let _startTime = 0;
 
     // Aiming
     let aimAngle = 0;
@@ -2581,6 +2582,7 @@ window.MiniStroke = (() => {
         totalStrokes = 0;
         trickShots = 0;
         coursesCompleted = [];
+        _startTime = Date.now();
         particles = [];
         floatingTexts = [];
         frameCount = 0;
@@ -2624,6 +2626,8 @@ window.MiniStroke = (() => {
             }, 0);
             _onGameOver({
                 score: Math.max(0, coursesCompleted.length * 1000 + totalStars * 500 - totalStrokes * 10 + trickShots * 200),
+                level: coursesCompleted.length,
+                duration: Math.floor((Date.now() - _startTime) / 1000),
                 coursesCompleted: coursesCompleted.length,
                 totalStrokes,
                 trickShots,
@@ -2632,5 +2636,11 @@ window.MiniStroke = (() => {
         }
     }
 
-    return { init, destroy };
+    return {
+        init,
+        destroy,
+        getScore()  { return Math.max(0, coursesCompleted.length * 1000 - totalStrokes * 10 + trickShots * 200); },
+        getLevel()  { return coursesCompleted.length; },
+        isActive()  { return gameActive; }
+    };
 })();

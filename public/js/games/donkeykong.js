@@ -33,6 +33,7 @@ window.DonkeyKong = (() => {
 
     // States
     const ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_GAMEOVER = 3, ST_WIN = 4, ST_LEVEL_INTRO = 5;
+    const LS_KEY = 'ywa_donkeykong_hiscore';
 
     // Game state
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -1389,6 +1390,7 @@ window.DonkeyKong = (() => {
                     if (lives <= 0) {
                         state = ST_GAMEOVER;
                         hiScore = Math.max(hiScore, score);
+                        try { localStorage.setItem(LS_KEY, hiScore); } catch {}
                         if (gameOverCB) gameOverCB(score);
                     } else {
                         resetPlayer();
@@ -1642,7 +1644,7 @@ window.DonkeyKong = (() => {
         themeColor = activePlayer.theme_color || activePlayer.color || '#4AF';
 
         // State init
-        hiScore = 0;
+        try { hiScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { hiScore = 0; }
         score = 0;
         lives = INITIAL_LIVES;
         level = 1;

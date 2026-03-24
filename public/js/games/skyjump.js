@@ -662,7 +662,10 @@ window.SkyJump = (() => {
         deathTimer = 0;
         sfxFall();
         emitParticles(charX, charY, 20, playerColor, 35, 5);
-        if (score > bestScore) bestScore = score;
+        if (score > bestScore) {
+            bestScore = score;
+            try { localStorage.setItem('ywa_skyjump_best', bestScore); } catch(e) {}
+        }
         if (gameOverCB) {
             setTimeout(() => gameOverCB({ score: Math.floor(score), coins }), 100);
         }
@@ -1622,7 +1625,7 @@ window.SkyJump = (() => {
         state = ST_TITLE;
         frameCount = 0;
         lastTime = 0;
-        bestScore = 0;
+        bestScore = parseInt(localStorage.getItem('ywa_skyjump_best') || '0', 10);
         keys = {};
         touchSide = 0;
         useTilt = false;

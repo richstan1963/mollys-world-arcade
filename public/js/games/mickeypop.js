@@ -44,7 +44,7 @@ window.MickeyPop = (() => {
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
     let activePlayer, gameOverCB, playerColor;
     let state, frameCount, lastTime, keys = {};
-    let score, lives, level, cameraX, envIndex;
+    let score, lives, level, cameraX, envIndex, bestScore;
     let player, bubbles, enemies, particles, scorePopups, powerups;
     let lastFireTime, bubblePower, bubblePowerTimer;
     let screenShake;
@@ -1389,6 +1389,12 @@ window.MickeyPop = (() => {
         ctx.font = `${gs(20)}px sans-serif`;
         ctx.fillText(`SCORE: ${score}`, W/2, H * 0.55);
 
+        if (bestScore > 0) {
+            ctx.font = `${gs(14)}px sans-serif`;
+            ctx.fillStyle = score >= bestScore ? '#FFD700' : '#888';
+            ctx.fillText(score >= bestScore ? `NEW BEST: ${bestScore}` : `BEST: ${bestScore}`, W/2, H * 0.63);
+        }
+
         const blink = Math.sin(frameCount * 0.08) > 0;
         if (blink && deathTimer <= 0) {
             ctx.fillStyle = '#aaa';
@@ -1466,6 +1472,10 @@ window.MickeyPop = (() => {
     }
 
     function endGame() {
+        if (score > bestScore) {
+            bestScore = score;
+            try { localStorage.setItem('ywa_mickeypop_best', bestScore); } catch(e) {}
+        }
         const duration = 0;
         if (gameOverCB) gameOverCB({ score, level, duration, lives });
     }
@@ -1524,6 +1534,7 @@ window.MickeyPop = (() => {
         keys = {};
         cameraX = 0;
         score = 0; lives = 3; level = 1;
+        bestScore = parseInt(localStorage.getItem('ywa_mickeypop_best') || '0', 10);
         envIndex = 0;
         screenShake = 0;
         bubblePower = 'normal'; bubblePowerTimer = 0;

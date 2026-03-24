@@ -1511,7 +1511,12 @@ window.RailBlaster = (() => {
             updateParticles(dt);
             if (deathTimer <= 0) {
                 state = ST_GAMEOVER;
-                if (gameOverCB) gameOverCB(score);
+                if (gameOverCB) gameOverCB({
+                    score,
+                    level,
+                    duration: Math.floor((Date.now() - (startTime || Date.now())) / 1000),
+                    accuracy: shotsFired > 0 ? Math.round((shotsHit / shotsFired) * 100) : 0
+                });
             }
         }
     }
@@ -1729,10 +1734,13 @@ window.RailBlaster = (() => {
         ducking = false;
     }
 
+    let startTime = 0;
+
     function startGame() {
         state = ST_LEVEL_INTRO;
         level = 1;
         score = 0;
+        startTime = Date.now();
         hp = MAX_HP;
         ammo = MAX_AMMO;
         combo = 0;

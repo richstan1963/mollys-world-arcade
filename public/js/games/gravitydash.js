@@ -43,7 +43,7 @@ window.GravityDash = (() => {
     let canvas, ctx, W, H, SCALE, animFrame, gameActive = false;
     let activePlayer, gameOverCB, playerColor, playerGlow;
     let state, frameCount, lastTime, dt;
-    let distance, score, combo, bestCombo, scrollSpeed;
+    let distance, score, combo, bestCombo, scrollSpeed, bestScore;
     let gravityDir; // 1 = normal (down), -1 = flipped (up)
     let player; // { x, y, vy, trail: [], expression }
     let obstacles, orbs, speedZones, portals;
@@ -705,6 +705,10 @@ window.GravityDash = (() => {
         screenShake = 12;
 
         const finalScore = Math.floor(score);
+        if (finalScore > bestScore) {
+            bestScore = finalScore;
+            try { localStorage.setItem('ywa_gravitydash_best', bestScore); } catch(e) {}
+        }
         if (gameOverCB) {
             gameOverCB({
                 score: finalScore,
@@ -1435,6 +1439,11 @@ window.GravityDash = (() => {
             ctx.fillText(`Best Combo: x${bestCombo}`, W / 2, H * 0.62);
         }
 
+        if (bestScore > 0) {
+            ctx.fillStyle = Math.floor(score) >= bestScore ? '#FFD700' : '#888';
+            ctx.fillText(Math.floor(score) >= bestScore ? `NEW BEST: ${bestScore}` : `Best: ${bestScore}`, W / 2, H * 0.70);
+        }
+
         const blink = Math.sin(frameCount * 0.06) * 0.5 + 0.5;
         ctx.globalAlpha = blink;
         ctx.font = `bold ${gs(12)}px monospace`;
@@ -1477,6 +1486,7 @@ window.GravityDash = (() => {
         state = ST_TITLE;
         frameCount = 0;
         lastTime = 0;
+        bestScore = parseInt(localStorage.getItem('ywa_gravitydash_best') || '0', 10);
         keys = {};
         particles = [];
         obstacles = [];

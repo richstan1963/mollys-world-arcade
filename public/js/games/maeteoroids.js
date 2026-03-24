@@ -1301,9 +1301,23 @@ window.Maeteoroids = (() => {
         document.addEventListener('keyup', onKeyUp);
         canvas.addEventListener('touchstart', onTouchStart, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+        window.addEventListener('resize', onResize);
 
         lastTime = performance.now();
         animFrame = requestAnimationFrame(gameLoop);
+    }
+
+    function onResize() {
+        if (!canvas || !canvas.parentElement) return;
+        const c = canvas.parentElement;
+        const pw = Math.max(480, c.clientWidth || 480);
+        const ph = Math.max(480, c.clientHeight || 480);
+        if (pw !== canvas.width || ph !== canvas.height) {
+            canvas.width = pw; canvas.height = ph;
+            W = canvas.width; H = canvas.height;
+            computeScale();
+            createVignette();
+        }
     }
 
     function destroy() {
@@ -1317,6 +1331,7 @@ window.Maeteoroids = (() => {
         }
         document.removeEventListener('keydown', onKeyDown);
         document.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('resize', onResize);
         if (canvas) {
             canvas.removeEventListener('touchstart', onTouchStart);
             canvas.removeEventListener('touchend', onTouchEnd);

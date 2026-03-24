@@ -38,6 +38,7 @@ window.Contra = (() => {
     // Game state
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
     let activePlayer, gameOverCB, playerColor;
+    let highScore = parseInt(localStorage.getItem('ywa_contra_hi') || '0');
     let state, frameCount, lastTime, keys = {};
     let score, lives, level, cameraX;
     let player, bullets, enemies, enemyBullets, particles, scorePopups, powerups;
@@ -699,6 +700,7 @@ window.Contra = (() => {
                         sfxChain();
                         state = ST_WIN;
                         deathTimer = 180;
+                        if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_contra_hi', String(highScore)); } catch {} }
                     }
                 }
             }
@@ -1043,7 +1045,7 @@ window.Contra = (() => {
             vehicleSection.exited = true;
             player.onVehicle = false;
         }
-        if (lives <= 0) { state = ST_GAMEOVER; deathTimer = 120; }
+        if (lives <= 0) { state = ST_GAMEOVER; deathTimer = 120; if (score > highScore) { highScore = score; try { localStorage.setItem('ywa_contra_hi', String(highScore)); } catch {} } }
         else { state = ST_DEAD; deathTimer = 60; }
     }
 
@@ -2188,16 +2190,29 @@ window.Contra = (() => {
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0, 0, W, H);
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#EF4444';
+        const isWin = state === ST_WIN;
+        ctx.fillStyle = isWin ? '#22C55E' : '#EF4444';
+        ctx.shadowColor = isWin ? '#22C55E' : '#EF4444'; ctx.shadowBlur = gs(12);
         ctx.font = `bold ${gs(36)}px monospace`;
-        ctx.fillText(state === ST_WIN ? 'MISSION COMPLETE' : 'GAME OVER', gs(GAME_W/2), gs(GAME_H * 0.4));
+        ctx.fillText(isWin ? 'MISSION COMPLETE' : 'GAME OVER', gs(GAME_W/2), gs(GAME_H * 0.34));
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#fff';
-        ctx.font = `${gs(20)}px monospace`;
-        ctx.fillText(`SCORE: ${score}`, gs(GAME_W/2), gs(GAME_H * 0.5));
-        ctx.fillStyle = '#888';
-        ctx.font = `${gs(14)}px monospace`;
+        ctx.font = `bold ${gs(20)}px monospace`;
+        ctx.fillText(`SCORE: ${score.toLocaleString()}`, gs(GAME_W/2), gs(GAME_H * 0.46));
+        if (score >= highScore && score > 0) {
+            ctx.fillStyle = '#FBBF24'; ctx.font = `bold ${gs(12)}px monospace`;
+            ctx.fillText('\u2605 NEW HIGH SCORE! \u2605', gs(GAME_W/2), gs(GAME_H * 0.52));
+        } else {
+            ctx.fillStyle = '#666'; ctx.font = `${gs(11)}px monospace`;
+            ctx.fillText(`BEST: ${highScore.toLocaleString()}`, gs(GAME_W/2), gs(GAME_H * 0.52));
+        }
+        ctx.fillStyle = '#888'; ctx.font = `${gs(14)}px monospace`;
+        ctx.fillText(`STAGE ${level}`, gs(GAME_W/2), gs(GAME_H * 0.59));
         const blink = Math.sin(frameCount * 0.08) > 0;
-        if (blink) ctx.fillText('PRESS SPACE TO CONTINUE', gs(GAME_W/2), gs(GAME_H * 0.65));
+        if (blink && deathTimer <= 0) {
+            ctx.fillStyle = '#06B6D4'; ctx.font = `${gs(14)}px monospace`;
+            ctx.fillText(HAS_TOUCH ? 'TAP TO PLAY AGAIN' : 'PRESS SPACE TO PLAY AGAIN', gs(GAME_W/2), gs(GAME_H * 0.70));
+        }
     }
 
     // ── Game Loop ──

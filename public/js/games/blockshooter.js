@@ -43,6 +43,12 @@ window.BlockShooter = (() => {
     const COLOR_HIGHLIGHT = ['#FCA5A5', '#93C5FD', '#86EFAC', '#FDE68A', '#D8B4FE', '#FDBA74'];
     const COLOR_DARK = ['#B91C1C', '#1D4ED8', '#15803D', '#CA8A04', '#7E22CE', '#EA580C'];
 
+    // High score tracking
+    const LS_KEY = 'blockshooter_highscore';
+    function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
+    function saveHighScore(s) { try { localStorage.setItem(LS_KEY, s); } catch {} }
+    let highScore = 0;
+
     // States
     const ST_TITLE = 0, ST_PLAY = 1, ST_ANIM = 2, ST_FALLING = 3, ST_WIN = 4, ST_LOSE = 5;
 
@@ -594,6 +600,7 @@ window.BlockShooter = (() => {
             score += bonus;
             state = ST_WIN;
             stars = score > 5000 ? 3 : score > 2500 ? 2 : 1;
+            if (score > highScore) { highScore = score; saveHighScore(highScore); }
             sfxWin();
             spawnConfetti();
             return;
@@ -622,6 +629,7 @@ window.BlockShooter = (() => {
                     const pos = gridToWorld(r, c);
                     if (pos.y > CANNON_Y - CELL) {
                         state = ST_LOSE;
+                        if (score > highScore) { highScore = score; saveHighScore(highScore); }
                         sfxLose();
                         return;
                     }
@@ -632,6 +640,7 @@ window.BlockShooter = (() => {
         // Check out of shots
         if (shotsLeft <= 0 && countBlocks() > 0) {
             state = ST_LOSE;
+            if (score > highScore) { highScore = score; saveHighScore(highScore); }
             sfxLose();
             return;
         }
@@ -1313,13 +1322,18 @@ window.BlockShooter = (() => {
         ctx.font = 'bold ' + gs(20) + 'px monospace';
         ctx.fillStyle = '#FFD700';
         ctx.fillText('SCORE: ' + score, gs(GAME_W / 2), gs(340));
+        if (highScore > 0) {
+            ctx.font = gs(13) + 'px monospace';
+            ctx.fillStyle = score >= highScore ? '#FFD700' : '#888';
+            ctx.fillText(score >= highScore ? '\u2B50 NEW BEST!' : 'BEST: ' + highScore, gs(GAME_W / 2), gs(370));
+        }
 
         const blink = Math.floor(frameCount / 25) % 2 === 0;
         if (blink) {
             ctx.font = gs(14) + 'px monospace';
             ctx.fillStyle = '#CCC';
             const txt = level >= MAX_LEVELS ? 'CLICK TO FINISH' : 'CLICK FOR NEXT LEVEL';
-            ctx.fillText(txt, gs(GAME_W / 2), gs(410));
+            ctx.fillText(txt, gs(GAME_W / 2), gs(420));
         }
     }
 
@@ -1342,12 +1356,16 @@ window.BlockShooter = (() => {
         ctx.fillStyle = '#AAA';
         ctx.font = gs(13) + 'px monospace';
         ctx.fillText('Level ' + level, gs(GAME_W / 2), gs(340));
+        if (highScore > 0) {
+            ctx.fillStyle = score >= highScore ? '#FFD700' : '#888';
+            ctx.fillText(score >= highScore ? '\u2B50 NEW BEST!' : 'BEST: ' + highScore, gs(GAME_W / 2), gs(365));
+        }
 
         const blink = Math.floor(frameCount / 25) % 2 === 0;
         if (blink) {
             ctx.font = gs(14) + 'px monospace';
             ctx.fillStyle = '#CCC';
-            ctx.fillText('CLICK TO RETRY', gs(GAME_W / 2), gs(400));
+            ctx.fillText('CLICK TO RETRY', gs(GAME_W / 2), gs(410));
         }
     }
 
@@ -1554,6 +1572,7 @@ window.BlockShooter = (() => {
         activePlayer = player;
         gameOverCB = onGO;
         gameActive = true;
+        highScore = loadHighScore();
         state = ST_TITLE;
         score = 0;
         level = 1;

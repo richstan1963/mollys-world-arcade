@@ -1241,7 +1241,10 @@ window.JumpDash = (() => {
 
     function die() {
         state = ST_DEAD;
-        if (distance > bestDistance) bestDistance = distance;
+        if (distance > bestDistance) {
+            bestDistance = distance;
+            try { localStorage.setItem('ywa_jumpdash_best', Math.floor(bestDistance)); } catch(e) {}
+        }
         sfxHit();
         // Death particles
         spawnParticle(PLAYER_X, runnerY - 20, 'circle', playerColor, 12);
@@ -1605,7 +1608,7 @@ window.JumpDash = (() => {
         gameActive = true;
 
         state = ST_SPLASH;
-        bestDistance = 0;
+        bestDistance = parseInt(localStorage.getItem('ywa_jumpdash_best') || '0', 10);
         resetGame();
         lastTime = null;
 

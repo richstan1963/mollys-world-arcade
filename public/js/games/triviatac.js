@@ -24,6 +24,12 @@ window.TriviaTac = (() => {
     const Q_BTN_H = 52;
     const Q_BTN_GAP = 10;
 
+    // High score tracking
+    const LS_KEY = 'triviatac_highscore';
+    function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
+    function saveHighScore(s) { try { localStorage.setItem(LS_KEY, s); } catch {} }
+    let highScore = 0;
+
     // ── State ──
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
     let activePlayer, gameOverCB, playerColor;
@@ -968,6 +974,14 @@ window.TriviaTac = (() => {
         ctx.fillStyle = '#FBBF24';
         ctx.fillText(grade, gs(GAME_W / 2), gs(416));
 
+        // High score
+        if (highScore > 0) {
+            const fs = xScore * 100 + questionsCorrect * 10 + bestStreak * 5;
+            ctx.font = `${gs(12)}px sans-serif`;
+            ctx.fillStyle = fs >= highScore ? '#FFD700' : 'rgba(255,255,255,0.4)';
+            ctx.fillText(fs >= highScore ? '\u2B50 NEW BEST!' : 'Best: ' + highScore, gs(GAME_W / 2), gs(440));
+        }
+
         // Play Again button
         const par = playAgainRect();
         ctx.fillStyle = withAlpha(playerColor, 0.2);
@@ -1108,8 +1122,9 @@ window.TriviaTac = (() => {
             else sfxDraw();
             state = ST_GAMEOVER;
             // Report score
+            const finalScore = xScore * 100 + questionsCorrect * 10 + bestStreak * 5;
+            if (finalScore > highScore) { highScore = finalScore; saveHighScore(highScore); }
             if (gameOverCB) {
-                const finalScore = xScore * 100 + questionsCorrect * 10 + bestStreak * 5;
                 gameOverCB(finalScore);
             }
             // Victory confetti
@@ -1314,6 +1329,7 @@ window.TriviaTac = (() => {
         const _t = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(playerData?.theme) : null;
         if (_t) playerColor = _t.colors[0] || playerColor;
 
+        highScore = loadHighScore();
         state = ST_TITLE;
         frameCount = 0;
         lastTime = 0;

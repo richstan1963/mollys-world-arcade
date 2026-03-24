@@ -546,8 +546,13 @@ window.Pickleball = (() => {
         pointMessageTimer = 999;
         if (playerWon) playCrowdCheer();
         const finalScore = score + games * WIN_SCORE;
+        gameActive = false;
         setTimeout(() => {
-            if (gameOverCB) gameOverCB(finalScore);
+            if (gameOverCB) gameOverCB({
+                score: finalScore,
+                level: games,
+                duration: Math.floor((Date.now() - _startTime) / 1000),
+            });
         }, 2500);
     }
 
@@ -1141,8 +1146,28 @@ window.Pickleball = (() => {
         touchY = null;
     }
 
+    function onMouseDown(e) {
+        getAudio();
+        if (state === ST_TITLE) {
+            startGame();
+        } else {
+            startSwing();
+        }
+    }
+
+    function onMouseMove(e) {
+        if (state === ST_PLAY || state === ST_SERVE) {
+            const rect = canvas.getBoundingClientRect();
+            const my = (e.clientY - rect.top) / SCALE;
+            pY = Math.max(20, Math.min(COURT_Y - PLAYER_H, my - PLAYER_H / 2));
+        }
+    }
+
     // ── Game Flow ──
+    let _startTime = 0;
+
     function startGame() {
+        _startTime = Date.now();
         state = ST_SERVE;
         score = 0;
         opponentScore = 0;
@@ -1319,6 +1344,8 @@ window.Pickleball = (() => {
 
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
+        canvas.addEventListener('mousedown', onMouseDown);
+        canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('touchstart', onTouchStart, { passive: false });
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: false });
@@ -1338,6 +1365,8 @@ window.Pickleball = (() => {
         document.removeEventListener('keydown', onKeyDown);
         document.removeEventListener('keyup', onKeyUp);
         if (canvas) {
+            canvas.removeEventListener('mousedown', onMouseDown);
+            canvas.removeEventListener('mousemove', onMouseMove);
             canvas.removeEventListener('touchstart', onTouchStart);
             canvas.removeEventListener('touchmove', onTouchMove);
             canvas.removeEventListener('touchend', onTouchEnd);
@@ -1349,6 +1378,7 @@ window.Pickleball = (() => {
         init,
         destroy,
         getScore() { return score + games * WIN_SCORE; },
+        getLevel() { return games; },
         isActive() { return gameActive; }
     };
 })();
