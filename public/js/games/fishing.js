@@ -38,6 +38,288 @@ window.Fishing = (() => {
     const ST_MISSED   = 8;  // missed display
     const ST_DAY_OVER = 9;  // day ended
     const ST_LOG      = 10; // collection log view
+    const ST_LOADING  = -1; // sprite loading
+
+    // ── Sprite Atlas ─────────────────────────────────────────
+    const SPRITE_BASE = '/img/game-assets/kenney-fish';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    // Fish sprite mapping: game fish id → kenney sprite file
+    // Using "Double_" (2x) variants for crisp rendering
+    const SPRITE_MANIFEST = {
+        // Fish sprites — mapped to 12 game fish types
+        fishGoldfish:   `${SPRITE_BASE}/Double_fish_orange.png`,
+        fishBass:       `${SPRITE_BASE}/Double_fish_green.png`,
+        fishPerch:      `${SPRITE_BASE}/Double_fish_brown.png`,
+        fishSalmon:     `${SPRITE_BASE}/Double_fish_pink.png`,
+        fishCatfish:    `${SPRITE_BASE}/Double_fish_grey.png`,
+        fishTrout:      `${SPRITE_BASE}/Double_fish_blue.png`,
+        fishSwordfish:  `${SPRITE_BASE}/Double_fish_grey_long_a.png`,
+        fishTuna:       `${SPRITE_BASE}/Double_fish_red.png`,
+        fishEel:        `${SPRITE_BASE}/Double_fish_grey_long_b.png`,
+        fishPufferfish: `${SPRITE_BASE}/Double_fish_orange.png`,   // reuse orange, drawn rounder
+        // Skeleton variants for "got away" flash
+        skelBlue:       `${SPRITE_BASE}/Double_fish_blue_skeleton.png`,
+        skelRed:        `${SPRITE_BASE}/Double_fish_red_skeleton.png`,
+        skelGreen:      `${SPRITE_BASE}/Double_fish_green_skeleton.png`,
+        skelPink:       `${SPRITE_BASE}/Double_fish_pink_skeleton.png`,
+        skelOrange:     `${SPRITE_BASE}/Double_fish_orange_skeleton.png`,
+        // Environment — seaweed (foreground decorations)
+        seaweedGreenA:  `${SPRITE_BASE}/Double_seaweed_green_a.png`,
+        seaweedGreenB:  `${SPRITE_BASE}/Double_seaweed_green_b.png`,
+        seaweedGreenC:  `${SPRITE_BASE}/Double_seaweed_green_c.png`,
+        seaweedGreenD:  `${SPRITE_BASE}/Double_seaweed_green_d.png`,
+        seaweedPinkA:   `${SPRITE_BASE}/Double_seaweed_pink_a.png`,
+        seaweedPinkB:   `${SPRITE_BASE}/Double_seaweed_pink_b.png`,
+        seaweedOrangeA: `${SPRITE_BASE}/Double_seaweed_orange_a.png`,
+        seaweedOrangeB: `${SPRITE_BASE}/Double_seaweed_orange_b.png`,
+        seaweedGrassA:  `${SPRITE_BASE}/Double_seaweed_grass_a.png`,
+        seaweedGrassB:  `${SPRITE_BASE}/Double_seaweed_grass_b.png`,
+        // Background seaweed (parallax layer)
+        bgSeaweedA:     `${SPRITE_BASE}/Double_background_seaweed_a.png`,
+        bgSeaweedB:     `${SPRITE_BASE}/Double_background_seaweed_b.png`,
+        bgSeaweedC:     `${SPRITE_BASE}/Double_background_seaweed_c.png`,
+        bgSeaweedD:     `${SPRITE_BASE}/Double_background_seaweed_d.png`,
+        bgSeaweedE:     `${SPRITE_BASE}/Double_background_seaweed_e.png`,
+        bgSeaweedF:     `${SPRITE_BASE}/Double_background_seaweed_f.png`,
+        // Rocks
+        rockA:          `${SPRITE_BASE}/Double_rock_a.png`,
+        rockB:          `${SPRITE_BASE}/Double_rock_b.png`,
+        bgRockA:        `${SPRITE_BASE}/Double_background_rock_a.png`,
+        bgRockB:        `${SPRITE_BASE}/Double_background_rock_b.png`,
+        // Bubbles
+        bubbleA:        `${SPRITE_BASE}/Double_bubble_a.png`,
+        bubbleB:        `${SPRITE_BASE}/Double_bubble_b.png`,
+        bubbleC:        `${SPRITE_BASE}/Double_bubble_c.png`,
+        // Terrain (sea floor)
+        terrainSandA:   `${SPRITE_BASE}/Double_terrain_sand_a.png`,
+        terrainSandB:   `${SPRITE_BASE}/Double_terrain_sand_b.png`,
+        terrainSandC:   `${SPRITE_BASE}/Double_terrain_sand_c.png`,
+        terrainSandD:   `${SPRITE_BASE}/Double_terrain_sand_d.png`,
+        terrainTopA:    `${SPRITE_BASE}/Double_terrain_sand_top_a.png`,
+        terrainTopB:    `${SPRITE_BASE}/Double_terrain_sand_top_b.png`,
+        terrainTopC:    `${SPRITE_BASE}/Double_terrain_sand_top_c.png`,
+        terrainTopD:    `${SPRITE_BASE}/Double_terrain_sand_top_d.png`,
+        terrainTopE:    `${SPRITE_BASE}/Double_terrain_sand_top_e.png`,
+    };
+
+    // Map fish IDs to sprite keys
+    const FISH_SPRITE_MAP = {
+        goldfish:   'fishGoldfish',
+        bass:       'fishBass',
+        perch:      'fishPerch',
+        salmon:     'fishSalmon',
+        catfish:    'fishCatfish',
+        trout:      'fishTrout',
+        swordfish:  'fishSwordfish',
+        tuna:       'fishTuna',
+        eel:        'fishEel',
+        pufferfish: 'fishPufferfish',
+        // treasure and boot keep canvas rendering (special items)
+    };
+
+    // Seaweed sprites to randomly place along the bottom
+    const SEAWEED_SPRITE_KEYS = [
+        'seaweedGreenA', 'seaweedGreenB', 'seaweedGreenC', 'seaweedGreenD',
+        'seaweedPinkA', 'seaweedPinkB', 'seaweedOrangeA', 'seaweedOrangeB',
+        'seaweedGrassA', 'seaweedGrassB'
+    ];
+    const BG_SEAWEED_KEYS = ['bgSeaweedA', 'bgSeaweedB', 'bgSeaweedC', 'bgSeaweedD', 'bgSeaweedE', 'bgSeaweedF'];
+    const TERRAIN_TOP_KEYS = ['terrainTopA', 'terrainTopB', 'terrainTopC', 'terrainTopD', 'terrainTopE'];
+    const TERRAIN_FILL_KEYS = ['terrainSandA', 'terrainSandB', 'terrainSandC', 'terrainSandD'];
+    const BUBBLE_KEYS = ['bubbleA', 'bubbleB', 'bubbleC'];
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++;
+                spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++;
+                spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    // Environment decoration data (generated once on init)
+    let seaweedDecorations = [];   // foreground seaweed
+    let bgSeaweedDecorations = []; // background seaweed (parallax)
+    let rockDecorations = [];
+    let terrainTiles = [];         // sea floor tiles
+    let bubbleParticles = [];      // ambient bubbles
+
+    function initEnvironment() {
+        // Foreground seaweed along the bottom
+        seaweedDecorations = [];
+        for (let i = 0; i < 10; i++) {
+            seaweedDecorations.push({
+                x: 20 + Math.random() * (BASE_W - 40),
+                spriteKey: SEAWEED_SPRITE_KEYS[Math.floor(Math.random() * SEAWEED_SPRITE_KEYS.length)],
+                scale: 0.3 + Math.random() * 0.25,
+                sway: Math.random() * Math.PI * 2,
+                swaySpeed: 0.01 + Math.random() * 0.015
+            });
+        }
+        // Background seaweed (subtle, behind fish)
+        bgSeaweedDecorations = [];
+        for (let i = 0; i < 8; i++) {
+            bgSeaweedDecorations.push({
+                x: Math.random() * BASE_W,
+                spriteKey: BG_SEAWEED_KEYS[Math.floor(Math.random() * BG_SEAWEED_KEYS.length)],
+                scale: 0.25 + Math.random() * 0.2,
+                alpha: 0.2 + Math.random() * 0.15,
+                sway: Math.random() * Math.PI * 2
+            });
+        }
+        // Rocks on the floor
+        rockDecorations = [];
+        for (let i = 0; i < 4; i++) {
+            rockDecorations.push({
+                x: 30 + Math.random() * (BASE_W - 60),
+                spriteKey: Math.random() > 0.5 ? 'rockA' : 'rockB',
+                scale: 0.25 + Math.random() * 0.2
+            });
+        }
+        // Background rocks
+        for (let i = 0; i < 3; i++) {
+            rockDecorations.push({
+                x: Math.random() * BASE_W,
+                spriteKey: Math.random() > 0.5 ? 'bgRockA' : 'bgRockB',
+                scale: 0.2 + Math.random() * 0.15,
+                isBg: true
+            });
+        }
+        // Terrain tiles across the sea floor
+        terrainTiles = [];
+        const tileW = 64; // approximate tile width at scale
+        for (let x = 0; x < BASE_W; x += tileW) {
+            terrainTiles.push({
+                x,
+                topKey: TERRAIN_TOP_KEYS[Math.floor(Math.random() * TERRAIN_TOP_KEYS.length)],
+                fillKey: TERRAIN_FILL_KEYS[Math.floor(Math.random() * TERRAIN_FILL_KEYS.length)]
+            });
+        }
+        // Init ambient bubbles
+        bubbleParticles = [];
+    }
+
+    function updateBubbles() {
+        // Spawn new bubbles occasionally
+        if (Math.random() < 0.03) {
+            bubbleParticles.push({
+                x: 20 + Math.random() * (BASE_W - 40),
+                y: BASE_H - 20 - Math.random() * 60,
+                spriteKey: BUBBLE_KEYS[Math.floor(Math.random() * BUBBLE_KEYS.length)],
+                scale: 0.08 + Math.random() * 0.12,
+                speed: 0.3 + Math.random() * 0.5,
+                wobble: Math.random() * Math.PI * 2,
+                alpha: 0.3 + Math.random() * 0.4
+            });
+        }
+        for (let i = bubbleParticles.length - 1; i >= 0; i--) {
+            const b = bubbleParticles[i];
+            b.y -= b.speed;
+            b.wobble += 0.03;
+            b.x += Math.sin(b.wobble) * 0.3;
+            if (b.y < WATER_Y) {
+                bubbleParticles.splice(i, 1);
+            }
+        }
+    }
+
+    function drawEnvironmentBack() {
+        if (!allSpritesReady) return;
+        // Background seaweed (behind everything)
+        for (const sw of bgSeaweedDecorations) {
+            const spr = sprites[sw.spriteKey];
+            if (!spr) continue;
+            ctx.save();
+            ctx.globalAlpha = sw.alpha;
+            sw.sway += 0.008;
+            const swayX = Math.sin(sw.sway) * 2;
+            const w = spr.width * sw.scale;
+            const h = spr.height * sw.scale;
+            ctx.drawImage(spr, sw.x + swayX - w / 2, BASE_H - h - 10, w, h);
+            ctx.restore();
+        }
+        // Background rocks
+        for (const r of rockDecorations) {
+            if (!r.isBg) continue;
+            const spr = sprites[r.spriteKey];
+            if (!spr) continue;
+            ctx.save();
+            ctx.globalAlpha = 0.25;
+            const w = spr.width * r.scale;
+            const h = spr.height * r.scale;
+            ctx.drawImage(spr, r.x - w / 2, BASE_H - h - 5, w, h);
+            ctx.restore();
+        }
+    }
+
+    function drawEnvironmentFront() {
+        if (!allSpritesReady) return;
+        // Sea floor terrain tiles
+        const floorY = BASE_H - 32;
+        for (const t of terrainTiles) {
+            const topSpr = sprites[t.topKey];
+            const fillSpr = sprites[t.fillKey];
+            if (topSpr) {
+                const w = 68;
+                const h = topSpr.height * (w / topSpr.width);
+                ctx.drawImage(topSpr, t.x, floorY - h * 0.3, w, h);
+            }
+            if (fillSpr) {
+                const w = 68;
+                ctx.drawImage(fillSpr, t.x, floorY + 10, w, 30);
+            }
+        }
+        // Foreground rocks
+        for (const r of rockDecorations) {
+            if (r.isBg) continue;
+            const spr = sprites[r.spriteKey];
+            if (!spr) continue;
+            const w = spr.width * r.scale;
+            const h = spr.height * r.scale;
+            ctx.drawImage(spr, r.x - w / 2, BASE_H - h - 15, w, h);
+        }
+        // Foreground seaweed
+        for (const sw of seaweedDecorations) {
+            const spr = sprites[sw.spriteKey];
+            if (!spr) continue;
+            ctx.save();
+            sw.sway += sw.swaySpeed;
+            const swayX = Math.sin(sw.sway) * 3;
+            const w = spr.width * sw.scale;
+            const h = spr.height * sw.scale;
+            ctx.drawImage(spr, sw.x + swayX - w / 2, BASE_H - h - 8, w, h);
+            ctx.restore();
+        }
+        // Bubbles
+        for (const b of bubbleParticles) {
+            const spr = sprites[b.spriteKey];
+            if (!spr) continue;
+            ctx.save();
+            ctx.globalAlpha = b.alpha;
+            const w = spr.width * b.scale;
+            const h = spr.height * b.scale;
+            ctx.drawImage(spr, b.x - w / 2, b.y - h / 2, w, h);
+            ctx.restore();
+        }
+    }
 
     // Fish database
     const FISH_DB = [
@@ -336,14 +618,22 @@ window.Fishing = (() => {
         }
     }
 
+    // Ambient fish sprite keys for random selection
+    const AMBIENT_FISH_SPRITES = [
+        'fishGoldfish', 'fishBass', 'fishPerch', 'fishSalmon', 'fishCatfish',
+        'fishTrout', 'fishTuna', 'fishEel', 'fishPufferfish'
+    ];
+
     function spawnAmbientFish() {
         const depthFrac = Math.random();
         const y = WATER_Y + 30 + depthFrac * (BASE_H - WATER_Y - 60);
         const dir = Math.random() > 0.5 ? 1 : -1;
         const spd = 0.3 + Math.random() * 0.8;
         const sz = 8 + Math.random() * 16;
-        // Deeper = darker shade
+        // Deeper = darker shade / more transparent
         const alpha = 0.15 + depthFrac * 0.25;
+        // Pick a random sprite for this ambient fish
+        const spriteKey = AMBIENT_FISH_SPRITES[Math.floor(Math.random() * AMBIENT_FISH_SPRITES.length)];
         ambientFish.push({
             x: dir > 0 ? -sz * 2 : BASE_W + sz * 2,
             y,
@@ -352,7 +642,8 @@ window.Fishing = (() => {
             size: sz,
             alpha,
             wobble: Math.random() * Math.PI * 2,
-            color: depthFrac < 0.33 ? '#90CAF9' : depthFrac < 0.66 ? '#5C9DC5' : '#3A6B9F'
+            color: depthFrac < 0.33 ? '#90CAF9' : depthFrac < 0.66 ? '#5C9DC5' : '#3A6B9F',
+            spriteKey
         });
     }
 
@@ -371,26 +662,39 @@ window.Fishing = (() => {
 
     function drawAmbientFish() {
         for (const f of ambientFish) {
-            ctx.save();
-            ctx.globalAlpha = f.alpha;
-            ctx.translate(f.x, f.y);
-            if (f.dir < 0) ctx.scale(-1, 1);
+            const spr = allSpritesReady ? sprites[f.spriteKey] : null;
 
-            // Simple fish shape
-            ctx.fillStyle = f.color;
-            ctx.beginPath();
-            // Body ellipse
-            ctx.ellipse(0, 0, f.size, f.size * 0.45, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // Tail
-            ctx.beginPath();
-            ctx.moveTo(-f.size, 0);
-            ctx.lineTo(-f.size - f.size * 0.5, -f.size * 0.4);
-            ctx.lineTo(-f.size - f.size * 0.5, f.size * 0.4);
-            ctx.closePath();
-            ctx.fill();
+            if (spr) {
+                // Sprite-based ambient fish
+                ctx.save();
+                ctx.globalAlpha = f.alpha;
+                ctx.translate(f.x, f.y);
+                if (f.dir < 0) ctx.scale(-1, 1);
+                const w = f.size * 2.5;
+                const aspect = spr.height / spr.width;
+                const h = w * aspect;
+                ctx.drawImage(spr, -w / 2, -h / 2, w, h);
+                ctx.restore();
+            } else {
+                // Canvas fallback
+                ctx.save();
+                ctx.globalAlpha = f.alpha;
+                ctx.translate(f.x, f.y);
+                if (f.dir < 0) ctx.scale(-1, 1);
 
-            ctx.restore();
+                ctx.fillStyle = f.color;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, f.size, f.size * 0.45, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(-f.size, 0);
+                ctx.lineTo(-f.size - f.size * 0.5, -f.size * 0.4);
+                ctx.lineTo(-f.size - f.size * 0.5, f.size * 0.4);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
         }
         ctx.globalAlpha = 1;
     }
@@ -567,7 +871,40 @@ window.Fishing = (() => {
     }
 
     // ── Fish rendering ────────────────────────────────────────
+    function drawFishSprite(x, y, fish, dir, alpha, drawW) {
+        const spriteKey = FISH_SPRITE_MAP[fish.id];
+        const spr = spriteKey ? sprites[spriteKey] : null;
+
+        if (spr) {
+            ctx.save();
+            ctx.globalAlpha = alpha || 1;
+            ctx.translate(x, y);
+            // Kenney fish face right by default; flip if dir < 0
+            if (dir < 0) ctx.scale(-1, 1);
+            // Scale sprite to match fish body dimensions
+            const targetW = drawW || (fish.bodyW * 2.2);
+            const aspect = spr.height / spr.width;
+            const w = targetW;
+            const h = targetW * aspect;
+            ctx.drawImage(spr, -w / 2, -h / 2, w, h);
+            ctx.restore();
+            return;
+        }
+
+        // Fallback to canvas drawing if sprite missing
+        drawFishShapeCanvas(x, y, fish, dir, alpha);
+    }
+
     function drawFishShape(x, y, fish, dir, alpha) {
+        // Try sprite first, fall back to canvas
+        if (allSpritesReady && FISH_SPRITE_MAP[fish.id]) {
+            drawFishSprite(x, y, fish, dir, alpha);
+            return;
+        }
+        drawFishShapeCanvas(x, y, fish, dir, alpha);
+    }
+
+    function drawFishShapeCanvas(x, y, fish, dir, alpha) {
         ctx.save();
         ctx.globalAlpha = alpha || 1;
         ctx.translate(x, y);
@@ -1146,14 +1483,71 @@ window.Fishing = (() => {
         ctx.fillText('TAP TO GO BACK', BASE_W / 2, BASE_H - 20);
     }
 
+    // ── Loading screen ─────────────────────────────────────────
+    function drawLoading() {
+        // Draw water background while loading for visual appeal
+        const grad = ctx.createLinearGradient(0, 0, 0, BASE_H);
+        grad.addColorStop(0, BG_SKY2);
+        grad.addColorStop(0.3, WATER_TOP);
+        grad.addColorStop(0.6, WATER_MID);
+        grad.addColorStop(1, WATER_DEEP);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = TEXT_CLR;
+        ctx.font = 'bold 22px "Press Start 2P", monospace';
+        ctx.shadowColor = '#0D47A1';
+        ctx.shadowBlur = 15;
+        ctx.fillText('FISHING', BASE_W / 2, BASE_H / 2 - 60);
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = '10px "Press Start 2P", monospace';
+        ctx.fillText('LOADING SPRITES...', BASE_W / 2, BASE_H / 2);
+
+        // Progress bar
+        const barW = 200, barH = 8;
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.roundRect(BASE_W / 2 - barW / 2 - 2, BASE_H / 2 + 18, barW + 4, barH + 4, [6]);
+        ctx.fill();
+        ctx.fillStyle = '#4CAF50';
+        ctx.beginPath();
+        ctx.roundRect(BASE_W / 2 - barW / 2, BASE_H / 2 + 20, barW * pct, barH, [4]);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '8px "Press Start 2P", monospace';
+        ctx.fillText(`${spritesLoaded} / ${spritesTotal}`, BASE_W / 2, BASE_H / 2 + 45);
+
+        // Animated bubbles on loading screen
+        const t = frameCount * 0.03;
+        ctx.globalAlpha = 0.15;
+        for (let i = 0; i < 8; i++) {
+            const bx = 60 + i * 55 + Math.sin(t + i * 1.5) * 15;
+            const by = BASE_H - 40 - Math.abs(Math.sin(t * 0.7 + i * 2)) * 100;
+            const br = 3 + Math.sin(t + i) * 1.5;
+            ctx.fillStyle = '#ADE8FF';
+            ctx.beginPath();
+            ctx.arc(bx, by, br, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
     // ── Title screen ──────────────────────────────────────────
     function drawTitleScreen() {
         drawSky();
         drawWater();
+        drawEnvironmentBack();
         drawAmbientFish();
+        drawEnvironmentFront();
         drawDock();
         updateClouds();
         updateAmbientFish();
+        updateBubbles();
 
         // Title overlay
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -1411,6 +1805,14 @@ window.Fishing = (() => {
 
         ctx.save();
 
+        // Loading screen
+        if (state === ST_LOADING) {
+            drawLoading();
+            if (allSpritesReady) state = ST_TITLE;
+            ctx.restore();
+            return;
+        }
+
         if (state === ST_TITLE) {
             drawTitleScreen();
             drawParticles();
@@ -1443,10 +1845,13 @@ window.Fishing = (() => {
         // Draw scene
         drawSky();
         drawWater();
+        drawEnvironmentBack();
         drawAmbientFish();
+        drawEnvironmentFront();
         drawDock();
         updateClouds();
         updateAmbientFish();
+        updateBubbles();
 
         // State updates
         if (state === ST_CHARGING) {
@@ -1539,7 +1944,7 @@ window.Fishing = (() => {
         lastTime = 0;
         waveOffset = 0;
         spaceHeld = false;
-        state = ST_TITLE;
+        state = ST_LOADING;
         gameActive = false;
         score = 0;
         totalCaught = 0;
@@ -1548,10 +1953,21 @@ window.Fishing = (() => {
         collection = new Set();
         caughtCounts = {};
 
+        // Reset sprite state
+        allSpritesReady = false;
+        spritesLoaded = 0;
+
         initAmbientFish();
         initClouds();
+        initEnvironment();
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        // Load sprites (game starts rendering loading screen immediately)
+        loadSprites(
+            (loaded, total) => { /* progress tracked via spritesLoaded */ },
+            () => { /* allSpritesReady set in loadSprites */ }
+        );
 
         // Bind events
         window.addEventListener('keydown', onKeyDown);

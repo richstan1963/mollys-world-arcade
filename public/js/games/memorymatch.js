@@ -1,54 +1,65 @@
-/* MemoryMatch — Kenney CC0 sprite rendering — memory card matching for Your World Arcade
+/* MemoryMatch — Kenney Board Game Pack CC0 sprites — memory card matching for Your World Arcade
  * Flip-two-at-a-time card matching with 10 progressive levels.
  * Canvas 2D, zero external dependencies. */
 window.MemoryMatch = (() => {
 
     // ══════════════════════════════════════════
-    //  SPRITE SYSTEM — Kenney tiles + items
+    //  SPRITE SYSTEM — Kenney Board Game Pack
     // ══════════════════════════════════════════
     const SPRITES = {};
     let spritesLoaded = false;
     let spriteLoadTotal = 0, spriteLoadDone = 0;
     const SPRITE_OK = {};
     const SPRITE_MANIFEST = {};
+    const BG_ASSET = '/img/game-assets/kenney-boardgame/';
 
-    // Card back tiles (6 colors)
-    const CARD_TILE_COLORS = ['Blue','Red','Green','Yellow','Pink','Orange'];
-    for (const color of CARD_TILE_COLORS) {
-        SPRITE_MANIFEST[`cardBack_${color}`] = `/img/game-assets/kenney-tiles/tile${color}_05.png`;
+    // Card backs — real playing card backs (blue pattern variations)
+    const CARD_BACK_VARIANTS = ['cardBack_blue1','cardBack_blue2','cardBack_blue3','cardBack_blue4','cardBack_blue5'];
+    for (const name of CARD_BACK_VARIANTS) {
+        SPRITE_MANIFEST[name] = BG_ASSET + name + '.png';
     }
-    // Card face item sprites (platform items + enemies as icons)
+    // Also load red/green backs for level variety
+    for (const name of ['cardBack_red1','cardBack_red2','cardBack_green1','cardBack_green2']) {
+        SPRITE_MANIFEST[name] = BG_ASSET + name + '.png';
+    }
+
+    // Card face sprites — real playing card faces from the board game pack
+    // 24 unique cards for matching pairs (all suits represented)
     const FACE_SPRITES = [
-        { key: 'face_coinGold',   path: '/img/game-assets/kenney-platform/items/coinGold.png' },
-        { key: 'face_coinSilver', path: '/img/game-assets/kenney-platform/items/coinSilver.png' },
-        { key: 'face_coinBronze', path: '/img/game-assets/kenney-platform/items/coinBronze.png' },
-        { key: 'face_gemBlue',    path: '/img/game-assets/kenney-platform/items/gemBlue.png' },
-        { key: 'face_gemGreen',   path: '/img/game-assets/kenney-platform/items/gemGreen.png' },
-        { key: 'face_gemRed',     path: '/img/game-assets/kenney-platform/items/gemRed.png' },
-        { key: 'face_gemYellow',  path: '/img/game-assets/kenney-platform/items/gemYellow.png' },
-        { key: 'face_keyBlue',    path: '/img/game-assets/kenney-platform/items/keyBlue.png' },
-        { key: 'face_keyGreen',   path: '/img/game-assets/kenney-platform/items/keyGreen.png' },
-        { key: 'face_keyRed',     path: '/img/game-assets/kenney-platform/items/keyRed.png' },
-        { key: 'face_keyYellow',  path: '/img/game-assets/kenney-platform/items/keyYellow.png' },
-        { key: 'face_star',       path: '/img/game-assets/kenney-platform/items/star.png' },
-        { key: 'face_flagBlue',   path: '/img/game-assets/kenney-platform/items/flagBlue1.png' },
-        { key: 'face_flagRed',    path: '/img/game-assets/kenney-platform/items/flagRed1.png' },
-        { key: 'face_flagGreen',  path: '/img/game-assets/kenney-platform/items/flagGreen1.png' },
-        { key: 'face_flagYellow', path: '/img/game-assets/kenney-platform/items/flagYellow1.png' },
-        { key: 'face_mushRed',    path: '/img/game-assets/kenney-platform/tiles/mushroomRed.png' },
-        { key: 'face_mushBrown',  path: '/img/game-assets/kenney-platform/tiles/mushroomBrown.png' },
-        { key: 'face_slimeBlue',  path: '/img/game-assets/kenney-platform/enemies/slimeBlue.png' },
-        { key: 'face_slimeGreen', path: '/img/game-assets/kenney-platform/enemies/slimeGreen.png' },
-        { key: 'face_slimePurple',path: '/img/game-assets/kenney-platform/enemies/slimePurple.png' },
-        { key: 'face_bee',        path: '/img/game-assets/kenney-platform/enemies/bee.png' },
-        { key: 'face_frog',       path: '/img/game-assets/kenney-platform/enemies/frog.png' },
-        { key: 'face_mouse',      path: '/img/game-assets/kenney-platform/enemies/mouse.png' },
+        { key: 'face_heartsA',    path: BG_ASSET + 'cardHeartsA.png' },
+        { key: 'face_hearts2',    path: BG_ASSET + 'cardHearts2.png' },
+        { key: 'face_hearts3',    path: BG_ASSET + 'cardHearts3.png' },
+        { key: 'face_hearts5',    path: BG_ASSET + 'cardHearts5.png' },
+        { key: 'face_hearts7',    path: BG_ASSET + 'cardHearts7.png' },
+        { key: 'face_hearts10',   path: BG_ASSET + 'cardHearts10.png' },
+        { key: 'face_heartsJ',    path: BG_ASSET + 'cardHeartsJ.png' },
+        { key: 'face_heartsQ',    path: BG_ASSET + 'cardHeartsQ.png' },
+        { key: 'face_heartsK',    path: BG_ASSET + 'cardHeartsK.png' },
+        { key: 'face_spadesA',    path: BG_ASSET + 'cardSpadesA.png' },
+        { key: 'face_spades3',    path: BG_ASSET + 'cardSpades3.png' },
+        { key: 'face_spades7',    path: BG_ASSET + 'cardSpades7.png' },
+        { key: 'face_spadesK',    path: BG_ASSET + 'cardSpadesK.png' },
+        { key: 'face_diamondsA',  path: BG_ASSET + 'cardDiamondsA.png' },
+        { key: 'face_diamonds4',  path: BG_ASSET + 'cardDiamonds4.png' },
+        { key: 'face_diamonds8',  path: BG_ASSET + 'cardDiamonds8.png' },
+        { key: 'face_diamondsQ',  path: BG_ASSET + 'cardDiamondsQ.png' },
+        { key: 'face_clubsA',    path: BG_ASSET + 'cardClubsA.png' },
+        { key: 'face_clubs5',    path: BG_ASSET + 'cardClubs5.png' },
+        { key: 'face_clubs9',    path: BG_ASSET + 'cardClubs9.png' },
+        { key: 'face_clubsJ',    path: BG_ASSET + 'cardClubsJ.png' },
+        { key: 'face_joker',     path: BG_ASSET + 'cardJoker.png' },
+        { key: 'face_spades5',   path: BG_ASSET + 'cardSpades5.png' },
+        { key: 'face_diamonds2', path: BG_ASSET + 'cardDiamonds2.png' },
     ];
     FACE_SPRITES.forEach(f => { SPRITE_MANIFEST[f.key] = f.path; });
     SPRITE_MANIFEST['uiStar'] = '/img/game-assets/kenney-ui/star.png';
 
+    // Card back selection changes per level for visual variety
     function getCardBackSprite() {
-        const key = 'cardBack_Blue';
+        const variants = CARD_BACK_VARIANTS;
+        // Cycle card back pattern each level
+        const backIdx = (level - 1) % variants.length;
+        const key = variants[backIdx];
         return SPRITE_OK[key] ? SPRITES[key] : null;
     }
 
@@ -127,11 +138,14 @@ window.MemoryMatch = (() => {
         'flame', 'moon', 'diamond', 'cherry', 'bell', 'fish',
         'anchor', 'leaf', 'sun', 'skull', 'potion', 'sword'
     ];
+    // Colors mapped to card suits for glow/border effects
     const ICON_COLORS = [
-        '#FF2D87', '#FFD600', '#FF4444', '#00E5FF', '#76FF03', '#FF6B00',
-        '#E040FB', '#B0BEC5', '#FFD700', '#FFEA00', '#42A5F5', '#CE93D8',
-        '#FF7043', '#90CAF9', '#00BCD4', '#EF5350', '#FFAB40', '#26C6DA',
-        '#5C6BC0', '#66BB6A', '#FFA726', '#BDBDBD', '#AB47BC', '#EF5350'
+        '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444',  // Hearts (red)
+        '#EF4444', '#EF4444', '#EF4444',
+        '#333333', '#333333', '#333333', '#333333',                          // Spades (black)
+        '#EF4444', '#EF4444', '#EF4444', '#EF4444',                          // Diamonds (red)
+        '#333333', '#333333', '#333333', '#333333',                          // Clubs (black)
+        '#9333EA', '#333333', '#EF4444'                                      // Joker, extras
     ];
 
     // High score tracking
@@ -753,31 +767,28 @@ window.MemoryMatch = (() => {
         ctx.translate(cx, cy);
         ctx.scale(scaleX, 1);
 
-        // TRY SPRITE — Kenney blue tile as card back
+        // TRY SPRITE — Kenney Board Game Pack playing card back
         const backSpr = getCardBackSprite();
         if (backSpr) {
-            // Background tile
+            // Clip to rounded rect and draw the card back image
             roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
             ctx.save();
             ctx.clip();
+            // Draw card back image scaled to fill (140x190 source)
             ctx.drawImage(backSpr, -w / 2, -h / 2, w, h);
-            // Subtle overlay pattern
-            ctx.globalAlpha = 0.15;
-            ctx.fillStyle = '#000';
-            const step = Math.min(w, h) * 0.25;
-            for (let i = -w; i < w * 2; i += step) {
-                ctx.beginPath();
-                ctx.moveTo(-w / 2 + i, -h / 2);
-                ctx.lineTo(-w / 2 + i + h, h / 2);
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            }
             ctx.restore();
-            // Border glow
-            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            // Soft border
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
             ctx.lineWidth = 1.5;
             roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
             ctx.stroke();
+            // Subtle inner shadow for depth
+            ctx.globalAlpha = 0.08;
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            roundRect(ctx, -w / 2 + 1, -h / 2 + 1, w - 2, h - 2, CARD_RADIUS - 1);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
             ctx.restore();
             return;
         }
@@ -822,27 +833,34 @@ window.MemoryMatch = (() => {
         ctx.translate(cx, cy);
         ctx.scale(scaleX, 1);
 
-        // Card body — lighter
-        ctx.fillStyle = '#1A1A3A';
-        roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
-        ctx.fill();
-
-        // Border
-        const bColor = ICON_COLORS[card.icon % ICON_COLORS.length] || ACCENT;
-        ctx.strokeStyle = bColor;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.6;
-        roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-
-        // TRY SPRITE for face icon
+        // TRY SPRITE for face — Kenney Board Game Pack playing card face
         const faceSpr = getCardFaceSprite(card.icon);
         if (faceSpr && card.icon >= 0) {
-            const iconSz = Math.min(w, h) * 0.6;
-            ctx.drawImage(faceSpr, -iconSz / 2, -iconSz / 2, iconSz, iconSz);
+            // Playing card images include their own white background + border
+            // Clip to rounded rect and draw the full card image
+            roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
+            ctx.save();
+            ctx.clip();
+            ctx.drawImage(faceSpr, -w / 2, -h / 2, w, h);
+            ctx.restore();
+            // Thin border for definition
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = 1;
+            roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
+            ctx.stroke();
         } else if (card.icon >= 0) {
-            // FALLBACK — original canvas-drawn icon
+            // FALLBACK — dark card body with canvas-drawn icon
+            ctx.fillStyle = '#1A1A3A';
+            roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
+            ctx.fill();
+            // Border
+            const bColor = ICON_COLORS[card.icon % ICON_COLORS.length] || ACCENT;
+            ctx.strokeStyle = bColor;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.6;
+            roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
             drawIcon(card.icon, 0, 0, Math.min(w, h));
         }
 

@@ -1,4 +1,4 @@
-/* Connect4 — Kenney CC0 sprite rendering — Connect Four for Your World Arcade
+/* Connect4 — Kenney Board Game Pack CC0 sprites — Connect Four for Your World Arcade
  * Player (red) vs AI (yellow) with minimax alpha-beta pruning.
  * Best-of-5 series, 3 difficulty levels. Canvas 2D, zero dependencies. */
 window.Connect4 = (() => {
@@ -20,21 +20,26 @@ window.Connect4 = (() => {
     }
 
     // ══════════════════════════════════════════
-    //  SPRITE SYSTEM — Kenney coins/tiles
+    //  SPRITE SYSTEM — Kenney Board Game Pack
     // ══════════════════════════════════════════
     const SPRITES = {};
     let spritesLoaded = false;
     let spriteLoadTotal = 0, spriteLoadDone = 0;
     const SPRITE_OK = {};
+    const BG_ASSET = '/img/game-assets/kenney-boardgame/';
     const SPRITE_MANIFEST = {
-        'discRed':     '/img/game-assets/kenney-tiles/tileRed_01.png',
-        'discYellow':  '/img/game-assets/kenney-tiles/tileYellow_01.png',
-        'boardTile':   '/img/game-assets/kenney-tiles/tileBlue_03.png',
-        'coinGold':    '/img/game-assets/kenney-platform/items/coinGold.png',
-        'coinBronze':  '/img/game-assets/kenney-platform/items/coinBronze.png',
-        'gemRed':      '/img/game-assets/kenney-platform/items/gemRed.png',
-        'gemYellow':   '/img/game-assets/kenney-platform/items/gemYellow.png',
-        'star':        '/img/game-assets/kenney-ui/star.png',
+        // Board-game chips & pieces for discs
+        'chipRed':        BG_ASSET + 'chipRedWhite_border.png',
+        'chipBlue':       BG_ASSET + 'chipBlue_border.png',
+        'pieceRed':       BG_ASSET + 'pieceRed_border00.png',
+        'pieceYellow':    BG_ASSET + 'pieceYellow_border00.png',
+        // Side-view chips for decorative elements
+        'chipRedSide':    BG_ASSET + 'chipRedWhite_sideBorder.png',
+        'chipBlueSide':   BG_ASSET + 'chipBlueWhite_sideBorder.png',
+        // Legacy fallback keys (mapped to board game pack)
+        'discRed':        BG_ASSET + 'chipRedWhite_border.png',
+        'discYellow':     BG_ASSET + 'pieceYellow_border00.png',
+        'star':           '/img/game-assets/kenney-ui/star.png',
     };
 
     function preloadSprites(onProgress, onDone) {
@@ -637,18 +642,19 @@ window.Connect4 = (() => {
             ctx.shadowBlur = 12 + Math.sin(winPulse) * 6;
         }
 
-        // TRY SPRITE FIRST — Kenney gem/coin for discs
-        const sprKey = who === 1 ? 'gemRed' : 'gemYellow';
-        const discSprite = spr(sprKey);
+        // TRY SPRITE FIRST — Kenney Board Game Pack chips/pieces
+        const sprKey = who === 1 ? 'chipRed' : 'pieceYellow';
+        const sprAlt = who === 1 ? 'discRed' : 'discYellow';
+        const discSprite = spr(sprKey) || spr(sprAlt);
         if (discSprite) {
-            const sz = DISC_R * 2.1;
+            const sz = DISC_R * 2.2;
             ctx.drawImage(discSprite, x - sz / 2, y - sz / 2, sz, sz);
-            // Shine overlay
+            // Specular highlight overlay
             ctx.shadowBlur = 0;
-            ctx.globalAlpha = (alpha || 1) * 0.3;
+            ctx.globalAlpha = (alpha || 1) * 0.18;
             ctx.fillStyle = '#FFF';
             ctx.beginPath();
-            ctx.arc(x - 4, y - 5, DISC_R * 0.3, 0, Math.PI * 2);
+            ctx.ellipse(x - DISC_R * 0.2, y - DISC_R * 0.25, DISC_R * 0.35, DISC_R * 0.2, -0.3, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
             ctx.shadowBlur = 0;
@@ -693,27 +699,32 @@ window.Connect4 = (() => {
         ctx.roundRect(BOARD_X + 4, BOARD_Y + 4, BOARD_W, BOARD_H, [BOARD_RADIUS]);
         ctx.fill();
 
-        // Board body — use blue tile sprites if available
-        const boardTileSpr = spr('boardTile');
-        if (boardTileSpr) {
-            ctx.save();
+        // Board body — deep blue gradient (classic Connect4 board)
+        const bgrad = ctx.createLinearGradient(BOARD_X, BOARD_Y, BOARD_X, BOARD_Y + BOARD_H);
+        bgrad.addColorStop(0, BOARD_CLR);
+        bgrad.addColorStop(0.5, lighten(BOARD_CLR, 8));
+        bgrad.addColorStop(1, BOARD_CLR2);
+        ctx.fillStyle = bgrad;
+        ctx.beginPath();
+        ctx.roundRect(BOARD_X, BOARD_Y, BOARD_W, BOARD_H, [BOARD_RADIUS]);
+        ctx.fill();
+
+        // Subtle cell grid texture
+        ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+        ctx.lineWidth = 1;
+        for (let c = 1; c < COLS; c++) {
+            const lx = BOARD_X + BOARD_PAD + c * CELL_SIZE;
             ctx.beginPath();
-            ctx.roundRect(BOARD_X, BOARD_Y, BOARD_W, BOARD_H, [BOARD_RADIUS]);
-            ctx.clip();
-            for (let tr = 0; tr < Math.ceil(BOARD_H / CELL_SIZE) + 1; tr++) {
-                for (let tc = 0; tc < Math.ceil(BOARD_W / CELL_SIZE) + 1; tc++) {
-                    ctx.drawImage(boardTileSpr, BOARD_X + tc * CELL_SIZE, BOARD_Y + tr * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                }
-            }
-            ctx.restore();
-        } else {
-            const bgrad = ctx.createLinearGradient(BOARD_X, BOARD_Y, BOARD_X, BOARD_Y + BOARD_H);
-            bgrad.addColorStop(0, BOARD_CLR);
-            bgrad.addColorStop(1, BOARD_CLR2);
-            ctx.fillStyle = bgrad;
+            ctx.moveTo(lx, BOARD_Y + BOARD_PAD);
+            ctx.lineTo(lx, BOARD_Y + BOARD_H - BOARD_PAD);
+            ctx.stroke();
+        }
+        for (let r = 1; r < ROWS; r++) {
+            const ly = BOARD_Y + BOARD_PAD + r * CELL_SIZE;
             ctx.beginPath();
-            ctx.roundRect(BOARD_X, BOARD_Y, BOARD_W, BOARD_H, [BOARD_RADIUS]);
-            ctx.fill();
+            ctx.moveTo(BOARD_X + BOARD_PAD, ly);
+            ctx.lineTo(BOARD_X + BOARD_W - BOARD_PAD, ly);
+            ctx.stroke();
         }
 
         // Board border
@@ -903,15 +914,22 @@ window.Connect4 = (() => {
                     ctx.arc(dx, dy, 11, 0, Math.PI * 2);
                     ctx.fill();
                 } else {
-                    const clr = demoPattern[r][c] === 1 ? PLAYER_CLR : AI_CLR;
-                    ctx.fillStyle = clr;
-                    ctx.beginPath();
-                    ctx.arc(dx, dy, 11, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                    ctx.beginPath();
-                    ctx.arc(dx - 3, dy - 3, 4, 0, Math.PI * 2);
-                    ctx.fill();
+                    // Use board game sprites on title if loaded
+                    const demoSprKey = demoPattern[r][c] === 1 ? 'chipRed' : 'pieceYellow';
+                    const demoSpr = spr(demoSprKey);
+                    if (demoSpr) {
+                        ctx.drawImage(demoSpr, dx - 11, dy - 11, 22, 22);
+                    } else {
+                        const clr = demoPattern[r][c] === 1 ? PLAYER_CLR : AI_CLR;
+                        ctx.fillStyle = clr;
+                        ctx.beginPath();
+                        ctx.arc(dx, dy, 11, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                        ctx.beginPath();
+                        ctx.arc(dx - 3, dy - 3, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             }
         }

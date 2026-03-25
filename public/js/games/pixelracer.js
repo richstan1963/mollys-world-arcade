@@ -1,5 +1,5 @@
 /* PixelRacer — Top-down pixel racing game for Your World Arcade
- * Kenney Platform + Physics sprite edition
+ * Kenney Racing Pack sprite edition
  * Self-contained, no dependencies, canvas-rendered, theme-aware */
 window.PixelRacer = (() => {
 
@@ -20,60 +20,99 @@ window.PixelRacer = (() => {
     }
 
     // ══════════════════════════════════════════════════════════
-    //  SPRITE PRELOADER — Kenney Platform + Physics Packs
+    //  SPRITE PRELOADER — Kenney Racing Pack
     // ══════════════════════════════════════════════════════════
-    const PHYS_BASE = '/img/game-assets/kenney-physics';
-    const PLAT_BASE = '/img/game-assets/kenney-platform';
+    const RACE_BASE = '/img/game-assets/kenney-racing';
     const spriteCache = {};
     let spritesLoaded = 0;
     let spritesTotal  = 0;
     let allSpritesReady = false;
 
     const SPRITE_MANIFEST = {
-        // Road tile sprites (stone for road surface)
-        stoneMid:       `${PLAT_BASE}/ground/Stone/stoneMid.png`,
-        stoneCenter:    `${PLAT_BASE}/ground/Stone/stoneCenter.png`,
-        // Grass for shoulders/scenery
-        grassMid:       `${PLAT_BASE}/ground/Grass/grassMid.png`,
-        grassCenter:    `${PLAT_BASE}/ground/Grass/grassCenter.png`,
-        sandMid:        `${PLAT_BASE}/ground/Sand/sandMid.png`,
-        // Platform enemy sprites as obstacles
-        bee:            `${PLAT_BASE}/enemies/bee.png`,
-        beeMove:        `${PLAT_BASE}/enemies/bee_move.png`,
-        fly:            `${PLAT_BASE}/enemies/fly.png`,
-        flyMove:        `${PLAT_BASE}/enemies/fly_move.png`,
-        frog:           `${PLAT_BASE}/enemies/frog.png`,
-        fishBlue:       `${PLAT_BASE}/enemies/fishBlue.png`,
-        fishGreen:      `${PLAT_BASE}/enemies/fishGreen.png`,
-        fishPink:       `${PLAT_BASE}/enemies/fishPink.png`,
-        barnacle:       `${PLAT_BASE}/enemies/barnacle.png`,
-        // Coin sprites for collectibles
-        coinGold:       `${PLAT_BASE}/items/coinGold.png`,
-        coinSilver:     `${PLAT_BASE}/items/coinSilver.png`,
-        coinBronze:     `${PLAT_BASE}/items/coinBronze.png`,
-        // Gems for power-ups
-        gemRed:         `${PLAT_BASE}/items/gemRed.png`,
-        gemBlue:        `${PLAT_BASE}/items/gemBlue.png`,
-        gemGreen:       `${PLAT_BASE}/items/gemGreen.png`,
-        gemYellow:      `${PLAT_BASE}/items/gemYellow.png`,
-        // Background
-        bgLand:         `${PLAT_BASE}/backgrounds/colored_land.png`,
-        bgDesert:       `${PLAT_BASE}/backgrounds/colored_desert.png`,
-        // Scenery items
-        bush:           `${PLAT_BASE}/tiles/bush.png`,
-        cactus:         `${PLAT_BASE}/tiles/cactus.png`,
-        // Debris for crash effects
-        debrisWood1:    `${PHYS_BASE}/debris/debrisWood_1.png`,
-        debrisStone1:   `${PHYS_BASE}/debris/debrisStone_1.png`,
-        // Explosive crate for obstacles
-        boxCrate:       `${PLAT_BASE}/tiles/boxCrate.png`,
-        boxExplosive:   `${PLAT_BASE}/tiles/boxExplosive.png`,
-        // Stars
-        starGold:       `${PHYS_BASE}/other/starGold.png`,
+        // ── Player car (red racer) ──
+        playerCar:      `${RACE_BASE}/car_red_1.png`,
+        playerCar2:     `${RACE_BASE}/car_red_2.png`,
+        playerCar3:     `${RACE_BASE}/car_red_3.png`,
+
+        // ── Traffic cars (multiple colors × styles for variety) ──
+        carBlue1:       `${RACE_BASE}/car_blue_1.png`,
+        carBlue2:       `${RACE_BASE}/car_blue_2.png`,
+        carBlue3:       `${RACE_BASE}/car_blue_3.png`,
+        carBlue4:       `${RACE_BASE}/car_blue_4.png`,
+        carBlue5:       `${RACE_BASE}/car_blue_5.png`,
+        carGreen1:      `${RACE_BASE}/car_green_1.png`,
+        carGreen2:      `${RACE_BASE}/car_green_2.png`,
+        carGreen3:      `${RACE_BASE}/car_green_3.png`,
+        carGreen4:      `${RACE_BASE}/car_green_4.png`,
+        carGreen5:      `${RACE_BASE}/car_green_5.png`,
+        carYellow1:     `${RACE_BASE}/car_yellow_1.png`,
+        carYellow2:     `${RACE_BASE}/car_yellow_2.png`,
+        carYellow3:     `${RACE_BASE}/car_yellow_3.png`,
+        carYellow4:     `${RACE_BASE}/car_yellow_4.png`,
+        carYellow5:     `${RACE_BASE}/car_yellow_5.png`,
+        carBlack1:      `${RACE_BASE}/car_black_1.png`,
+        carBlack2:      `${RACE_BASE}/car_black_2.png`,
+        carBlack3:      `${RACE_BASE}/car_black_3.png`,
+        carBlack4:      `${RACE_BASE}/car_black_4.png`,
+        carBlack5:      `${RACE_BASE}/car_black_5.png`,
+
+        // ── Road tiles (128×128 top-down) ──
+        roadStraight:   `${RACE_BASE}/road_asphalt22.png`,   // plain asphalt
+        roadDashed:     `${RACE_BASE}/road_asphalt26.png`,   // center dashed line
+        roadEdgeL:      `${RACE_BASE}/road_asphalt27.png`,   // left edge
+        roadEdgeR:      `${RACE_BASE}/road_asphalt29.png`,   // right edge
+        roadDirt:       `${RACE_BASE}/road_dirt22.png`,       // desert road
+        roadSand:       `${RACE_BASE}/road_sand22.png`,       // sand road
+
+        // ── Land / terrain tiles (128×128) ──
+        landGrass1:     `${RACE_BASE}/land_grass01.png`,
+        landGrass2:     `${RACE_BASE}/land_grass02.png`,
+        landGrass3:     `${RACE_BASE}/land_grass05.png`,
+        landSand1:      `${RACE_BASE}/land_sand01.png`,
+        landSand2:      `${RACE_BASE}/land_sand02.png`,
+        landDirt1:      `${RACE_BASE}/land_dirt01.png`,
+        landDirt2:      `${RACE_BASE}/land_dirt02.png`,
+
+        // ── Scenery ──
+        treeLarge:      `${RACE_BASE}/tree_large.png`,
+        treeSmall:      `${RACE_BASE}/tree_small.png`,
+        rock1:          `${RACE_BASE}/rock1.png`,
+        rock2:          `${RACE_BASE}/rock2.png`,
+        rock3:          `${RACE_BASE}/rock3.png`,
+        tentBlue:       `${RACE_BASE}/tent_blue.png`,
+        tentRed:        `${RACE_BASE}/tent_red.png`,
+        tentBlueLg:     `${RACE_BASE}/tent_blue_large.png`,
+        tentRedLg:      `${RACE_BASE}/tent_red_large.png`,
+        tribuneFull:    `${RACE_BASE}/tribune_full.png`,
+        tribuneEmpty:   `${RACE_BASE}/tribune_empty.png`,
+
+        // ── Road-side objects ──
+        barrierWhite:   `${RACE_BASE}/barrier_white_race.png`,
+        barrierRed:     `${RACE_BASE}/barrier_red_race.png`,
+        tiresWhite:     `${RACE_BASE}/tires_white.png`,
+        tiresRed:       `${RACE_BASE}/tires_red.png`,
+        cone:           `${RACE_BASE}/cone_straight.png`,
+
+        // ── Road hazards / collectibles ──
+        oil:            `${RACE_BASE}/oil.png`,
+        barrelBlue:     `${RACE_BASE}/barrel_blue.png`,
+        barrelRed:      `${RACE_BASE}/barrel_red.png`,
+        arrowWhite:     `${RACE_BASE}/arrow_white.png`,
+        lightYellow:    `${RACE_BASE}/light_yellow.png`,
+
+        // ── Skid marks (crash effects) ──
+        skidLong1:      `${RACE_BASE}/skidmark_long_1.png`,
+        skidLong2:      `${RACE_BASE}/skidmark_long_2.png`,
+        skidShort1:     `${RACE_BASE}/skidmark_short_1.png`,
     };
 
-    // Obstacle sprite pool (enemies used as traffic obstacles)
-    const OBSTACLE_SPRITES = ['bee', 'beeMove', 'fly', 'flyMove', 'frog', 'fishBlue', 'fishGreen', 'fishPink', 'barnacle'];
+    // Traffic sprite pools — each car type maps to a set of color/style sprites
+    const TRAFFIC_SPRITE_POOLS = {
+        sedan:  ['carBlue1', 'carGreen1', 'carYellow1', 'carBlack1'],
+        truck:  ['carBlue3', 'carGreen3', 'carYellow3', 'carBlack3'],
+        sports: ['carBlue2', 'carGreen2', 'carYellow2', 'carBlack2'],
+        suv:    ['carBlue4', 'carGreen4', 'carYellow4', 'carBlack4'],
+    };
 
     function preloadSprites(onComplete) {
         const keys = Object.keys(SPRITE_MANIFEST);
@@ -111,6 +150,26 @@ window.PixelRacer = (() => {
         ctx.clip();
         for (let tx = rx; tx < rx + rw; tx += tileW) {
             for (let ty = ry; ty < ry + rh; ty += tileH) {
+                ctx.drawImage(img, tx, ty, tileW, tileH);
+            }
+        }
+        ctx.restore();
+    }
+
+    // Scrolling tiled sprite — offsets vertically with road scroll
+    function drawScrollingTiles(name, rx, ry, rw, rh, tileW, tileH, scrollOffset, fallbackColor) {
+        const img = spr(name);
+        if (!img) {
+            if (fallbackColor) { ctx.fillStyle = fallbackColor; ctx.fillRect(rx, ry, rw, rh); }
+            return;
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(rx, ry, rw, rh);
+        ctx.clip();
+        const off = scrollOffset % tileH;
+        for (let tx = rx; tx < rx + rw; tx += tileW) {
+            for (let ty = ry - tileH + off; ty < ry + rh + tileH; ty += tileH) {
                 ctx.drawImage(img, tx, ty, tileW, tileH);
             }
         }
@@ -365,7 +424,7 @@ window.PixelRacer = (() => {
 
     function onResize() { fitCanvas(); }
 
-    // ── Drawing: Car sprites ──
+    // ── Drawing: Car sprites (Kenney Racing Pack) ──
     function drawPlayerCar(x, y) {
         const cw = PLAYER_W, ch = PLAYER_H;
         const cx = x - cw / 2, cy = y - ch / 2;
@@ -384,7 +443,7 @@ window.PixelRacer = (() => {
             ctx.shadowBlur = 0;
         }
 
-        // Nitro flame
+        // Nitro flame (behind the car)
         if (nitroTimer > 0) {
             const flameH = 15 + Math.random() * 10;
             const flameGrad = ctx.createLinearGradient(x, cy + ch, x, cy + ch + flameH);
@@ -397,8 +456,6 @@ window.PixelRacer = (() => {
             ctx.quadraticCurveTo(x - 3, cy + ch + flameH * 0.6, x, cy + ch + flameH);
             ctx.quadraticCurveTo(x + 3, cy + ch + flameH * 0.6, x + 8, cy + ch);
             ctx.fill();
-
-            // Second flame
             const f2 = 8 + Math.random() * 8;
             ctx.fillStyle = hexAlpha('#FFDD00', 0.7);
             ctx.beginPath();
@@ -407,185 +464,160 @@ window.PixelRacer = (() => {
             ctx.fill();
         }
 
-        // Body
-        const bodyGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy);
-        bodyGrad.addColorStop(0, ACCENT);
-        bodyGrad.addColorStop(0.5, hexAlpha(ACCENT, 0.85));
-        bodyGrad.addColorStop(1, hexAlpha(ACCENT, 0.7));
-        ctx.fillStyle = bodyGrad;
-        ctx.beginPath();
-        ctx.roundRect(cx + 2, cy + 10, cw - 4, ch - 15, [4, 4, 6, 6]);
-        ctx.fill();
-
-        // Hood
-        ctx.fillStyle = hexAlpha(ACCENT, 0.9);
-        ctx.beginPath();
-        ctx.roundRect(cx + 5, cy, cw - 10, 18, [8, 8, 2, 2]);
-        ctx.fill();
-
-        // Windshield
-        ctx.fillStyle = hexAlpha('#88CCFF', 0.7);
-        ctx.beginPath();
-        ctx.roundRect(cx + 7, cy + 14, cw - 14, 12, [2]);
-        ctx.fill();
-
-        // Rear window
-        ctx.fillStyle = hexAlpha('#6699CC', 0.5);
-        ctx.beginPath();
-        ctx.roundRect(cx + 8, cy + ch - 20, cw - 16, 8, [2]);
-        ctx.fill();
-
-        // Wheels
-        ctx.fillStyle = '#222';
-        ctx.fillRect(cx - 2, cy + 8, 6, 14);
-        ctx.fillRect(cx + cw - 4, cy + 8, 6, 14);
-        ctx.fillRect(cx - 2, cy + ch - 22, 6, 14);
-        ctx.fillRect(cx + cw - 4, cy + ch - 22, 6, 14);
-
-        // Wheel caps
-        ctx.fillStyle = '#666';
-        ctx.fillRect(cx - 1, cy + 12, 4, 6);
-        ctx.fillRect(cx + cw - 3, cy + 12, 4, 6);
-        ctx.fillRect(cx - 1, cy + ch - 18, 4, 6);
-        ctx.fillRect(cx + cw - 3, cy + ch - 18, 4, 6);
-
-        // Headlights
-        ctx.fillStyle = '#FFFFAA';
-        ctx.shadowColor = '#FFFFAA';
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(cx + 8, cy + 3, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(cx + cw - 8, cy + 3, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Tail lights
-        ctx.fillStyle = '#FF3333';
-        ctx.shadowColor = '#FF3333';
-        ctx.shadowBlur = 5;
-        ctx.beginPath();
-        ctx.arc(cx + 6, cy + ch - 5, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(cx + cw - 6, cy + ch - 5, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Racing stripe
-        ctx.fillStyle = hexAlpha('#FFF', 0.2);
-        ctx.fillRect(x - 2, cy + 2, 4, ch - 6);
+        // Draw Kenney car sprite or canvas fallback
+        const carImg = spr('playerCar');
+        if (carImg) {
+            // Sprite is 71×131, scale to fit player dimensions
+            ctx.drawImage(carImg, cx, cy, cw, ch);
+        } else {
+            // Canvas fallback — simplified car shape
+            const bodyGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy);
+            bodyGrad.addColorStop(0, ACCENT);
+            bodyGrad.addColorStop(0.5, hexAlpha(ACCENT, 0.85));
+            bodyGrad.addColorStop(1, hexAlpha(ACCENT, 0.7));
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.roundRect(cx + 2, cy + 10, cw - 4, ch - 15, [4, 4, 6, 6]);
+            ctx.fill();
+            ctx.fillStyle = hexAlpha(ACCENT, 0.9);
+            ctx.beginPath();
+            ctx.roundRect(cx + 5, cy, cw - 10, 18, [8, 8, 2, 2]);
+            ctx.fill();
+            ctx.fillStyle = hexAlpha('#88CCFF', 0.7);
+            ctx.beginPath();
+            ctx.roundRect(cx + 7, cy + 14, cw - 14, 12, [2]);
+            ctx.fill();
+            ctx.fillStyle = '#222';
+            ctx.fillRect(cx - 2, cy + 8, 6, 14);
+            ctx.fillRect(cx + cw - 4, cy + 8, 6, 14);
+            ctx.fillRect(cx - 2, cy + ch - 22, 6, 14);
+            ctx.fillRect(cx + cw - 4, cy + ch - 22, 6, 14);
+            ctx.fillStyle = '#FFFFAA';
+            ctx.shadowColor = '#FFFFAA'; ctx.shadowBlur = 8;
+            ctx.beginPath(); ctx.arc(cx + 8, cy + 3, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx + cw - 8, cy + 3, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#FF3333'; ctx.shadowColor = '#FF3333'; ctx.shadowBlur = 5;
+            ctx.beginPath(); ctx.arc(cx + 6, cy + ch - 5, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx + cw - 6, cy + ch - 5, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = hexAlpha('#FFF', 0.2);
+            ctx.fillRect(x - 2, cy + 2, 4, ch - 6);
+        }
 
         ctx.restore();
     }
 
-    function drawTrafficCar(x, y, type, hpRatio) {
+    function drawTrafficCar(x, y, type, spriteKey) {
         const t = CAR_TYPES[type];
         const cw = t.w, ch = t.h;
         const cx = x - cw / 2, cy = y - ch / 2;
-        const color = TC[t.ci % TC.length];
 
         ctx.save();
 
-        // Body
-        const bodyGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy);
-        bodyGrad.addColorStop(0, color);
-        bodyGrad.addColorStop(1, hexAlpha(color, 0.7));
-        ctx.fillStyle = bodyGrad;
-
-        if (t.name === 'truck') {
-            // Truck: boxy
-            ctx.beginPath();
-            ctx.roundRect(cx + 1, cy + 5, cw - 2, ch - 8, [3, 3, 4, 4]);
-            ctx.fill();
-            // Cab
-            ctx.fillStyle = hexAlpha(color, 0.9);
-            ctx.beginPath();
-            ctx.roundRect(cx + 4, cy + ch - 25, cw - 8, 20, [2, 2, 4, 4]);
-            ctx.fill();
-        } else if (t.name === 'sports') {
-            // Sports: sleek
-            ctx.beginPath();
-            ctx.roundRect(cx + 3, cy + 3, cw - 6, ch - 6, [10, 10, 5, 5]);
-            ctx.fill();
-            // Spoiler
-            ctx.fillStyle = hexAlpha(color, 0.6);
-            ctx.fillRect(cx + 2, cy, cw - 4, 4);
+        // Try Kenney sprite first
+        const img = spriteKey ? spr(spriteKey) : null;
+        if (img) {
+            // Traffic faces downward (away from player), so rotate 180°
+            ctx.translate(x, y);
+            ctx.rotate(Math.PI);
+            ctx.drawImage(img, -cw / 2, -ch / 2, cw, ch);
         } else {
-            // Sedan/SUV
+            // Canvas fallback
+            const color = TC[t.ci % TC.length];
+            const bodyGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy);
+            bodyGrad.addColorStop(0, color);
+            bodyGrad.addColorStop(1, hexAlpha(color, 0.7));
+            ctx.fillStyle = bodyGrad;
+
+            if (t.name === 'truck') {
+                ctx.beginPath();
+                ctx.roundRect(cx + 1, cy + 5, cw - 2, ch - 8, [3, 3, 4, 4]);
+                ctx.fill();
+                ctx.fillStyle = hexAlpha(color, 0.9);
+                ctx.beginPath();
+                ctx.roundRect(cx + 4, cy + ch - 25, cw - 8, 20, [2, 2, 4, 4]);
+                ctx.fill();
+            } else if (t.name === 'sports') {
+                ctx.beginPath();
+                ctx.roundRect(cx + 3, cy + 3, cw - 6, ch - 6, [10, 10, 5, 5]);
+                ctx.fill();
+                ctx.fillStyle = hexAlpha(color, 0.6);
+                ctx.fillRect(cx + 2, cy, cw - 4, 4);
+            } else {
+                ctx.beginPath();
+                ctx.roundRect(cx + 2, cy + 8, cw - 4, ch - 12, [4, 4, 5, 5]);
+                ctx.fill();
+                ctx.fillStyle = hexAlpha(color, 0.85);
+                ctx.beginPath();
+                ctx.roundRect(cx + 5, cy + ch - 15, cw - 10, 14, [6, 6, 2, 2]);
+                ctx.fill();
+            }
+            ctx.fillStyle = hexAlpha('#88CCFF', 0.5);
             ctx.beginPath();
-            ctx.roundRect(cx + 2, cy + 8, cw - 4, ch - 12, [4, 4, 5, 5]);
+            ctx.roundRect(cx + 6, cy + 12, cw - 12, 10, [2]);
             ctx.fill();
-            // Hood
-            ctx.fillStyle = hexAlpha(color, 0.85);
-            ctx.beginPath();
-            ctx.roundRect(cx + 5, cy + ch - 15, cw - 10, 14, [6, 6, 2, 2]);
-            ctx.fill();
+            ctx.fillStyle = '#222';
+            ctx.fillRect(cx - 1, cy + 10, 5, 12);
+            ctx.fillRect(cx + cw - 4, cy + 10, 5, 12);
+            ctx.fillRect(cx - 1, cy + ch - 22, 5, 12);
+            ctx.fillRect(cx + cw - 4, cy + ch - 22, 5, 12);
+            ctx.fillStyle = '#FF4444'; ctx.shadowColor = '#FF4444'; ctx.shadowBlur = 4;
+            ctx.beginPath(); ctx.arc(cx + 5, cy + 4, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx + cw - 5, cy + 4, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
         }
-
-        // Windshield (facing down = player sees top = rear of traffic car)
-        ctx.fillStyle = hexAlpha('#88CCFF', 0.5);
-        ctx.beginPath();
-        ctx.roundRect(cx + 6, cy + 12, cw - 12, 10, [2]);
-        ctx.fill();
-
-        // Wheels
-        ctx.fillStyle = '#222';
-        ctx.fillRect(cx - 1, cy + 10, 5, 12);
-        ctx.fillRect(cx + cw - 4, cy + 10, 5, 12);
-        ctx.fillRect(cx - 1, cy + ch - 22, 5, 12);
-        ctx.fillRect(cx + cw - 4, cy + ch - 22, 5, 12);
-
-        // Tail lights (top of car since driving away from us)
-        ctx.fillStyle = '#FF4444';
-        ctx.shadowColor = '#FF4444';
-        ctx.shadowBlur = 4;
-        ctx.beginPath();
-        ctx.arc(cx + 5, cy + 4, 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(cx + cw - 5, cy + 4, 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
 
         ctx.restore();
     }
 
-    // ── Drawing: Road & scenery ──
+    // ── Drawing: Road & scenery (Kenney Racing Pack) ──
     function drawRoad() {
         const env = ENVS[envIndex];
+        const TILE = 64; // render size for 128px tiles (scaled to fit lanes)
+        const scrollOff = stripeOffset;
 
-        // Sky/background - use sprite bg or gradient fallback
-        const bgName = env.name === 'Desert Road' ? 'bgDesert' : 'bgLand';
-        const bgImg = spr(bgName);
-        if (bgImg) {
-            ctx.drawImage(bgImg, 0, 0, GAME_W, GAME_H);
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.fillRect(0, 0, GAME_W, GAME_H);
+        // Sky/background gradient (no sprite bg needed — terrain tiles cover it)
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_H);
+        skyGrad.addColorStop(0, env.sky[0]);
+        skyGrad.addColorStop(1, env.sky[1]);
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+        // Terrain sides — scrolling grass/sand/dirt tiles
+        const terrainTile = env.name === 'Desert Road' ? 'landSand1'
+            : env.name === 'Mountain Pass' ? 'landDirt1' : 'landGrass1';
+        const terrainTile2 = env.name === 'Desert Road' ? 'landSand2'
+            : env.name === 'Mountain Pass' ? 'landDirt2' : 'landGrass2';
+        drawScrollingTiles(terrainTile, 0, 0, ROAD_X, GAME_H, TILE, TILE, scrollOff * 0.4, env.grass);
+        drawScrollingTiles(terrainTile2, ROAD_X + ROAD_W, 0, GAME_W - ROAD_X - ROAD_W, GAME_H, TILE, TILE, scrollOff * 0.4, env.grass);
+
+        // Road surface — scrolling asphalt/dirt/sand tiles
+        const roadTile = env.name === 'Desert Road' ? 'roadSand'
+            : env.name === 'Mountain Pass' ? 'roadDirt' : 'roadStraight';
+        drawScrollingTiles(roadTile, ROAD_X, 0, ROAD_W, GAME_H, TILE, TILE, scrollOff, env.road);
+
+        // Road shoulder barriers (drawn as repeating small barriers along edges)
+        const barrierImg = spr('barrierWhite');
+        if (barrierImg) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(ROAD_X - 10, 0, 12, GAME_H);
+            ctx.rect(ROAD_X + ROAD_W - 2, 0, 12, GAME_H);
+            ctx.clip();
+            const bH = 10; // barrier rendered height
+            const bW = 32;
+            const bOff = scrollOff % (bH + 8);
+            for (let by = -bH + bOff; by < GAME_H + bH; by += bH + 8) {
+                ctx.drawImage(barrierImg, ROAD_X - 10, by, bW, bH);
+                ctx.drawImage(barrierImg, ROAD_X + ROAD_W - 2, by, bW, bH);
+            }
+            ctx.restore();
         } else {
-            const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_H);
-            skyGrad.addColorStop(0, env.sky[0]);
-            skyGrad.addColorStop(1, env.sky[1]);
-            ctx.fillStyle = skyGrad;
-            ctx.fillRect(0, 0, GAME_W, GAME_H);
+            ctx.fillStyle = env.shoulder;
+            ctx.fillRect(ROAD_X - 6, 0, 6, GAME_H);
+            ctx.fillRect(ROAD_X + ROAD_W, 0, 6, GAME_H);
         }
-
-        // Grass/ground sides - tiled sprite or fallback
-        const grassTile = env.name === 'Desert Road' ? 'sandMid' : 'grassMid';
-        drawTiledSprite(grassTile, 0, 0, ROAD_X, GAME_H, 48, 48, env.grass);
-        drawTiledSprite(grassTile, ROAD_X + ROAD_W, 0, GAME_W - ROAD_X - ROAD_W, GAME_H, 48, 48, env.grass);
-
-        // Road shoulder
-        ctx.fillStyle = env.shoulder;
-        ctx.fillRect(ROAD_X - 6, 0, 6, GAME_H);
-        ctx.fillRect(ROAD_X + ROAD_W, 0, 6, GAME_H);
-
-        // Road surface - tiled stone sprite or fallback
-        drawTiledSprite('stoneCenter', ROAD_X, 0, ROAD_W, GAME_H, 48, 48, env.road);
-        // Darken overlay for road feel
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.fillRect(ROAD_X, 0, ROAD_W, GAME_H);
 
         // Lane stripes
         const stripeTotal = STRIPE_H + STRIPE_GAP;
@@ -600,7 +632,7 @@ window.PixelRacer = (() => {
         }
         ctx.globalAlpha = 1;
 
-        // Road edge lines (solid)
+        // Road edge lines (solid white)
         ctx.fillStyle = '#FFFFFF';
         ctx.globalAlpha = 0.7;
         ctx.fillRect(ROAD_X + 2, 0, 3, GAME_H);
@@ -623,10 +655,12 @@ window.PixelRacer = (() => {
 
     function drawSceneryItem(x, y, type, env, dir) {
         if (type === 'tree') {
-            // Use bush sprite or fallback
-            const bushImg = spr('bush');
-            if (bushImg) {
-                ctx.drawImage(bushImg, x - 16, y - 24, 32, 32);
+            // Kenney tree sprites — use position hash for stable large/small pick
+            const treeKey = ((x * 31 + y * 17) & 1) ? 'treeLarge' : 'treeSmall';
+            const treeImg = spr(treeKey);
+            if (treeImg) {
+                const sz = 36;
+                ctx.drawImage(treeImg, x - sz / 2, y - sz, sz, sz);
             } else {
                 ctx.fillStyle = '#5C3D2E';
                 ctx.fillRect(x - 3, y - 5, 6, 20);
@@ -640,27 +674,38 @@ window.PixelRacer = (() => {
                 ctx.fill();
             }
         } else if (type === 'building') {
-            const bw = 25 + Math.abs(Math.sin(x * 0.1)) * 20;
-            const bh = 60 + Math.abs(Math.cos(x * 0.07)) * 80;
-            ctx.fillStyle = '#2a2a3a';
-            ctx.beginPath();
-            ctx.roundRect(x - bw / 2, y - bh, bw, bh, [3, 3, 0, 0]);
-            ctx.fill();
-            // Windows
-            ctx.fillStyle = '#FFEE88';
-            for (let wy = y - bh + 8; wy < y - 5; wy += 14) {
-                for (let wx = x - bw / 2 + 5; wx < x + bw / 2 - 5; wx += 10) {
-                    if (Math.random() > 0.3) {
-                        ctx.globalAlpha = 0.3 + Math.random() * 0.5;
-                        ctx.fillRect(wx, wy, 5, 7);
+            // Use tribune/tent sprites for buildings in city mode
+            const buildingSprites = ['tribuneFull', 'tribuneEmpty', 'tentBlueLg', 'tentRedLg'];
+            const pick = buildingSprites[Math.floor(Math.abs(Math.sin(x * 0.3 + y * 0.1)) * buildingSprites.length)];
+            const bImg = spr(pick);
+            if (bImg) {
+                const bw = 50, bh = 30;
+                ctx.drawImage(bImg, x - bw / 2, y - bh, bw, bh);
+            } else {
+                const bw = 25 + Math.abs(Math.sin(x * 0.1)) * 20;
+                const bh = 60 + Math.abs(Math.cos(x * 0.07)) * 80;
+                ctx.fillStyle = '#2a2a3a';
+                ctx.beginPath();
+                ctx.roundRect(x - bw / 2, y - bh, bw, bh, [3, 3, 0, 0]);
+                ctx.fill();
+                ctx.fillStyle = '#FFEE88';
+                for (let wy = y - bh + 8; wy < y - 5; wy += 14) {
+                    for (let wx = x - bw / 2 + 5; wx < x + bw / 2 - 5; wx += 10) {
+                        if (Math.random() > 0.3) {
+                            ctx.globalAlpha = 0.3 + Math.random() * 0.5;
+                            ctx.fillRect(wx, wy, 5, 7);
+                        }
                     }
                 }
+                ctx.globalAlpha = 1;
             }
-            ctx.globalAlpha = 1;
         } else if (type === 'cactus') {
-            const cactusImg = spr('cactus');
-            if (cactusImg) {
-                ctx.drawImage(cactusImg, x - 14, y - 30, 28, 36);
+            // Use rock sprites for desert scenery — stable pick via position hash
+            const rockNames = ['rock1', 'rock2', 'rock3'];
+            const rPick = rockNames[Math.abs((x * 31 + y * 7) | 0) % rockNames.length];
+            const rockImg = spr(rPick);
+            if (rockImg) {
+                ctx.drawImage(rockImg, x - 14, y - 20, 28, 22);
             } else {
                 ctx.fillStyle = '#2D6B30';
                 ctx.fillRect(x - 3, y - 25, 6, 30);
@@ -670,33 +715,56 @@ window.PixelRacer = (() => {
                 ctx.fillRect(x + 10, y - 20, 5, 13);
             }
         } else if (type === 'rock') {
-            ctx.fillStyle = '#666';
-            ctx.beginPath();
-            ctx.moveTo(x - 10, y);
-            ctx.lineTo(x - 8, y - 14);
-            ctx.lineTo(x + 2, y - 18);
-            ctx.lineTo(x + 10, y - 10);
-            ctx.lineTo(x + 8, y);
-            ctx.closePath();
-            ctx.fill();
+            const rockImg = spr('rock1');
+            if (rockImg) {
+                ctx.drawImage(rockImg, x - 12, y - 16, 24, 18);
+            } else {
+                ctx.fillStyle = '#666';
+                ctx.beginPath();
+                ctx.moveTo(x - 10, y);
+                ctx.lineTo(x - 8, y - 14);
+                ctx.lineTo(x + 2, y - 18);
+                ctx.lineTo(x + 10, y - 10);
+                ctx.lineTo(x + 8, y);
+                ctx.closePath();
+                ctx.fill();
+            }
         } else if (type === 'sign') {
-            ctx.fillStyle = '#888';
-            ctx.fillRect(x - 1, y - 30, 2, 30);
-            ctx.fillStyle = '#227722';
-            ctx.beginPath();
-            ctx.roundRect(x - 14, y - 35, 28, 14, [2]);
-            ctx.fill();
-            ctx.fillStyle = '#FFF';
-            ctx.font = '8px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(Math.floor(distance / 100) + 'km', x, y - 25);
+            // Use cone or tire stack sprites for sign posts
+            const signImg = spr('cone') || spr('tiresWhite');
+            if (signImg) {
+                ctx.drawImage(signImg, x - 8, y - 16, 16, 16);
+            } else {
+                ctx.fillStyle = '#888';
+                ctx.fillRect(x - 1, y - 30, 2, 30);
+                ctx.fillStyle = '#227722';
+                ctx.beginPath();
+                ctx.roundRect(x - 14, y - 35, 28, 14, [2]);
+                ctx.fill();
+                ctx.fillStyle = '#FFF';
+                ctx.font = '8px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(Math.floor(distance / 100) + 'km', x, y - 25);
+            }
+        } else if (type === 'tires') {
+            const tiresKey = ((x * 13 + y * 7) & 1) ? 'tiresWhite' : 'tiresRed';
+            const tiresImg = spr(tiresKey);
+            if (tiresImg) {
+                ctx.drawImage(tiresImg, x - 10, y - 10, 20, 20);
+            }
+        } else if (type === 'barrier') {
+            const barKey = ((x * 11 + y * 3) & 1) ? 'barrierWhite' : 'barrierRed';
+            const barImg = spr(barKey);
+            if (barImg) {
+                ctx.drawImage(barImg, x - 18, y - 6, 36, 12);
+            }
         }
     }
 
-    // ── Drawing: Coins & power-ups ──
+    // ── Drawing: Coins & power-ups (Kenney Racing Pack) ──
     function drawCoin(x, y) {
         const pulse = Math.sin(Date.now() * 0.006) * 2;
-        const coinImg = spr('coinGold');
+        const coinImg = spr('lightYellow');
         ctx.save();
         if (coinImg) {
             ctx.shadowColor = '#FFD700';
@@ -729,16 +797,16 @@ window.PixelRacer = (() => {
         const pulse = Math.sin(Date.now() * 0.008) * 3;
         const colors = ['#FF6600', '#38BDF8', '#A855F7'];
         const icons  = ['N', 'S', 'M'];  // Nitro, Shield, Magnet
-        const gemNames = ['gemRed', 'gemBlue', 'gemGreen'];
+        const puSprites = ['barrelRed', 'barrelBlue', 'oil']; // racing pack items for power-ups
         const clr = colors[type];
 
         ctx.save();
-        const gemImg = spr(gemNames[type]);
-        if (gemImg) {
+        const puImg = spr(puSprites[type]);
+        if (puImg) {
             ctx.shadowColor = clr;
             ctx.shadowBlur = 12 + pulse;
             const sz = (POWERUP_R + pulse * 0.3) * 2;
-            ctx.drawImage(gemImg, x - sz / 2, y - sz / 2, sz, sz);
+            ctx.drawImage(puImg, x - sz / 2, y - sz / 2, sz, sz);
             ctx.shadowBlur = 0;
             // Letter overlay
             ctx.fillStyle = '#FFF';
@@ -749,13 +817,11 @@ window.PixelRacer = (() => {
         } else {
             ctx.shadowColor = clr;
             ctx.shadowBlur = 12 + pulse;
-            // Outer glow ring
             ctx.strokeStyle = hexAlpha(clr, 0.6);
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(x, y, POWERUP_R + pulse * 0.5, 0, Math.PI * 2);
             ctx.stroke();
-            // Body
             ctx.fillStyle = clr;
             ctx.beginPath();
             ctx.arc(x, y, POWERUP_R, 0, Math.PI * 2);
@@ -849,8 +915,11 @@ window.PixelRacer = (() => {
         for (const c of traffic) {
             if (Math.abs(c.x - sx) < 30 && c.y < 80) return;
         }
+        // Pick a random sprite from the pool for this car type
+        const pool = TRAFFIC_SPRITE_POOLS[CAR_TYPES[type].name];
+        const spriteKey = pool ? pool[randInt(0, pool.length - 1)] : null;
         traffic.push({
-            x: sx, y: -100, lane: l, type,
+            x: sx, y: -100, lane: l, type, spriteKey,
             speed: speed * CAR_TYPES[type].sf * (0.5 + Math.random() * 0.3),
             passed: false
         });
@@ -871,10 +940,24 @@ window.PixelRacer = (() => {
         const env = ENVS[envIndex];
         const side = Math.random() > 0.5 ? 'left' : 'right';
         let type;
-        if (env.buildings && Math.random() > 0.4) type = 'building';
-        else if (env.name === 'Desert Road') type = Math.random() > 0.5 ? 'cactus' : 'rock';
-        else if (env.treeLine) type = Math.random() > 0.2 ? 'tree' : 'sign';
-        else type = Math.random() > 0.5 ? 'tree' : 'sign';
+        const r = Math.random();
+        if (env.buildings) {
+            // City: tribunes, tents, tires, barriers
+            if (r > 0.5) type = 'building';
+            else if (r > 0.3) type = 'tires';
+            else if (r > 0.15) type = 'barrier';
+            else type = 'sign';
+        } else if (env.name === 'Desert Road') {
+            if (r > 0.5) type = 'cactus';
+            else if (r > 0.2) type = 'rock';
+            else type = 'tires';
+        } else if (env.treeLine) {
+            if (r > 0.3) type = 'tree';
+            else if (r > 0.15) type = 'tires';
+            else type = 'sign';
+        } else {
+            type = r > 0.5 ? 'tree' : 'sign';
+        }
 
         scenery.push({
             side, y: -50, xOff: rand(5, 40), type
@@ -1136,7 +1219,7 @@ window.PixelRacer = (() => {
             for (const p of powerups) drawPowerUp(p.x, p.y, p.type);
 
             // Draw traffic
-            for (const c of traffic) drawTrafficCar(c.x, c.y, c.type);
+            for (const c of traffic) drawTrafficCar(c.x, c.y, c.type, c.spriteKey);
 
             // Draw player
             drawPlayerCar(playerX, playerY);
