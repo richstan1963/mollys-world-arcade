@@ -1,5 +1,53 @@
-/* YWA Qix — Territory-claiming arcade game for Your World Arcade */
+/* YWA Qix — Territory-claiming arcade game with Kenney CC0 sprites for Your World Arcade */
 window.Qix = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        territory: '/img/game-assets/kenney-tiles/tileBlue_05.png',
+        border: '/img/game-assets/kenney-tiles/tileGreen_03.png',
+        sparx1: '/img/game-assets/kenney-particles/particleWhite_4.png',
+        sparx2: '/img/game-assets/kenney-particles/particleWhite_5.png',
+        player: '/img/game-assets/kenney-platform/items/gemYellow.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+        particle2: '/img/game-assets/kenney-particles/particleWhite_2.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
 
     // -- roundRect polyfill (Safari <16, older browsers) --
     if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -1457,6 +1505,12 @@ window.Qix = (() => {
     // ── Game Loop ──
     function gameLoop(ts) {
         if (!gameActive) return;
+        // Loading screen
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'QIX', '#A855F7');
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         const dt = Math.min((ts - (lastTime || ts)) / 16.67, 3);
         lastTime = ts;
 
@@ -1618,6 +1672,7 @@ window.Qix = (() => {
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
+        __loadSprites(null);
         animFrame = requestAnimationFrame(gameLoop);
     }
 

@@ -1,5 +1,60 @@
-/* YWA Bubble Blaster — Bubble Bobble meets shooter: trap enemies, chain-pop for combos */
+/* YWA Bubble Blaster — Bubble Bobble meets shooter with Kenney CC0 sprites: trap enemies, chain-pop for combos */
 window.BubbleBlaster = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        bubbleRed: '/img/game-assets/kenney-physics/aliens/alienPink_round.png',
+        bubbleBlue: '/img/game-assets/kenney-physics/aliens/alienBlue_round.png',
+        bubbleGreen: '/img/game-assets/kenney-physics/aliens/alienGreen_round.png',
+        bubbleYellow: '/img/game-assets/kenney-physics/aliens/alienYellow_round.png',
+        enemyBee: '/img/game-assets/kenney-platform/enemies/bee.png',
+        enemySlime: '/img/game-assets/kenney-platform/enemies/slimeGreen.png',
+        enemyFly: '/img/game-assets/kenney-platform/enemies/fly.png',
+        enemyFrog: '/img/game-assets/kenney-platform/enemies/frog.png',
+        fruit: '/img/game-assets/kenney-platform/items/coinGold.png',
+        coin: '/img/game-assets/kenney-coins/coin_01.png',
+        playerStand: '/img/game-assets/kenney-platform/players/Green/alienGreen_stand.png',
+        playerWalk: '/img/game-assets/kenney-platform/players/Green/alienGreen_walk1.png',
+        playerJump: '/img/game-assets/kenney-platform/players/Green/alienGreen_jump.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
 
     // -- roundRect polyfill (Safari <16, older browsers) --
     if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -1138,6 +1193,17 @@ window.BubbleBlaster = (() => {
     }
 
     function drawPlayer() {
+        // Sprite player
+        const _psz = gs(PLAYER_W * 1.3);
+        const _ppx = gx(player.x), _ppy = gy(player.y);
+        const _pk = player.vy < -1 ? 'playerJump' : (Math.abs(player.vx) > 0.5 ? 'playerWalk' : 'playerStand');
+        if (__sprites[_pk]) {
+            ctx.save();
+            if (player.facingLeft) { ctx.translate(_ppx, 0); ctx.scale(-1, 1); ctx.drawImage(__sprites[_pk], -_psz/2, _ppy - _psz/2, _psz, _psz); }
+            else ctx.drawImage(__sprites[_pk], _ppx - _psz/2, _ppy - _psz/2, _psz, _psz);
+            ctx.restore();
+            return;
+        }
         if (state === ST_DEAD || (player.invincible > 0 && Math.floor(player.blinkTimer / 3) % 2)) return;
         const x = gs(player.x), y = gs(player.y), w = gs(player.w), h = gs(player.h);
         const cx = x + w / 2, cy = y + h / 2;
@@ -1847,6 +1913,12 @@ window.BubbleBlaster = (() => {
     // ── Main Loop ──
     function gameLoop(ts) {
         if (!gameActive) return;
+        // Loading screen
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'BUBBLE BLASTER', '#3B82F6');
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         const dt = Math.min((ts - (lastTime || ts)) / 16.667, 3);
         lastTime = ts;
         frameCount++;
@@ -2014,6 +2086,7 @@ window.BubbleBlaster = (() => {
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
+        __loadSprites(null);
         animFrame = requestAnimationFrame(gameLoop);
     }
 

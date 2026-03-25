@@ -1,5 +1,62 @@
 /* Goofy's Pogo Trip — Endless side-scrolling pogo stick game for Your World Arcade */
 window.GoofyPogo = (() => {
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        playerStand:  `${SPRITE_BASE}/players/Green/alienGreen_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Green/alienGreen_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Green/alienGreen_walk2.png`,
+        playerJump:   `${SPRITE_BASE}/players/Green/alienGreen_jump.png`,
+        playerDuck:   `${SPRITE_BASE}/players/Green/alienGreen_duck.png`,
+        playerHit:    `${SPRITE_BASE}/players/Green/alienGreen_hit.png`,
+        playerFront:  `${SPRITE_BASE}/players/Green/alienGreen_front.png`,
+        grassMid:     `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        grassCenter:  `${SPRITE_BASE}/ground/Grass/grassCenter.png`,
+        grassHalfMid: `${SPRITE_BASE}/ground/Grass/grassHalf_mid.png`,
+        grassHalfLeft:`${SPRITE_BASE}/ground/Grass/grassHalf_left.png`,
+        grassHalfRight:`${SPRITE_BASE}/ground/Grass/grassHalf_right.png`,
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        coinBronze:   `${SPRITE_BASE}/items/coinBronze.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        gemBlue:      `${SPRITE_BASE}/items/gemBlue.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        hudCoin:      `${SPRITE_BASE}/hud/hudCoin.png`,
+        slimeBlue:    `${SPRITE_BASE}/enemies/slimeBlue.png`,
+        slimeBlueMove:`${SPRITE_BASE}/enemies/slimeBlue_move.png`,
+        snail:        `${SPRITE_BASE}/enemies/snail.png`,
+        spring:       `${SPRITE_BASE}/tiles/spring.png`,
+        sprung:       `${SPRITE_BASE}/tiles/sprung.png`,
+        water:        `${SPRITE_BASE}/tiles/water.png`,
+        waterTop:     `${SPRITE_BASE}/tiles/waterTop_high.png`,
+        boxCrate:     `${SPRITE_BASE}/tiles/boxCrate.png`,
+        boxCrateDouble:`${SPRITE_BASE}/tiles/boxCrate_double.png`,
+        rock:         `${SPRITE_BASE}/tiles/rock.png`,
+        fence:        `${SPRITE_BASE}/tiles/fence.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { sprites[key] = img; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { sprites[key] = null; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(key, x, y, w, h) {
+        const s = sprites[key];
+        if (s) { ctx.drawImage(s, x, y, w, h); return true; }
+        return false;
+    }
+
     // ── Constants ──
     const GAME_W = 640, GAME_H = 400;
     const GRAVITY = 0.38;
@@ -32,7 +89,7 @@ window.GoofyPogo = (() => {
     const SPEED_BOOST_DUR = 120; // frames
 
     // ── Game states ──
-    const SPLASH = 0, PLAYING = 1, GAMEOVER = 2;
+    const ST_LOADING = -1, SPLASH = 0, PLAYING = 1, GAMEOVER = 2;
 
     // ── State ──
     let canvas, ctx;
@@ -929,10 +986,23 @@ window.GoofyPogo = (() => {
         for (const p of platforms) {
             const px = p.x - scrollX;
             if (px > GAME_W + 10 || px + p.w < -10) continue;
-            ctx.fillStyle = p.moving ? '#E8A020' : '#A08060';
-            ctx.fillRect(px, p.y, p.w, p.h);
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            ctx.fillRect(px, p.y, p.w, 3);
+            // Sprite-based platform
+            const tH = p.h;
+            let drawn = false;
+            if (sprites['grassHalfMid']) {
+                drawn = true;
+                drawSprite('grassHalfLeft', px, p.y, tH, tH);
+                for (let tx = tH; tx < p.w - tH; tx += tH) {
+                    drawSprite('grassHalfMid', px + tx, p.y, tH, tH);
+                }
+                drawSprite('grassHalfRight', px + p.w - tH, p.y, tH, tH);
+            }
+            if (!drawn) {
+                ctx.fillStyle = p.moving ? '#E8A020' : '#A08060';
+                ctx.fillRect(px, p.y, p.w, p.h);
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fillRect(px, p.y, p.w, 3);
+            }
         }
     }
 
@@ -1010,20 +1080,16 @@ window.GoofyPogo = (() => {
             const cx = c.x - scrollX;
             const cy = c.y + Math.sin(c.bobPhase) * 3;
             if (cx < -10 || cx > GAME_W + 10) continue;
-            // Gold coin
-            ctx.fillStyle = '#FFD700';
-            ctx.beginPath();
-            ctx.arc(cx, cy, COIN_R, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#FFA500';
-            ctx.beginPath();
-            ctx.arc(cx, cy, COIN_R - 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#FFD700';
-            ctx.font = 'bold 8px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('$', cx, cy + 1);
+            const sz = COIN_R * 2;
+            if (!drawSprite('coinGold', cx - sz / 2, cy - sz / 2, sz, sz)) {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath(); ctx.arc(cx, cy, COIN_R, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#FFA500';
+                ctx.beginPath(); ctx.arc(cx, cy, COIN_R - 2, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#FFD700'; ctx.font = 'bold 8px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('$', cx, cy + 1);
+            }
         }
     }
 
@@ -1032,12 +1098,15 @@ window.GoofyPogo = (() => {
             if (s.collected) continue;
             const sx = s.x - scrollX;
             if (sx < -10 || sx > GAME_W + 10) continue;
-            ctx.save();
-            ctx.translate(sx, s.y);
-            ctx.rotate(s.sparkle);
-            ctx.fillStyle = '#FFFF00';
-            drawStarShape(ctx, 0, 0, 5, STAR_R, STAR_R / 2);
-            ctx.restore();
+            const sz = STAR_R * 2;
+            if (!drawSprite('star', sx - sz / 2, s.y - sz / 2, sz, sz)) {
+                ctx.save();
+                ctx.translate(sx, s.y);
+                ctx.rotate(s.sparkle);
+                ctx.fillStyle = '#FFFF00';
+                drawStarShape(ctx, 0, 0, 5, STAR_R, STAR_R / 2);
+                ctx.restore();
+            }
             // Glow
             ctx.globalAlpha = 0.3 + 0.15 * Math.sin(s.sparkle * 3);
             ctx.fillStyle = '#FFFF00';
@@ -1133,6 +1202,41 @@ window.GoofyPogo = (() => {
     // ── Draw Goofy ──
     // ══════════════════════════════════════════════════════════════════════
     function drawGoofy() {
+        // Try sprite-based rendering first
+        let sprKey = 'playerStand';
+        if (!alive) sprKey = 'playerHit';
+        else if (!onGround && gvy < 0) sprKey = 'playerJump';
+        else if (charging) sprKey = 'playerDuck';
+        else sprKey = (Math.floor(scrollX * 0.05) % 2 === 0) ? 'playerWalk1' : 'playerWalk2';
+
+        if (sprites[sprKey]) {
+            ctx.save();
+            ctx.translate(gx, gy);
+            if (!alive) {
+                ctx.rotate(angle + scrollX * 0.05);
+                ctx.globalAlpha = Math.max(0, 1 - (scrollX - distanceM * 10) * 0.01);
+            } else {
+                ctx.rotate(angle);
+            }
+            if (stunTimer > 0) ctx.rotate(Math.sin(stunTimer * 0.8) * 0.15);
+            const sy2 = 1 / squash, sx2 = squash;
+            ctx.scale(sx2, sy2);
+            const sprW = GOOFY_W * 1.3, sprH = (GOOFY_H + POGO_LEN) * 0.8;
+            ctx.drawImage(sprites[sprKey], -sprW / 2, -sprH / 2, sprW, sprH);
+            // Draw pogo stick below character
+            if (alive) {
+                const springKey = charging ? 'spring' : 'sprung';
+                if (sprites[springKey]) {
+                    ctx.drawImage(sprites[springKey], -8, sprH / 2 - 5, 16, POGO_LEN);
+                } else {
+                    ctx.strokeStyle = '#666'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.moveTo(0, sprH / 2 - 5); ctx.lineTo(0, sprH / 2 + POGO_LEN - 5); ctx.stroke();
+                }
+            }
+            ctx.restore();
+            return;
+        }
+
         ctx.save();
         ctx.translate(gx, gy);
 
@@ -1517,6 +1621,21 @@ window.GoofyPogo = (() => {
     // ══════════════════════════════════════════════════════════════════════
     function loop(ts) {
         if (!gameActive) return;
+        if (state === ST_LOADING) {
+            // Loading screen
+            if (ctx) {
+                ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, GAME_W, GAME_H);
+                ctx.fillStyle = '#22AA44'; ctx.font = 'bold 28px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText("Goofy's Pogo Trip", GAME_W / 2, GAME_H * 0.35);
+                const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+                ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(GAME_W / 2 - 100, GAME_H * 0.5, 200, 10);
+                ctx.fillStyle = '#22AA44'; ctx.fillRect(GAME_W / 2 - 100, GAME_H * 0.5, 200 * pct, 10);
+                ctx.fillStyle = '#555'; ctx.font = '12px sans-serif';
+                ctx.fillText(`Loading sprites... ${spritesLoaded}/${spritesTotal}`, GAME_W / 2, GAME_H * 0.6);
+            }
+            animFrame = requestAnimationFrame(loop);
+            return;
+        }
         if (!ts) ts = performance.now();
         const dt = lastTime ? Math.min((ts - lastTime) / 16.67, 3) : 1;
         lastTime = ts;
@@ -1710,16 +1829,19 @@ window.GoofyPogo = (() => {
         accentColor = (activePlayer?.color) || (TC[0]) || '#22AA44';
 
         // Reset
-        state = SPLASH;
+        state = ST_LOADING;
         bestScore = parseInt(localStorage.getItem('ywa_goofypogo_best') || '0', 10);
         lastTime = 0;
         splashBounce = 0;
         splashDir = 1;
         resetState();
-        state = SPLASH; // resetState sets PLAYING, override back
+        state = ST_LOADING; // override to loading
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        // Load sprites then show splash
+        loadSprites(null, () => { state = SPLASH; });
 
         // Bind input
         if (!inputBound) {

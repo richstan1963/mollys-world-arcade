@@ -1,5 +1,55 @@
-/* YWA Ms. Pac-Man — Multiple mazes, roaming fruit, unpredictable ghosts */
+/* YWA Ms. Pac-Man — Multiple mazes, roaming fruit, Kenney CC0 sprites, unpredictable ghosts */
 window.MsPacMan = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        ghostRed: '/img/game-assets/kenney-platform/enemies/slimeGreen.png',
+        ghostPink: '/img/game-assets/kenney-platform/enemies/slimePurple.png',
+        ghostCyan: '/img/game-assets/kenney-platform/enemies/slimeBlue.png',
+        ghostOrange: '/img/game-assets/kenney-platform/enemies/fly.png',
+        ghostFright: '/img/game-assets/kenney-platform/enemies/snail_shell.png',
+        dot: '/img/game-assets/kenney-coins/coin_01.png',
+        powerDot: '/img/game-assets/kenney-coins/coin_02.png',
+        cherry: '/img/game-assets/kenney-platform/items/gemRed.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
     // ── Constants ──
     const GAME_W = 448, GAME_H = 496;
     const TILE = 16;
@@ -1005,6 +1055,8 @@ window.MsPacMan = (() => {
     }
 
     function drawDots() {
+        const _dotSz = gs(TILE * 0.4);
+        const _pwSz = gs(TILE * 0.7);
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 const t = maze[r][c];
@@ -1137,13 +1189,25 @@ window.MsPacMan = (() => {
         const px = gx(g.x * TILE + TILE / 2);
         const py = gy(g.y * TILE + TILE / 2);
         const r = gs(TILE * 0.55);
+        const _gsz = gs(TILE * 1.1);
 
-        let color = g.color;
+        // Sprite ghosts
         if (g.eaten) {
-            // Draw just eyes
             drawGhostEyes(px, py, r, g.dir);
             return;
         }
+        if (g.frightened && __sprites.ghostFright) {
+            ctx.drawImage(__sprites.ghostFright, px - _gsz/2, py - _gsz/2, _gsz, _gsz);
+            return;
+        }
+        const _gmap = { blinky: 'ghostRed', pinky: 'ghostPink', inky: 'ghostCyan', sue: 'ghostOrange' };
+        const _gk = _gmap[g.name] || 'ghostRed';
+        if (__sprites[_gk] && !g.frightened) {
+            ctx.drawImage(__sprites[_gk], px - _gsz/2, py - _gsz/2, _gsz, _gsz);
+            return;
+        }
+
+        let color = g.color;
         if (g.frightened) {
             const flashing = powerTimer < 2000 && Math.floor(g.flashTimer / 200) % 2 === 0;
             color = flashing ? FRIGHTENED_BLINK : FRIGHTENED_COLOR;
@@ -1511,6 +1575,12 @@ window.MsPacMan = (() => {
     // ── Game loop ──
     function gameLoop(timestamp) {
         if (!gameActive) return;
+        // Loading screen
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'MS. PAC-MAN', '#F472B6');
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         animFrame = requestAnimationFrame(gameLoop);
 
         const dt = lastTime ? Math.min(timestamp - lastTime, 50) : 16;
@@ -1603,6 +1673,7 @@ window.MsPacMan = (() => {
         canvas.style.outline = 'none';
         canvas.focus();
 
+        __loadSprites(null);
         animFrame = requestAnimationFrame(gameLoop);
     }
 

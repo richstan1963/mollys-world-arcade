@@ -1,7 +1,56 @@
-/* WhackAMole — Theme-aware Whac-A-Mole for Your World Arcade
+/* WhackAMole — Kenney CC0 sprite rendering — Whac-A-Mole for Your World Arcade
  * Canvas 2D, zero dependencies. 60-second timed rounds.
  * IIFE pattern matching Your World Arcade originals. */
 window.WhackAMole = (() => {
+
+    // ══════════════════════════════════════════
+    //  SPRITE SYSTEM — Kenney enemies + tiles + items
+    // ══════════════════════════════════════════
+    const WAM_SPRITES = {};
+    let wamSpritesLoaded = false;
+    let wamSpriteLoadTotal = 0, wamSpriteLoadDone = 0;
+    const WAM_SPRITE_OK = {};
+    const WAM_SPRITE_MANIFEST = {
+        // Mole enemies
+        'moleNormal':    '/img/game-assets/kenney-platform/enemies/slimeGreen.png',
+        'moleNormalHit': '/img/game-assets/kenney-platform/enemies/slimeGreen_dead.png',
+        'moleGolden':    '/img/game-assets/kenney-platform/enemies/bee.png',
+        'moleGoldenHit': '/img/game-assets/kenney-platform/enemies/bee_dead.png',
+        'moleBomb':      '/img/game-assets/kenney-platform/tiles/bomb.png',
+        'moleBombHit':   '/img/game-assets/kenney-platform/tiles/bombWhite.png',
+        // Grass/hole tiles
+        'grassTile':     '/img/game-assets/kenney-platform/tiles/grass.png',
+        'grassMid':      '/img/game-assets/kenney-platform/ground/Grass/grassMid.png',
+        'grassHalf':     '/img/game-assets/kenney-platform/ground/Grass/grassHalf_mid.png',
+        // Hammer item
+        'hammerItem':    '/img/game-assets/kenney-platform/tiles/boxCrate.png',
+        // Stars
+        'star':          '/img/game-assets/kenney-ui/star.png',
+        'coinGold':      '/img/game-assets/kenney-platform/items/coinGold.png',
+    };
+
+    function wamPreloadSprites(onProgress, onDone) {
+        const keys = Object.keys(WAM_SPRITE_MANIFEST);
+        wamSpriteLoadTotal = keys.length;
+        wamSpriteLoadDone = 0;
+        if (keys.length === 0) { wamSpritesLoaded = true; onDone(); return; }
+        for (const key of keys) {
+            const img = new Image();
+            img.onload = () => { WAM_SPRITE_OK[key] = true; wamSpriteLoadDone++; onProgress(wamSpriteLoadDone / wamSpriteLoadTotal); if (wamSpriteLoadDone >= wamSpriteLoadTotal) { wamSpritesLoaded = true; onDone(); } };
+            img.onerror = () => { WAM_SPRITE_OK[key] = false; wamSpriteLoadDone++; onProgress(wamSpriteLoadDone / wamSpriteLoadTotal); if (wamSpriteLoadDone >= wamSpriteLoadTotal) { wamSpritesLoaded = true; onDone(); } };
+            img.src = WAM_SPRITE_MANIFEST[key];
+            WAM_SPRITES[key] = img;
+        }
+    }
+
+    function wamSpr(key) { return WAM_SPRITE_OK[key] ? WAM_SPRITES[key] : null; }
+
+    function getMoleSpriteKey(moleType, isHit) {
+        if (moleType === 1) return isHit ? 'moleGoldenHit' : 'moleGolden'; // MOLE_GOLDEN
+        if (moleType === 2) return isHit ? 'moleBombHit' : 'moleBomb'; // MOLE_BOMB
+        return isHit ? 'moleNormalHit' : 'moleNormal'; // MOLE_NORMAL
+    }
+
     // ── Constants ──
     const GAME_W = 480, GAME_H = 640;
     const GRID_COLS = 3, GRID_ROWS = 3;
@@ -628,17 +677,20 @@ window.WhackAMole = (() => {
                 drawMole(hole);
             }
 
-            // Grass rim on top (drawn OVER the mole bottom half for peek effect)
-            ctx.beginPath();
-            ctx.ellipse(x, y + 5, HOLE_W / 2 + 5, HOLE_H / 2 + 2, 0, 0, Math.PI);
-            ctx.fillStyle = '#388E3C';
-            ctx.fill();
-
-            // Dirt rim highlight
-            ctx.beginPath();
-            ctx.ellipse(x, y + 8, HOLE_W / 2 + 3, 8, 0, 0, Math.PI);
-            ctx.fillStyle = '#6D4C2A';
-            ctx.fill();
+            // Grass rim on top — use sprite or fallback
+            const grassSpr = wamSpr('grassHalf');
+            if (grassSpr) {
+                ctx.drawImage(grassSpr, x - HOLE_W / 2 - 8, y - 8, HOLE_W + 16, HOLE_H + 10);
+            } else {
+                ctx.beginPath();
+                ctx.ellipse(x, y + 5, HOLE_W / 2 + 5, HOLE_H / 2 + 2, 0, 0, Math.PI);
+                ctx.fillStyle = '#388E3C';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(x, y + 8, HOLE_W / 2 + 3, 8, 0, 0, Math.PI);
+                ctx.fillStyle = '#6D4C2A';
+                ctx.fill();
+            }
 
             ctx.restore();
         }
@@ -654,6 +706,29 @@ window.WhackAMole = (() => {
 
         const moleY = y - riseH * MOLE_H + 10;
 
+        // TRY SPRITE FIRST
+        const sprKey = getMoleSpriteKey(mole.type, mole.state === 'hit');
+        const moleSpr = wamSpr(sprKey);
+        if (moleSpr) {
+            ctx.save();
+            // Clip to hole area
+            ctx.beginPath();
+            ctx.rect(x - MOLE_W / 2 - 10, y - MOLE_H * 1.5, MOLE_W + 20, MOLE_H * 1.5 + 5);
+            ctx.clip();
+            if (mole.state === 'hit') {
+                ctx.translate(x, moleY);
+                ctx.rotate(mole.spinAngle || 0);
+                ctx.translate(-x, -moleY);
+                ctx.globalAlpha = Math.max(0, riseH);
+            }
+            const sprW = MOLE_W * 1.1;
+            const sprH = MOLE_H * 1.1;
+            ctx.drawImage(moleSpr, x - sprW / 2, moleY - sprH / 2, sprW, sprH);
+            ctx.restore();
+            return;
+        }
+
+        // FALLBACK — original canvas-drawn mole
         ctx.save();
 
         // Clip to hole area (mole hides below rim)
@@ -833,18 +908,21 @@ window.WhackAMole = (() => {
         ctx.fillStyle = '#8B4513';
         ctx.fillRect(-3, 0, 6, 40);
 
-        // Head
-        roundRect(-18, -20, 36, 24, 4);
-        ctx.fillStyle = '#777777';
-        ctx.fill();
-        ctx.strokeStyle = '#555555';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Head highlight
-        roundRect(-15, -18, 30, 8, 2);
-        ctx.fillStyle = '#999999';
-        ctx.fill();
+        // Head — use crate sprite or fallback
+        const hammerSpr = wamSpr('hammerItem');
+        if (hammerSpr) {
+            ctx.drawImage(hammerSpr, -20, -24, 40, 28);
+        } else {
+            roundRect(-18, -20, 36, 24, 4);
+            ctx.fillStyle = '#777777';
+            ctx.fill();
+            ctx.strokeStyle = '#555555';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            roundRect(-15, -18, 30, 8, 2);
+            ctx.fillStyle = '#999999';
+            ctx.fill();
+        }
 
         // Impact stars if swinging
         if (hammerSwing) {
@@ -1215,27 +1293,35 @@ window.WhackAMole = (() => {
         loadTheme();
         highScore = loadHighScore();
         initBgFlowers();
-        resetGame();
-
-        gameActive = true;
-        startTime = performance.now();
 
         fitCanvas();
-        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        // Bind events
-        canvas._wam_mousemove = handleMouseMove;
-        canvas._wam_click = handleClick;
-        canvas._wam_touchstart = handleTouch;
-        canvas._wam_touchmove = handleTouchMove;
-        canvas._wam_resize = fitCanvas;
-        canvas.addEventListener('mousemove', canvas._wam_mousemove);
-        canvas.addEventListener('click', canvas._wam_click);
-        canvas.addEventListener('touchstart', canvas._wam_touchstart, { passive: false });
-        canvas.addEventListener('touchmove', canvas._wam_touchmove, { passive: false });
-        window.addEventListener('resize', canvas._wam_resize);
+        // Preload sprites then start
+        wamPreloadSprites(
+            () => {},
+            () => {
+                resetGame();
+                gameActive = true;
+                startTime = performance.now();
 
-        animFrame = requestAnimationFrame(gameLoop);
+                fitCanvas();
+                requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+                // Bind events
+                canvas._wam_mousemove = handleMouseMove;
+                canvas._wam_click = handleClick;
+                canvas._wam_touchstart = handleTouch;
+                canvas._wam_touchmove = handleTouchMove;
+                canvas._wam_resize = fitCanvas;
+                canvas.addEventListener('mousemove', canvas._wam_mousemove);
+                canvas.addEventListener('click', canvas._wam_click);
+                canvas.addEventListener('touchstart', canvas._wam_touchstart, { passive: false });
+                canvas.addEventListener('touchmove', canvas._wam_touchmove, { passive: false });
+                window.addEventListener('resize', canvas._wam_resize);
+
+                animFrame = requestAnimationFrame(gameLoop);
+            }
+        );
     }
 
     function destroy() {

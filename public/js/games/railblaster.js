@@ -1,7 +1,59 @@
-/* Rail Blaster — On-rails first-person shooter for Your World Arcade
+/* Rail Blaster — On-rails FPS with Kenney CC0 sprites for Your World Arcade
    Time Crisis / House of the Dead style: crosshair aim, depth-scaling enemies,
    duck-for-cover mechanic, multi-environment campaign */
 window.RailBlaster = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        soldier: '/img/game-assets/kenney-platform/enemies/slimeGreen.png',
+        soldierMove: '/img/game-assets/kenney-platform/enemies/slimeGreen_move.png',
+        drone: '/img/game-assets/kenney-space/enemies/enemyBlue2.png',
+        shieldEnemy: '/img/game-assets/kenney-platform/enemies/snail.png',
+        sniper: '/img/game-assets/kenney-platform/enemies/wormGreen.png',
+        boss: '/img/game-assets/kenney-space/enemies/enemyGreen5.png',
+        cover: '/img/game-assets/kenney-tiles/tileBlue_08.png',
+        muzzleFlash: '/img/game-assets/kenney-platform/particles/fireball.png',
+        bullet: '/img/game-assets/kenney-space/lasers/laserRed01.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+        particle2: '/img/game-assets/kenney-particles/particleWhite_5.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
     // ── Design Constants ──
     const GAME_W = 640, GAME_H = 480;
     const VP_X = GAME_W / 2, VP_Y = GAME_H * 0.38; // vanishing point
@@ -930,6 +982,8 @@ window.RailBlaster = (() => {
     }
 
     function drawSoldier(w, h, sc, flash) {
+        const _sk = (frameCount % 20 < 10 && __sprites.soldierMove) ? __sprites.soldierMove : __sprites.soldier;
+        if (_sk && !flash) { ctx.drawImage(_sk, gs(-w * 0.5), gs(-h), gs(w), gs(h)); return; }
         const c = flash ? '#fff' : (themeColors ? themeColors[0] : '#e44');
         // Body
         ctx.fillStyle = c;
@@ -952,6 +1006,7 @@ window.RailBlaster = (() => {
     }
 
     function drawDrone(w, h, sc, flash) {
+        if (__sprites.drone && !flash) { ctx.drawImage(__sprites.drone, gs(-w * 0.5), gs(-h), gs(w), gs(h)); return; }
         const c = flash ? '#fff' : (themeColors ? themeColors[1] : '#4af');
         // Body
         ctx.fillStyle = c;
@@ -977,6 +1032,7 @@ window.RailBlaster = (() => {
     }
 
     function drawShieldGuy(w, h, sc, flash, shieldUp) {
+        if (__sprites.shieldEnemy && !flash) { ctx.drawImage(__sprites.shieldEnemy, gs(-w * 0.5), gs(-h), gs(w), gs(h)); }
         // Draw soldier base
         drawSoldier(w * 0.85, h, sc, flash);
         // Shield
@@ -1015,6 +1071,7 @@ window.RailBlaster = (() => {
     }
 
     function drawBoss(w, h, sc, flash, e) {
+        if (__sprites.boss && !flash) { ctx.drawImage(__sprites.boss, gs(-w * 0.5), gs(-h), gs(w), gs(h)); return; }
         const c = flash ? '#fff' : (themeColors ? themeColors[3] || '#f44' : '#f44');
         const pulse = 0.9 + Math.sin(frameCount * 0.05) * 0.1;
 
@@ -1429,6 +1486,12 @@ window.RailBlaster = (() => {
     // ══════════════════════════════════════════════
     function gameLoop(ts) {
         if (!gameActive) return;
+        // Loading screen
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'RAIL BLASTER', '#EF4444');
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         animFrame = requestAnimationFrame(gameLoop);
 
         const dt = lastTime ? Math.min(ts - lastTime, 50) : 16;
@@ -1851,6 +1914,7 @@ window.RailBlaster = (() => {
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
+        __loadSprites(null);
         animFrame = requestAnimationFrame(gameLoop);
     }
 

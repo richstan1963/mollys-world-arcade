@@ -1,4 +1,4 @@
-/* Connect4 — Theme-aware Connect Four for Your World Arcade
+/* Connect4 — Kenney CC0 sprite rendering — Connect Four for Your World Arcade
  * Player (red) vs AI (yellow) with minimax alpha-beta pruning.
  * Best-of-5 series, 3 difficulty levels. Canvas 2D, zero dependencies. */
 window.Connect4 = (() => {
@@ -17,6 +17,62 @@ window.Connect4 = (() => {
             this.closePath();
             return this;
         };
+    }
+
+    // ══════════════════════════════════════════
+    //  SPRITE SYSTEM — Kenney coins/tiles
+    // ══════════════════════════════════════════
+    const SPRITES = {};
+    let spritesLoaded = false;
+    let spriteLoadTotal = 0, spriteLoadDone = 0;
+    const SPRITE_OK = {};
+    const SPRITE_MANIFEST = {
+        'discRed':     '/img/game-assets/kenney-tiles/tileRed_01.png',
+        'discYellow':  '/img/game-assets/kenney-tiles/tileYellow_01.png',
+        'boardTile':   '/img/game-assets/kenney-tiles/tileBlue_03.png',
+        'coinGold':    '/img/game-assets/kenney-platform/items/coinGold.png',
+        'coinBronze':  '/img/game-assets/kenney-platform/items/coinBronze.png',
+        'gemRed':      '/img/game-assets/kenney-platform/items/gemRed.png',
+        'gemYellow':   '/img/game-assets/kenney-platform/items/gemYellow.png',
+        'star':        '/img/game-assets/kenney-ui/star.png',
+    };
+
+    function preloadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spriteLoadTotal = keys.length;
+        spriteLoadDone = 0;
+        if (keys.length === 0) { spritesLoaded = true; onDone(); return; }
+        for (const key of keys) {
+            const img = new Image();
+            img.onload = () => { SPRITE_OK[key] = true; spriteLoadDone++; onProgress(spriteLoadDone / spriteLoadTotal); if (spriteLoadDone >= spriteLoadTotal) { spritesLoaded = true; onDone(); } };
+            img.onerror = () => { SPRITE_OK[key] = false; spriteLoadDone++; onProgress(spriteLoadDone / spriteLoadTotal); if (spriteLoadDone >= spriteLoadTotal) { spritesLoaded = true; onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+            SPRITES[key] = img;
+        }
+    }
+
+    function spr(key) { return SPRITE_OK[key] ? SPRITES[key] : null; }
+
+    let loadingProgress = 0;
+    let isLoading = true;
+
+    function drawLoadingScreen() {
+        const cW = canvas.width, cH = canvas.height;
+        ctx.fillStyle = '#0A0A1A';
+        ctx.fillRect(0, 0, cW, cH);
+        ctx.fillStyle = '#3B82F6';
+        ctx.font = 'bold 28px "Segoe UI", system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('CONNECT 4', cW / 2, cH / 2 - 40);
+        const barW = cW * 0.5, barH = 12;
+        const barX = (cW - barW) / 2, barY = cH / 2;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#3B82F6';
+        ctx.fillRect(barX, barY, barW * loadingProgress, barH);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+        ctx.fillText('Loading sprites...', cW / 2, barY + barH + 20);
     }
 
     // ── Constants ──────────────────────────────────────────────
@@ -581,7 +637,25 @@ window.Connect4 = (() => {
             ctx.shadowBlur = 12 + Math.sin(winPulse) * 6;
         }
 
-        // Main disc
+        // TRY SPRITE FIRST — Kenney gem/coin for discs
+        const sprKey = who === 1 ? 'gemRed' : 'gemYellow';
+        const discSprite = spr(sprKey);
+        if (discSprite) {
+            const sz = DISC_R * 2.1;
+            ctx.drawImage(discSprite, x - sz / 2, y - sz / 2, sz, sz);
+            // Shine overlay
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = (alpha || 1) * 0.3;
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(x - 4, y - 5, DISC_R * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            return;
+        }
+
+        // FALLBACK — gradient disc
         const grad = ctx.createRadialGradient(x - 6, y - 6, 2, x, y, DISC_R);
         grad.addColorStop(0, lighten(clr1, 40));
         grad.addColorStop(0.6, clr1);
@@ -619,14 +693,28 @@ window.Connect4 = (() => {
         ctx.roundRect(BOARD_X + 4, BOARD_Y + 4, BOARD_W, BOARD_H, [BOARD_RADIUS]);
         ctx.fill();
 
-        // Board body
-        const bgrad = ctx.createLinearGradient(BOARD_X, BOARD_Y, BOARD_X, BOARD_Y + BOARD_H);
-        bgrad.addColorStop(0, BOARD_CLR);
-        bgrad.addColorStop(1, BOARD_CLR2);
-        ctx.fillStyle = bgrad;
-        ctx.beginPath();
-        ctx.roundRect(BOARD_X, BOARD_Y, BOARD_W, BOARD_H, [BOARD_RADIUS]);
-        ctx.fill();
+        // Board body — use blue tile sprites if available
+        const boardTileSpr = spr('boardTile');
+        if (boardTileSpr) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(BOARD_X, BOARD_Y, BOARD_W, BOARD_H, [BOARD_RADIUS]);
+            ctx.clip();
+            for (let tr = 0; tr < Math.ceil(BOARD_H / CELL_SIZE) + 1; tr++) {
+                for (let tc = 0; tc < Math.ceil(BOARD_W / CELL_SIZE) + 1; tc++) {
+                    ctx.drawImage(boardTileSpr, BOARD_X + tc * CELL_SIZE, BOARD_Y + tr * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+            ctx.restore();
+        } else {
+            const bgrad = ctx.createLinearGradient(BOARD_X, BOARD_Y, BOARD_X, BOARD_Y + BOARD_H);
+            bgrad.addColorStop(0, BOARD_CLR);
+            bgrad.addColorStop(1, BOARD_CLR2);
+            ctx.fillStyle = bgrad;
+            ctx.beginPath();
+            ctx.roundRect(BOARD_X, BOARD_Y, BOARD_W, BOARD_H, [BOARD_RADIUS]);
+            ctx.fill();
+        }
 
         // Board border
         ctx.strokeStyle = lighten(BOARD_CLR, 30);
@@ -1117,23 +1205,35 @@ window.Connect4 = (() => {
         hoverCol = 3;
         selectedCol = 3;
 
-        initBgStars();
-        resetBoard();
+        // Show loading screen and preload sprites
+        isLoading = true;
+        loadingProgress = 0;
         fitCanvas();
-        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+        drawLoadingScreen();
 
-        // Bind events
-        window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('keyup',   onKeyUp);
-        window.addEventListener('resize',  onResize);
-        canvas.addEventListener('mousemove',  onMouseMove);
-        canvas.addEventListener('mousedown',  onMouseDown);
-        canvas.addEventListener('touchstart', onTouchStart, { passive: true });
-        canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
-        canvas.addEventListener('touchend',   onTouchEnd,   { passive: true });
+        preloadSprites(
+            (progress) => { loadingProgress = progress; if (isLoading) drawLoadingScreen(); },
+            () => {
+                isLoading = false;
+                initBgStars();
+                resetBoard();
+                fitCanvas();
+                requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        lastTime = 0;
-        animFrame = requestAnimationFrame(loop);
+                // Bind events
+                window.addEventListener('keydown', onKeyDown);
+                window.addEventListener('keyup',   onKeyUp);
+                window.addEventListener('resize',  onResize);
+                canvas.addEventListener('mousemove',  onMouseMove);
+                canvas.addEventListener('mousedown',  onMouseDown);
+                canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+                canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+                canvas.addEventListener('touchend',   onTouchEnd,   { passive: true });
+
+                lastTime = 0;
+                animFrame = requestAnimationFrame(loop);
+            }
+        );
     }
 
     function destroy() {

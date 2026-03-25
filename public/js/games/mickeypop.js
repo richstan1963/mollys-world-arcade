@@ -19,6 +19,78 @@ window.MickeyPop = (() => {
             return this;
         };
     }
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    // Note: Mickey character stays canvas-drawn since it's a specific character
+    // Tile sprites used for platforms, enemy sprites for balloon enemies, item sprites for collectibles
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Platform tiles
+        grassMid:     `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        grassLeft:    `${SPRITE_BASE}/ground/Grass/grassLeft.png`,
+        grassRight:   `${SPRITE_BASE}/ground/Grass/grassRight.png`,
+        grassCenter:  `${SPRITE_BASE}/ground/Grass/grassCenter.png`,
+        grassHalfLeft:`${SPRITE_BASE}/ground/Grass/grassHalf_left.png`,
+        grassHalfMid: `${SPRITE_BASE}/ground/Grass/grassHalf_mid.png`,
+        grassHalfRight:`${SPRITE_BASE}/ground/Grass/grassHalf_right.png`,
+        stoneMid:     `${SPRITE_BASE}/ground/Stone/stoneMid.png`,
+        sandMid:      `${SPRITE_BASE}/ground/Sand/sandMid.png`,
+        // Items / collectibles
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        coinSilver:   `${SPRITE_BASE}/items/coinSilver.png`,
+        coinBronze:   `${SPRITE_BASE}/items/coinBronze.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        gemBlue:      `${SPRITE_BASE}/items/gemBlue.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        gemGreen:     `${SPRITE_BASE}/items/gemGreen.png`,
+        gemYellow:    `${SPRITE_BASE}/items/gemYellow.png`,
+        keyBlue:      `${SPRITE_BASE}/items/keyBlue.png`,
+        // Enemies (balloon-like)
+        slimeGreen:   `${SPRITE_BASE}/enemies/slimeGreen.png`,
+        slimeGreenMove:`${SPRITE_BASE}/enemies/slimeGreen_move.png`,
+        slimeBlue:    `${SPRITE_BASE}/enemies/slimeBlue.png`,
+        slimeBlueMove:`${SPRITE_BASE}/enemies/slimeBlue_move.png`,
+        slimePurple:  `${SPRITE_BASE}/enemies/slimePurple.png`,
+        slimePurpleMove:`${SPRITE_BASE}/enemies/slimePurple_move.png`,
+        fly:          `${SPRITE_BASE}/enemies/fly.png`,
+        flyMove:      `${SPRITE_BASE}/enemies/fly_move.png`,
+        bee:          `${SPRITE_BASE}/enemies/bee.png`,
+        beeMove:      `${SPRITE_BASE}/enemies/bee_move.png`,
+        ladybug:      `${SPRITE_BASE}/enemies/ladybug.png`,
+        ladybugMove:  `${SPRITE_BASE}/enemies/ladybug_move.png`,
+        // HUD
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        hudHeartEmpty:`${SPRITE_BASE}/hud/hudHeart_empty.png`,
+        hudCoin:      `${SPRITE_BASE}/hud/hudCoin.png`,
+        // Tiles / objects
+        boxItem:      `${SPRITE_BASE}/tiles/boxItem.png`,
+        boxCoin:      `${SPRITE_BASE}/tiles/boxCoin.png`,
+        bush:         `${SPRITE_BASE}/tiles/bush.png`,
+        mushroomRed:  `${SPRITE_BASE}/tiles/mushroomRed.png`,
+        spring:       `${SPRITE_BASE}/tiles/spring.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { sprites[key] = img; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { sprites[key] = null; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(key, x, y, w, h) {
+        const s = sprites[key];
+        if (s) { ctx.drawImage(s, x, y, w, h); return true; }
+        return false;
+    }
+
     // ── Design Constants ──
     const GAME_W = 960, GAME_H = 540;
     const GRAVITY = 0.48, JUMP_VEL = -10.5, MAX_FALL = 11;
@@ -38,7 +110,7 @@ window.MickeyPop = (() => {
     ];
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_GAMEOVER = 3, ST_WIN = 4;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_GAMEOVER = 3, ST_WIN = 4;
 
     // Game state
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -811,17 +883,27 @@ window.MickeyPop = (() => {
     function drawBalloon(e) {
         const cx = gx(e.x + e.w/2), cy = gy(e.y + e.h/2);
         const r = gs(e.w/2);
-        // Balloon body
+        // Try sprite enemy
+        const enemySprMap = ['slimeGreen', 'slimeBlue', 'slimePurple', 'fly', 'bee', 'ladybug'];
+        const anim = frameCount % 30 < 15;
+        const sprIdx = Math.abs(Math.floor(e.x * 0.1)) % enemySprMap.length;
+        const baseKey = enemySprMap[sprIdx];
+        const moveKey = baseKey + 'Move';
+        const key = anim && sprites[moveKey] ? moveKey : baseKey;
+        const sz = r * 2.5;
+        if (drawSprite(key, cx - sz / 2, cy - sz / 2, sz, sz)) {
+            // String
+            ctx.strokeStyle = '#888'; ctx.lineWidth = gs(1);
+            ctx.beginPath(); ctx.moveTo(cx, cy + sz / 2); ctx.quadraticCurveTo(cx + gs(3), cy + sz / 2 + gs(10), cx - gs(2), cy + sz / 2 + gs(18)); ctx.stroke();
+            return;
+        }
+        // Canvas fallback
         ctx.fillStyle = e.color;
         ctx.beginPath(); ctx.ellipse(cx, cy - r * 0.2, r, r * 1.2, 0, 0, Math.PI * 2); ctx.fill();
-        // Shine
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.beginPath(); ctx.ellipse(cx - r * 0.3, cy - r * 0.5, r * 0.25, r * 0.35, -0.3, 0, Math.PI * 2); ctx.fill();
-        // String
-        ctx.strokeStyle = '#888';
-        ctx.lineWidth = gs(1);
+        ctx.strokeStyle = '#888'; ctx.lineWidth = gs(1);
         ctx.beginPath(); ctx.moveTo(cx, cy + r); ctx.quadraticCurveTo(cx + gs(3), cy + r + gs(10), cx - gs(2), cy + r + gs(18)); ctx.stroke();
-        // Knot
         ctx.fillStyle = e.color;
         ctx.beginPath(); ctx.arc(cx, cy + r, gs(2), 0, Math.PI * 2); ctx.fill();
     }
@@ -1046,24 +1128,29 @@ window.MickeyPop = (() => {
         const s = gs(1);
 
         if (c.type === 'coin') {
-            ctx.fillStyle = '#FFD700';
-            ctx.beginPath(); ctx.arc(cx, cy + bob, s * 7, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#DAA520';
-            ctx.beginPath(); ctx.arc(cx, cy + bob, s * 5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#FFD700';
-            ctx.font = `bold ${s * 8}px sans-serif`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText('$', cx, cy + bob);
+            const csz = s * 14;
+            if (!drawSprite('coinGold', cx - csz / 2, cy + bob - csz / 2, csz, csz)) {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath(); ctx.arc(cx, cy + bob, s * 7, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#DAA520';
+                ctx.beginPath(); ctx.arc(cx, cy + bob, s * 5, 0, Math.PI * 2); ctx.fill();
+            }
         } else if (c.type === 'star') {
-            ctx.fillStyle = '#87CEEB';
-            drawStar4(cx, cy + bob, s * 7);
-            ctx.fillStyle = '#E0F0FF';
-            drawStar4(cx, cy + bob, s * 3.5);
+            const ssz = s * 16;
+            if (!drawSprite('star', cx - ssz / 2, cy + bob - ssz / 2, ssz, ssz)) {
+                ctx.fillStyle = '#87CEEB';
+                drawStar4(cx, cy + bob, s * 7);
+                ctx.fillStyle = '#E0F0FF';
+                drawStar4(cx, cy + bob, s * 3.5);
+            }
         } else { // note
-            ctx.fillStyle = '#FF69B4';
-            ctx.font = `${s * 14}px serif`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText('\u266A', cx, cy + bob);
+            const nsz = s * 14;
+            if (!drawSprite('gemRed', cx - nsz / 2, cy + bob - nsz / 2, nsz, nsz)) {
+                ctx.fillStyle = '#FF69B4';
+                ctx.font = `${s * 14}px serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('\u266A', cx, cy + bob);
+            }
         }
 
         // Sparkle
@@ -1079,12 +1166,15 @@ window.MickeyPop = (() => {
         const px2 = gx(pu.x), py2 = gy(pu.y + Math.sin(pu.bobPhase) * 4);
         const s = gs(1);
         const w = gs(pu.w), h = gs(pu.h);
-        // Crate
-        ctx.fillStyle = pu.type === 'big' ? '#4169E1' : pu.type === 'rapid' ? '#22C55E' : '#FF1493';
-        ctx.fillRect(px2, py2, w, h);
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = s * 1.5;
-        ctx.strokeRect(px2, py2, w, h);
+        // Try sprite crate
+        const crateKey = pu.type === 'big' ? 'boxItem' : 'boxCoin';
+        if (!drawSprite(crateKey, px2, py2, w, h)) {
+            ctx.fillStyle = pu.type === 'big' ? '#4169E1' : pu.type === 'rapid' ? '#22C55E' : '#FF1493';
+            ctx.fillRect(px2, py2, w, h);
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = s * 1.5;
+            ctx.strokeRect(px2, py2, w, h);
+        }
         // Icon
         ctx.fillStyle = '#FFD700';
         ctx.font = `bold ${s * 12}px sans-serif`;
@@ -1155,26 +1245,52 @@ window.MickeyPop = (() => {
             if (px2 > W + gs(20) || px2 + gs(p.w) < -gs(20)) continue;
             const pEnv = getEnvForX(p.x);
             if (p.type === 'ground') {
-                ctx.fillStyle = pEnv.ground;
-                ctx.fillRect(px2, py2, gs(p.w), gs(p.h));
-                // Ground decoration (grass/candy/clouds/bricks depending on env)
-                ctx.fillStyle = pEnv.accent + '60';
-                for (let gx2 = p.x; gx2 < p.x + p.w; gx2 += 30) {
-                    const gsx = gx(gx2);
-                    if (gsx > W + 10 || gsx < -10) continue;
-                    ctx.fillRect(gsx, py2, gs(2), gs(6));
+                // Try tiled ground sprites
+                const tH = gs(p.h);
+                const tW = tH;
+                const groundSpr = sprites['grassMid'];
+                if (groundSpr) {
+                    for (let tx = Math.max(0, Math.floor((cameraX - p.x) / (p.h)) * p.h); tx < p.w; tx += p.h) {
+                        const tsx = gx(p.x + tx);
+                        if (tsx > W + tW || tsx + tW < -tW) continue;
+                        drawSprite('grassMid', tsx, py2, tW, tH);
+                    }
+                } else {
+                    ctx.fillStyle = pEnv.ground;
+                    ctx.fillRect(px2, py2, gs(p.w), gs(p.h));
+                    ctx.fillStyle = pEnv.accent + '60';
+                    for (let gx2 = p.x; gx2 < p.x + p.w; gx2 += 30) {
+                        const gsx = gx(gx2);
+                        if (gsx > W + 10 || gsx < -10) continue;
+                        ctx.fillRect(gsx, py2, gs(2), gs(6));
+                    }
                 }
             } else {
+                // Try sprite tiles for platforms
+                const tileH = gs(p.h);
+                let platDrawn = false;
+                if (sprites['grassHalfMid']) {
+                    platDrawn = true;
+                    drawSprite('grassHalfLeft', px2, py2, tileH, tileH);
+                    for (let tx = tileH; tx < gs(p.w) - tileH; tx += tileH) {
+                        drawSprite('grassHalfMid', px2 + tx, py2, tileH, tileH);
+                    }
+                    drawSprite('grassHalfRight', px2 + gs(p.w) - tileH, py2, tileH, tileH);
+                }
+                if (!platDrawn) {
                 ctx.fillStyle = pEnv.plat;
                 ctx.fillRect(px2, py2, gs(p.w), gs(p.h));
                 // Platform top highlight
                 ctx.fillStyle = 'rgba(255,255,255,0.3)';
                 ctx.fillRect(px2, py2, gs(p.w), gs(3));
+                }
+                if (!platDrawn) {
                 // Block pattern
                 ctx.strokeStyle = 'rgba(0,0,0,0.15)';
                 ctx.lineWidth = gs(1);
                 for (let bx2 = 0; bx2 < p.w; bx2 += 20) {
                     ctx.strokeRect(px2 + gs(bx2), py2, gs(20), gs(p.h));
+                }
                 }
             }
         }
@@ -1432,6 +1548,23 @@ window.MickeyPop = (() => {
     // ── Game Loop ──
     function gameLoop(ts) {
         if (!gameActive) return;
+        if (state === ST_LOADING) {
+            // Loading screen
+            const grad = ctx.createLinearGradient(0, 0, 0, H);
+            grad.addColorStop(0, '#2a1a4e'); grad.addColorStop(1, '#0a0a2e');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#FFD700'; ctx.font = `bold ${gs(36)}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('MICKEY POP', W / 2, H * 0.35);
+            const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+            const barW = gs(200), barH = gs(8);
+            ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect((W - barW) / 2, H * 0.5, barW, barH);
+            ctx.fillStyle = '#FF69B4'; ctx.fillRect((W - barW) / 2, H * 0.5, barW * pct, barH);
+            ctx.fillStyle = '#888'; ctx.font = `${gs(11)}px sans-serif`;
+            ctx.fillText(`Loading sprites... ${spritesLoaded}/${spritesTotal}`, W / 2, H * 0.58);
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         const dt = Math.min((ts - (lastTime || ts)) / 16.67, 3);
         lastTime = ts;
         frameCount++;
@@ -1528,7 +1661,7 @@ window.MickeyPop = (() => {
         const _t = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(themeId) : null;
         if (_t) playerColor = _t.colors[0] || playerColor;
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         lastTime = 0;
         keys = {};
@@ -1556,6 +1689,8 @@ window.MickeyPop = (() => {
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        loadSprites(null, () => { state = ST_TITLE; });
 
         animFrame = requestAnimationFrame(gameLoop);
     }

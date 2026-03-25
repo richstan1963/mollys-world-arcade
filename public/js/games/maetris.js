@@ -1,8 +1,96 @@
 /* Tetris — Theme-aware block stacker for Your World Arcade
- * Self-contained, no dependencies, canvas-rendered */
+ * Kenney CC0 sprite rendering — self-contained, no dependencies */
 window.Maetris = (() => {
     // ── Grid ──
     const NX = 10, NY = 20;
+
+    // ══════════════════════════════════════════
+    //  SPRITE SYSTEM — Kenney tiles + platform
+    // ══════════════════════════════════════════
+    const SPRITES = {};
+    let spritesLoaded = false;
+    let spriteLoadTotal = 0, spriteLoadDone = 0;
+    const SPRITE_OK = {};
+
+    const TILE_COLORS = ['Blue','Red','Green','Yellow','Pink','Orange'];
+    const SPRITE_MANIFEST = {};
+
+    // Kenney colored tile sprites (6 colors x 10 variants)
+    for (const color of TILE_COLORS) {
+        for (let v = 1; v <= 10; v++) {
+            const vStr = String(v).padStart(2, '0');
+            SPRITE_MANIFEST[`tile${color}_${vStr}`] = `/img/game-assets/kenney-tiles/tile${color}_${vStr}.png`;
+        }
+    }
+    // Platform border tiles
+    SPRITE_MANIFEST['borderStone'] = '/img/game-assets/kenney-platform/ground/Stone/stone.png';
+    SPRITE_MANIFEST['borderStoneMid'] = '/img/game-assets/kenney-platform/ground/Stone/stoneMid.png';
+    // HUD items
+    SPRITE_MANIFEST['star'] = '/img/game-assets/kenney-ui/star.png';
+    SPRITE_MANIFEST['coin'] = '/img/game-assets/kenney-platform/items/coinGold.png';
+    SPRITE_MANIFEST['gem'] = '/img/game-assets/kenney-platform/items/gemBlue.png';
+
+    // Piece-to-tile-color mapping (I=Blue, O=Yellow, T=Pink, S=Green, Z=Red, J=Orange, L=Blue)
+    const PIECE_TILE_MAP = { I: 'Blue', O: 'Yellow', T: 'Pink', S: 'Green', Z: 'Red', J: 'Orange', L: 'Blue' };
+    // Each piece uses a specific tile variant for visual variety
+    const PIECE_TILE_VARIANT = { I: '01', O: '03', T: '05', S: '07', Z: '09', J: '02', L: '04' };
+
+    function getTileSprite(pieceType) {
+        const color = PIECE_TILE_MAP[pieceType];
+        const variant = PIECE_TILE_VARIANT[pieceType];
+        const key = `tile${color}_${variant}`;
+        return SPRITE_OK[key] ? SPRITES[key] : null;
+    }
+
+    function preloadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spriteLoadTotal = keys.length;
+        spriteLoadDone = 0;
+        if (keys.length === 0) { spritesLoaded = true; onDone(); return; }
+        for (const key of keys) {
+            const img = new Image();
+            img.onload = () => {
+                SPRITE_OK[key] = true;
+                spriteLoadDone++;
+                onProgress(spriteLoadDone / spriteLoadTotal);
+                if (spriteLoadDone >= spriteLoadTotal) { spritesLoaded = true; onDone(); }
+            };
+            img.onerror = () => {
+                SPRITE_OK[key] = false;
+                spriteLoadDone++;
+                onProgress(spriteLoadDone / spriteLoadTotal);
+                if (spriteLoadDone >= spriteLoadTotal) { spritesLoaded = true; onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+            SPRITES[key] = img;
+        }
+    }
+
+    function spr(key) { return SPRITE_OK[key] ? SPRITES[key] : null; }
+
+    let loadingProgress = 0;
+    let isLoading = true;
+
+    function drawLoadingScreen() {
+        const W = canvas.width, H = canvas.height;
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(0, 0, W, H);
+        // Title
+        ctx.fillStyle = '#A855F7';
+        ctx.font = 'bold 28px "Segoe UI", system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('BLOCK STACK', W / 2, H / 2 - 40);
+        // Progress bar
+        const barW = W * 0.5, barH = 12;
+        const barX = (W - barW) / 2, barY = H / 2;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#A855F7';
+        ctx.fillRect(barX, barY, barW * loadingProgress, barH);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+        ctx.fillText('Loading sprites...', W / 2, barY + barH + 20);
+    }
 
     // ── Tetromino colors (theme-driven, populated in init) ──
     let COLORS = {};
@@ -543,22 +631,39 @@ window.Maetris = (() => {
             }
         }
 
-        // Board border with animated glow
+        // Board border — use stone sprite tiles if available, else animated glow
+        const stoneSpr = spr('borderStone');
         const t = (Date.now() - startTime) / 1000;
-        const borderPulse = 0.4 + Math.sin(t * 2) * 0.15;
-        ctx.save();
-        ctx.shadowColor = `rgba(168,85,247,${borderPulse})`;
-        ctx.shadowBlur = 14 + Math.sin(t * 3) * 4;
-        ctx.strokeStyle = `rgba(168,85,247,${borderPulse + 0.1})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(boardX + br, boardY);
-        ctx.arcTo(boardX + boardW, boardY, boardX + boardW, boardY + boardH, br);
-        ctx.arcTo(boardX + boardW, boardY + boardH, boardX, boardY + boardH, br);
-        ctx.arcTo(boardX, boardY + boardH, boardX, boardY, br);
-        ctx.arcTo(boardX, boardY, boardX + boardW, boardY, br);
-        ctx.stroke();
-        ctx.restore();
+        if (stoneSpr) {
+            const bdr = cellSize * 0.6;
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            // Left and right borders
+            for (let r = 0; r < NY; r++) {
+                ctx.drawImage(stoneSpr, boardX - bdr, boardY + r * cellSize, bdr, cellSize);
+                ctx.drawImage(stoneSpr, boardX + boardW, boardY + r * cellSize, bdr, cellSize);
+            }
+            // Bottom border
+            for (let c = -1; c <= NX; c++) {
+                ctx.drawImage(stoneSpr, boardX + c * cellSize, boardY + boardH, cellSize, bdr);
+            }
+            ctx.restore();
+        } else {
+            const borderPulse = 0.4 + Math.sin(t * 2) * 0.15;
+            ctx.save();
+            ctx.shadowColor = `rgba(168,85,247,${borderPulse})`;
+            ctx.shadowBlur = 14 + Math.sin(t * 3) * 4;
+            ctx.strokeStyle = `rgba(168,85,247,${borderPulse + 0.1})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(boardX + br, boardY);
+            ctx.arcTo(boardX + boardW, boardY, boardX + boardW, boardY + boardH, br);
+            ctx.arcTo(boardX + boardW, boardY + boardH, boardX, boardY + boardH, br);
+            ctx.arcTo(boardX, boardY + boardH, boardX, boardY, br);
+            ctx.arcTo(boardX, boardY, boardX + boardW, boardY, br);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     function drawNeonBlock(x, y, sz, type, alpha, scale) {
@@ -581,13 +686,33 @@ window.Maetris = (() => {
         const bx = x + pad, by = y + pad;
         const r = Math.max(3, bsz * 0.18);
 
-        // Outer neon glow (larger for emphasis)
+        // TRY SPRITE FIRST — Kenney tile
+        const sprite = getTileSprite(type);
+        if (sprite) {
+            // Neon glow behind sprite
+            if (sz >= 16) {
+                ctx.shadowColor = col.glow;
+                ctx.shadowBlur = 8;
+            }
+            ctx.drawImage(sprite, bx, by, bsz, bsz);
+            ctx.shadowBlur = 0;
+            // Glossy overlay for depth
+            const hl = ctx.createLinearGradient(bx, by, bx, by + bsz * 0.5);
+            hl.addColorStop(0, 'rgba(255,255,255,0.25)');
+            hl.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+            hl.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = hl;
+            roundRect(ctx, bx, by, bsz, bsz * 0.5, r);
+            ctx.fill();
+            ctx.restore();
+            return;
+        }
+
+        // FALLBACK — original gradient drawing
         if (sz >= 16) {
             ctx.shadowColor = col.glow;
             ctx.shadowBlur = 10;
         }
-
-        // Base gradient fill — richer with 4 stops
         const grad = ctx.createLinearGradient(bx, by, bx + bsz * 0.4, by + bsz);
         const rgb = col.rgb || [128, 128, 128];
         grad.addColorStop(0, `rgba(${Math.min(255, rgb[0] + 70)},${Math.min(255, rgb[1] + 70)},${Math.min(255, rgb[2] + 70)},1)`);
@@ -598,16 +723,12 @@ window.Maetris = (() => {
         roundRect(ctx, bx, by, bsz, bsz, r);
         ctx.fill();
         ctx.shadowBlur = 0;
-
-        // Inner border (subtle dark edge)
         ctx.strokeStyle = col.dark;
         ctx.lineWidth = 1;
         ctx.globalAlpha = alpha * 0.35;
         roundRect(ctx, bx + 1, by + 1, bsz - 2, bsz - 2, Math.max(1, r - 1));
         ctx.stroke();
         ctx.globalAlpha = alpha;
-
-        // Glossy top highlight (glass-like shine)
         const hl = ctx.createLinearGradient(bx, by, bx, by + bsz * 0.5);
         hl.addColorStop(0, 'rgba(255,255,255,0.5)');
         hl.addColorStop(0.3, 'rgba(255,255,255,0.18)');
@@ -616,31 +737,6 @@ window.Maetris = (() => {
         ctx.fillStyle = hl;
         roundRect(ctx, bx + 1, by + 1, bsz - 2, bsz * 0.5, Math.max(1, r - 1));
         ctx.fill();
-
-        // Inner shine highlight (bright dot)
-        if (sz >= 14) {
-            const shineR = bsz * 0.1;
-            const shineGrad = ctx.createRadialGradient(
-                bx + bsz * 0.25, by + bsz * 0.22, 0,
-                bx + bsz * 0.25, by + bsz * 0.22, shineR * 2
-            );
-            shineGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
-            shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
-            ctx.fillStyle = shineGrad;
-            ctx.beginPath();
-            ctx.arc(bx + bsz * 0.25, by + bsz * 0.22, shineR * 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Bottom-right ambient occlusion
-        if (sz >= 16) {
-            const aoGrad = ctx.createLinearGradient(bx, by + bsz * 0.7, bx, by + bsz);
-            aoGrad.addColorStop(0, 'rgba(0,0,0,0)');
-            aoGrad.addColorStop(1, 'rgba(0,0,0,0.2)');
-            ctx.fillStyle = aoGrad;
-            roundRect(ctx, bx, by + bsz * 0.7, bsz, bsz * 0.3, r);
-            ctx.fill();
-        }
 
         ctx.restore();
     }
@@ -1240,58 +1336,70 @@ window.Maetris = (() => {
         if (canvas.width < 100) canvas.width = 480;
         if (canvas.height < 100) canvas.height = 640;
 
-        // Reset state
-        score = 0; level = 1; lines = 0;
-        dropTimer = 0; lastTime = 0;
-        paused = false;
-        clearAnim = null;
-        levelUpAnim = 0;
-        hardDropTrail = [];
-        bag = [];
-        nextPieces = [];
-        current = null;
-        startTime = Date.now();
-        frameCount = 0;
-        particles = [];
-        scorePopups = [];
-        screenShake = 0;
-        comboCount = 0;
-        gridPulse = 0;
-        dasDir = 0; dasTimer = 0; arrTimer = 0; softDropHeld = false;
+        // Show loading screen and preload sprites
+        isLoading = true;
+        loadingProgress = 0;
+        drawLoadingScreen();
 
-        computeLayout();
+        preloadSprites(
+            (progress) => { loadingProgress = progress; drawLoadingScreen(); },
+            () => { isLoading = false; startGame(); }
+        );
 
-        // Delayed refit for container layout settling
-        requestAnimationFrame(() => {
-            if (!canvas || !canvas.parentElement) return;
-            const p = canvas.parentElement;
-            const pw = Math.max(300, p.clientWidth || 480);
-            const ph = Math.max(400, p.clientHeight || 640);
-            if (pw !== canvas.width || ph !== canvas.height) {
-                canvas.width = pw; canvas.height = ph;
-                computeLayout();
-            }
-        });
+        function startGame() {
+            // Reset state
+            score = 0; level = 1; lines = 0;
+            dropTimer = 0; lastTime = 0;
+            paused = false;
+            clearAnim = null;
+            levelUpAnim = 0;
+            hardDropTrail = [];
+            bag = [];
+            nextPieces = [];
+            current = null;
+            startTime = Date.now();
+            frameCount = 0;
+            particles = [];
+            scorePopups = [];
+            screenShake = 0;
+            comboCount = 0;
+            gridPulse = 0;
+            dasDir = 0; dasTimer = 0; arrTimer = 0; softDropHeld = false;
 
-        clearBoard();
-        initAudio();
-        initBgStars();
+            computeLayout();
 
-        // Fill next queue and spawn
-        while (nextPieces.length < 3) nextPieces.push(nextType());
-        spawn();
+            // Delayed refit for container layout settling
+            requestAnimationFrame(() => {
+                if (!canvas || !canvas.parentElement) return;
+                const p = canvas.parentElement;
+                const pw = Math.max(300, p.clientWidth || 480);
+                const ph = Math.max(400, p.clientHeight || 640);
+                if (pw !== canvas.width || ph !== canvas.height) {
+                    canvas.width = pw; canvas.height = ph;
+                    computeLayout();
+                }
+            });
 
-        gameActive = true;
+            clearBoard();
+            initAudio();
+            initBgStars();
 
-        // Listeners
-        document.addEventListener('keydown', handleKeyDown);
-        document.addEventListener('keyup', handleKeyUp);
-        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-        canvas.addEventListener('touchend', handleTouchEnd);
-        window.addEventListener('resize', onResize);
+            // Fill next queue and spawn
+            while (nextPieces.length < 3) nextPieces.push(nextType());
+            spawn();
 
-        animFrame = requestAnimationFrame(frame);
+            gameActive = true;
+
+            // Listeners
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd);
+            window.addEventListener('resize', onResize);
+
+            animFrame = requestAnimationFrame(frame);
+        }
     }
 
     function onResize() {

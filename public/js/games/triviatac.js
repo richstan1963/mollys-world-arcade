@@ -1,5 +1,39 @@
-/* TriviaTac — Tic Tac Toe where you answer trivia to claim squares */
+/* TriviaTac — Kenney CC0 sprite rendering — Tic Tac Toe with trivia for Your World Arcade */
 window.TriviaTac = (() => {
+
+    // ══════════════════════════════════════════
+    //  SPRITE SYSTEM — Kenney tiles + items for grid
+    // ══════════════════════════════════════════
+    const TT_SPRITES = {};
+    let ttSpritesLoaded = false;
+    let ttSpriteLoadTotal = 0, ttSpriteLoadDone = 0;
+    const TT_SPRITE_OK = {};
+    const TT_SPRITE_MANIFEST = {
+        'cellTile':     '/img/game-assets/kenney-tiles/tileBlue_05.png',
+        'cellHover':    '/img/game-assets/kenney-tiles/tileBlue_02.png',
+        'xSprite':      '/img/game-assets/kenney-platform/hud/hudX.png',
+        'oSprite':      '/img/game-assets/kenney-platform/items/coinGold.png',
+        'star':         '/img/game-assets/kenney-ui/star.png',
+        'gemBlue':      '/img/game-assets/kenney-platform/items/gemBlue.png',
+        'gemRed':       '/img/game-assets/kenney-platform/items/gemRed.png',
+    };
+
+    function ttPreloadSprites(onProgress, onDone) {
+        const keys = Object.keys(TT_SPRITE_MANIFEST);
+        ttSpriteLoadTotal = keys.length;
+        ttSpriteLoadDone = 0;
+        if (keys.length === 0) { ttSpritesLoaded = true; onDone(); return; }
+        for (const key of keys) {
+            const img = new Image();
+            img.onload = () => { TT_SPRITE_OK[key] = true; ttSpriteLoadDone++; onProgress(ttSpriteLoadDone / ttSpriteLoadTotal); if (ttSpriteLoadDone >= ttSpriteLoadTotal) { ttSpritesLoaded = true; onDone(); } };
+            img.onerror = () => { TT_SPRITE_OK[key] = false; ttSpriteLoadDone++; onProgress(ttSpriteLoadDone / ttSpriteLoadTotal); if (ttSpriteLoadDone >= ttSpriteLoadTotal) { ttSpritesLoaded = true; onDone(); } };
+            img.src = TT_SPRITE_MANIFEST[key];
+            TT_SPRITES[key] = img;
+        }
+    }
+
+    function ttSpr(key) { return TT_SPRITE_OK[key] ? TT_SPRITES[key] : null; }
+
     // ── Constants ──
     const GAME_W = 480, GAME_H = 640;
     const ST_TITLE = 0, ST_PLAY = 1, ST_QUESTION = 2, ST_RESULT = 3,
@@ -535,26 +569,60 @@ window.TriviaTac = (() => {
             const cy = GRID_TOP + row * CELL_SIZE + CELL_PAD;
             const cw = CELL_SIZE - CELL_PAD * 2;
 
-            // Cell background
-            let bg = 'rgba(255,255,255,0.04)';
-            if (state === ST_PLAY && hoveredCell === i && board[i] === 0) {
-                bg = withAlpha(playerColor, 0.15);
-            }
-            ctx.fillStyle = bg;
-            roundRect(ctx, gs(cx), gs(cy), gs(cw), gs(cw), gs(8));
-            ctx.fill();
-
-            // Hover glow
-            if (state === ST_PLAY && hoveredCell === i && board[i] === 0) {
-                ctx.strokeStyle = withAlpha(playerColor, 0.5);
-                ctx.lineWidth = gs(2);
+            // Cell background — use Kenney tile sprite or fallback
+            const isHover = state === ST_PLAY && hoveredCell === i && board[i] === 0;
+            const cellSpr = isHover ? ttSpr('cellHover') : ttSpr('cellTile');
+            if (cellSpr) {
+                ctx.drawImage(cellSpr, gs(cx), gs(cy), gs(cw), gs(cw));
+                if (isHover) {
+                    ctx.strokeStyle = withAlpha(playerColor, 0.6);
+                    ctx.lineWidth = gs(2);
+                    roundRect(ctx, gs(cx), gs(cy), gs(cw), gs(cw), gs(8));
+                    ctx.stroke();
+                }
+            } else {
+                let bg = 'rgba(255,255,255,0.04)';
+                if (isHover) bg = withAlpha(playerColor, 0.15);
+                ctx.fillStyle = bg;
                 roundRect(ctx, gs(cx), gs(cy), gs(cw), gs(cw), gs(8));
-                ctx.stroke();
+                ctx.fill();
+                if (isHover) {
+                    ctx.strokeStyle = withAlpha(playerColor, 0.5);
+                    ctx.lineWidth = gs(2);
+                    roundRect(ctx, gs(cx), gs(cy), gs(cw), gs(cw), gs(8));
+                    ctx.stroke();
+                }
             }
 
-            // Draw X or O
-            if (board[i] === 1) drawX(cellCenter(i), cw * 0.35);
-            if (board[i] === 2) drawO(cellCenter(i), cw * 0.32);
+            // Draw X or O (sprite or fallback)
+            if (board[i] === 1) {
+                const xSpr = ttSpr('xSprite');
+                if (xSpr) {
+                    const sz = cw * 0.55;
+                    const cc = cellCenter(i);
+                    ctx.save();
+                    ctx.shadowColor = playerColor;
+                    ctx.shadowBlur = gs(8);
+                    ctx.drawImage(xSpr, gs(cc.x - sz/2), gs(cc.y - sz/2), gs(sz), gs(sz));
+                    ctx.restore();
+                } else {
+                    drawX(cellCenter(i), cw * 0.35);
+                }
+            }
+            if (board[i] === 2) {
+                const oSpr = ttSpr('oSprite');
+                if (oSpr) {
+                    const sz = cw * 0.55;
+                    const cc = cellCenter(i);
+                    ctx.save();
+                    ctx.shadowColor = '#EF4444';
+                    ctx.shadowBlur = gs(8);
+                    ctx.drawImage(oSpr, gs(cc.x - sz/2), gs(cc.y - sz/2), gs(sz), gs(sz));
+                    ctx.restore();
+                } else {
+                    drawO(cellCenter(i), cw * 0.32);
+                }
+            }
         }
 
         // Grid lines (glowing)
@@ -1353,16 +1421,23 @@ window.TriviaTac = (() => {
 
         DPR = Math.min(window.devicePixelRatio || 1, 3);
         fitCanvas();
-        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        canvas.addEventListener('mousedown', onPointerDown);
-        canvas.addEventListener('mousemove', onPointerMove);
-        canvas.addEventListener('touchstart', onPointerDown, { passive: false });
-        canvas.addEventListener('touchmove', onPointerMove, { passive: false });
-        document.addEventListener('keydown', onKeyDown);
-        window.addEventListener('resize', fitCanvas);
+        // Preload sprites then start
+        ttPreloadSprites(
+            () => {},
+            () => {
+                requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        animFrame = requestAnimationFrame(gameLoop);
+                canvas.addEventListener('mousedown', onPointerDown);
+                canvas.addEventListener('mousemove', onPointerMove);
+                canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+                canvas.addEventListener('touchmove', onPointerMove, { passive: false });
+                document.addEventListener('keydown', onKeyDown);
+                window.addEventListener('resize', fitCanvas);
+
+                animFrame = requestAnimationFrame(gameLoop);
+            }
+        );
     }
 
     function destroy() {

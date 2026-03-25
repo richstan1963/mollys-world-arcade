@@ -1,5 +1,53 @@
 /* CoasterRide — Roller coaster platformer for Your World Arcade */
 window.CoasterRide = (() => {
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        playerStand:  `${SPRITE_BASE}/players/Beige/alienBeige_stand.png`,
+        playerDuck:   `${SPRITE_BASE}/players/Beige/alienBeige_duck.png`,
+        playerJump:   `${SPRITE_BASE}/players/Beige/alienBeige_jump.png`,
+        playerHit:    `${SPRITE_BASE}/players/Beige/alienBeige_hit.png`,
+        playerFront:  `${SPRITE_BASE}/players/Beige/alienBeige_front.png`,
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        coinSilver:   `${SPRITE_BASE}/items/coinSilver.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        gemBlue:      `${SPRITE_BASE}/items/gemBlue.png`,
+        hudCoin:      `${SPRITE_BASE}/hud/hudCoin.png`,
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        spring:       `${SPRITE_BASE}/tiles/spring.png`,
+        spikes:       `${SPRITE_BASE}/tiles/spikes.png`,
+        boxCrate:     `${SPRITE_BASE}/tiles/boxCrate.png`,
+        saw:          `${SPRITE_BASE}/enemies/saw.png`,
+        sawMove:      `${SPRITE_BASE}/enemies/saw_move.png`,
+        slimeBlue:    `${SPRITE_BASE}/enemies/slimeBlue.png`,
+        bee:          `${SPRITE_BASE}/enemies/bee.png`,
+        beeMove:      `${SPRITE_BASE}/enemies/bee_move.png`,
+        grassMid:     `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        stoneMid:     `${SPRITE_BASE}/ground/Stone/stoneMid.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { sprites[key] = img; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { sprites[key] = null; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(key, x, y, w, h) {
+        const s = sprites[key];
+        if (s) { ctx.drawImage(s, x, y, w, h); return true; }
+        return false;
+    }
+
     // ── Constants ──
     const GAME_W = 640, GAME_H = 400;
     const CART_W = 36, CART_H = 20;
@@ -17,7 +65,7 @@ window.CoasterRide = (() => {
     const SPRING_H = 10;
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2;
 
     // Theme zones
     const ZONES = [
@@ -1234,6 +1282,8 @@ window.CoasterRide = (() => {
 
     function drawCoin(x, y) {
         const bob = Math.sin(frameCount * 0.1 + x * 0.02) * 2;
+        const sz = COIN_R * 2;
+        if (drawSprite('coinGold', x - sz / 2, y + bob - sz / 2, sz, sz)) return;
         const flash = 0.8 + Math.sin(frameCount * 0.15 + x) * 0.2;
         ctx.globalAlpha = flash;
         ctx.fillStyle = '#FFD700';
@@ -1243,7 +1293,6 @@ window.CoasterRide = (() => {
         ctx.strokeStyle = '#DAA520';
         ctx.lineWidth = 1;
         ctx.stroke();
-        // Shine
         ctx.fillStyle = '#FFFACD';
         ctx.beginPath();
         ctx.arc(x - 2, y + bob - 2, 2, 0, Math.PI * 2);
@@ -1253,6 +1302,8 @@ window.CoasterRide = (() => {
 
     function drawStar(x, y) {
         const bob = Math.sin(frameCount * 0.08 + x * 0.01) * 3;
+        const sz = STAR_R * 2.5;
+        if (drawSprite('star', x - sz / 2, y + bob - sz / 2, sz, sz)) return;
         const glow = 0.6 + Math.sin(frameCount * 0.12) * 0.4;
         ctx.save();
         ctx.translate(x, y + bob);
@@ -1389,6 +1440,13 @@ window.CoasterRide = (() => {
         ctx.rotate(cart.angle);
 
         const duck = cart.ducking ? 0.5 : 1;
+
+        // Try sprite-based character in cart
+        const sprKey = cart.ducking ? 'playerDuck' : (cart.jumping ? 'playerJump' : 'playerStand');
+        if (sprites[sprKey]) {
+            const sprW = CART_W * 1.2, sprH = CHAR_H * 1.5 * duck;
+            ctx.drawImage(sprites[sprKey], -sprW / 2, -CART_H - sprH, sprW, sprH);
+        }
 
         // Cart body
         ctx.fillStyle = playerColor;
@@ -1810,6 +1868,20 @@ window.CoasterRide = (() => {
         if (!gameActive) return;
         animFrame = requestAnimationFrame(gameLoop);
 
+        if (state === ST_LOADING) {
+            ctx.save(); ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+            ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, GAME_W, GAME_H);
+            ctx.fillStyle = '#FFD700'; ctx.font = 'bold 28px monospace'; ctx.textAlign = 'center';
+            ctx.fillText('COASTER RIDE', GAME_W / 2, GAME_H * 0.35);
+            const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+            ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(GAME_W / 2 - 100, GAME_H * 0.5, 200, 8);
+            ctx.fillStyle = '#FFD700'; ctx.fillRect(GAME_W / 2 - 100, GAME_H * 0.5, 200 * pct, 8);
+            ctx.fillStyle = '#888'; ctx.font = '11px monospace';
+            ctx.fillText(`Loading... ${spritesLoaded}/${spritesTotal}`, GAME_W / 2, GAME_H * 0.6);
+            ctx.restore();
+            return;
+        }
+
         if (state === ST_TITLE) {
             frameCount++;
             drawTitle();
@@ -1891,7 +1963,7 @@ window.CoasterRide = (() => {
         const _t = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(themeId) : null;
         if (_t) playerColor = _t.colors[0] || playerColor;
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         keys = {};
         bestScore = parseInt(localStorage.getItem('ywa_coasterride_best') || '0', 10);
@@ -1909,6 +1981,8 @@ window.CoasterRide = (() => {
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        loadSprites(null, () => { state = ST_TITLE; });
 
         animFrame = requestAnimationFrame(gameLoop);
     }

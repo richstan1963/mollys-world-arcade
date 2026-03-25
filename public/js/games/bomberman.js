@@ -36,9 +36,101 @@ window.Bomberman = (() => {
     const EN_BALLOOM = 0, EN_ONEAL = 1, EN_DORIA = 2;
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_GAMEOVER = 3, ST_WIN = 4, ST_CLEAR = 5;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_GAMEOVER = 3, ST_WIN = 4, ST_CLEAR = 5;
     const LS_KEY = 'ywa_bomberman_hiscore';
     let hiScore = 0;
+
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Player (Bomberman character)
+        playerStand:  `${SPRITE_BASE}/players/Beige/alienBeige_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Beige/alienBeige_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Beige/alienBeige_walk2.png`,
+        playerFront:  `${SPRITE_BASE}/players/Beige/alienBeige_front.png`,
+        playerHit:    `${SPRITE_BASE}/players/Beige/alienBeige_hit.png`,
+        playerDuck:   `${SPRITE_BASE}/players/Beige/alienBeige_duck.png`,
+        // Walls (hard = stone, soft = brick)
+        stoneMid:     `${SPRITE_BASE}/ground/Stone/stoneMid.png`,
+        stoneCenter:  `${SPRITE_BASE}/ground/Stone/stoneCenter.png`,
+        brickBrown:   `${SPRITE_BASE}/tiles/brickBrown.png`,
+        brickGrey:    `${SPRITE_BASE}/tiles/brickGrey.png`,
+        // Enemies
+        enemySlime:   `${SPRITE_BASE}/enemies/slimeBlue.png`,
+        enemySlimeM:  `${SPRITE_BASE}/enemies/slimeBlue_move.png`,
+        enemySlimeP:  `${SPRITE_BASE}/enemies/slimePurple.png`,
+        enemySlimePM: `${SPRITE_BASE}/enemies/slimePurple_move.png`,
+        enemyFrog:    `${SPRITE_BASE}/enemies/frog.png`,
+        enemyFrogM:   `${SPRITE_BASE}/enemies/frog_move.png`,
+        // Bombs and explosions
+        bomb:         `${SPRITE_BASE}/tiles/bomb.png`,
+        bombWhite:    `${SPRITE_BASE}/tiles/bombWhite.png`,
+        fireball:     `${SPRITE_BASE}/particles/fireball.png`,
+        // Items / Power-ups
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        gemBlue:      `${SPRITE_BASE}/items/gemBlue.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        gemGreen:     `${SPRITE_BASE}/items/gemGreen.png`,
+        gemYellow:    `${SPRITE_BASE}/items/gemYellow.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        keyBlue:      `${SPRITE_BASE}/items/keyBlue.png`,
+        keyRed:       `${SPRITE_BASE}/items/keyRed.png`,
+        // Ground
+        grassMid:     `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        sandMid:      `${SPRITE_BASE}/ground/Sand/sandMid.png`,
+        // Tiles
+        doorClosed:   `${SPRITE_BASE}/tiles/doorClosed_mid.png`,
+        spikes:       `${SPRITE_BASE}/tiles/spikes.png`,
+        // HUD
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawLoading() {
+        ctx.fillStyle = '#0A0A12';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#3B82F6';
+        ctx.shadowColor = '#3B82F6'; ctx.shadowBlur = gs(10);
+        ctx.font = `bold ${gs(32)}px monospace`;
+        ctx.fillText('BOMBERMAN', gs(GAME_W / 2), gs(GAME_H / 2 - 50));
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#E0E7FF'; ctx.font = `${gs(13)}px monospace`;
+        ctx.fillText('LOADING SPRITES...', gs(GAME_W / 2), gs(GAME_H / 2));
+        const barW = 200, barH = 8;
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW), gs(barH));
+        ctx.fillStyle = '#3B82F6';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW * pct), gs(barH));
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = `${gs(10)}px monospace`;
+        ctx.fillText(`${spritesLoaded} / ${spritesTotal}`, gs(GAME_W / 2), gs(GAME_H / 2 + 45));
+    }
 
     // ── Mutable State ──
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -669,7 +761,12 @@ window.Bomberman = (() => {
     }
 
     function drawHardBlock(x, y, s) {
-        // Dark stone with rivets
+        // Try sprite
+        if (allSpritesReady && sprites['stoneCenter']) {
+            ctx.drawImage(sprites['stoneCenter'], x, y, s, s);
+            return;
+        }
+        // Dark stone with rivets fallback
         const grad = ctx.createLinearGradient(x, y, x, y + s);
         grad.addColorStop(0, '#4A4A5A');
         grad.addColorStop(0.5, '#3A3A48');
@@ -692,7 +789,12 @@ window.Bomberman = (() => {
     }
 
     function drawSoftBlock(x, y, s) {
-        // Brick texture
+        // Try sprite
+        if (allSpritesReady && sprites['brickBrown']) {
+            ctx.drawImage(sprites['brickBrown'], x, y, s, s);
+            return;
+        }
+        // Brick texture fallback
         ctx.fillStyle = '#B8845A';
         ctx.fillRect(x, y, s, s);
         ctx.strokeStyle = '#8B6040';
@@ -755,6 +857,29 @@ window.Bomberman = (() => {
         const s = TILE * SCALE;
         const half = s / 2;
         const flash = invulnTimer > 0 && Math.floor(invulnTimer / 100) % 2;
+
+        // Try sprite player
+        if (allSpritesReady && !flash) {
+            const moving = player.dir !== -1;
+            let sprKey;
+            if (state === ST_DYING) sprKey = 'playerHit';
+            else if (moving) sprKey = (Math.floor(frameCount / 8) % 2 === 0) ? 'playerWalk1' : 'playerWalk2';
+            else sprKey = 'playerFront';
+            const spr = sprites[sprKey];
+            if (spr) {
+                const flipX = player.dir === 3; // left
+                ctx.save();
+                if (flipX) {
+                    ctx.translate(px + s, py);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(spr, s * 0.1, -s * 0.15, s * 0.8, s * 0.95);
+                } else {
+                    ctx.drawImage(spr, px + s * 0.1, py - s * 0.15, s * 0.8, s * 0.95);
+                }
+                ctx.restore();
+                return;
+            }
+        }
         if (flash) { ctx.globalAlpha = 0.4; }
 
         // Skull curse visual indicator
@@ -838,7 +963,20 @@ window.Bomberman = (() => {
             const pulse = 1 + 0.12 * Math.sin(frameCount * 0.3);
             const urgent = b.timer < 600;
             const blink = urgent && Math.floor(b.timer / 80) % 2;
-            // Shadow
+            // Try sprite bomb
+            if (allSpritesReady && sprites['bomb']) {
+                const bombSize = s * 0.7 * pulse;
+                ctx.drawImage(sprites[blink ? 'bombWhite' : 'bomb'] || sprites['bomb'], x - bombSize / 2, y - bombSize / 2 + gs(2), bombSize, bombSize);
+                // Fuse spark still
+                if (!blink) {
+                    ctx.fillStyle = urgent ? '#EF4444' : '#FBBF24';
+                    ctx.beginPath();
+                    ctx.arc(x + gs(3), y - s * 0.35, gs(3) * pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                continue;
+            }
+            // Shadow fallback
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.beginPath();
             ctx.ellipse(x, y + s * 0.35, s * 0.3, s * 0.1, 0, 0, Math.PI * 2);
@@ -923,12 +1061,24 @@ window.Bomberman = (() => {
             const s = TILE * SCALE;
             const half = s / 2;
             if (!e.alive) {
-                // Death flash
                 ctx.globalAlpha = e.deathTimer / 400;
                 ctx.fillStyle = '#FFF';
                 ctx.beginPath(); ctx.arc(x, y, half * 0.5, 0, Math.PI * 2); ctx.fill();
                 ctx.globalAlpha = 1;
                 continue;
+            }
+            // Try sprite enemy
+            if (allSpritesReady) {
+                const anim = Math.floor(frameCount / 10) % 2 === 0;
+                let spr = null;
+                if (e.type === EN_BALLOOM) spr = sprites[anim ? 'enemySlime' : 'enemySlimeM'];
+                else if (e.type === EN_ONEAL) spr = sprites[anim ? 'enemySlimeP' : 'enemySlimePM'];
+                else spr = sprites[anim ? 'enemyFrog' : 'enemyFrogM'];
+                if (spr) {
+                    ctx.drawImage(spr, x - half * 0.5, y - half * 0.6, s * 0.65, s * 0.7);
+                    ctx.restore && 0; // no save/restore needed
+                    continue;
+                }
             }
             ctx.save();
             ctx.translate(x, y);
@@ -1282,12 +1432,16 @@ window.Bomberman = (() => {
         const dt = Math.min(ts - lastTime, 50);
         lastTime = ts;
 
-        update(dt);
-
-        ctx.clearRect(0, 0, W, H);
-        ctx.fillStyle = '#0A0A12';
-        ctx.fillRect(0, 0, W, H);
-        draw();
+        if (state === ST_LOADING) {
+            drawLoading();
+            if (allSpritesReady) state = ST_TITLE;
+        } else {
+            update(dt);
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = '#0A0A12';
+            ctx.fillRect(0, 0, W, H);
+            draw();
+        }
 
         animFrame = requestAnimationFrame(gameLoop);
     }
@@ -1306,7 +1460,8 @@ window.Bomberman = (() => {
         const _t = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(playerTheme) : null;
         if (_t) playerColor = _t.colors[0] || playerColor;
 
-        state = ST_TITLE;
+        state = ST_LOADING;
+        if (!allSpritesReady) loadSprites();
         frameCount = 0;
         lastTime = 0;
         keys = {};

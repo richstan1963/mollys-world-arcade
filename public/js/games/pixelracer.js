@@ -1,4 +1,5 @@
 /* PixelRacer — Top-down pixel racing game for Your World Arcade
+ * Kenney Platform + Physics sprite edition
  * Self-contained, no dependencies, canvas-rendered, theme-aware */
 window.PixelRacer = (() => {
 
@@ -16,6 +17,104 @@ window.PixelRacer = (() => {
             this.closePath();
             return this;
         };
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  SPRITE PRELOADER — Kenney Platform + Physics Packs
+    // ══════════════════════════════════════════════════════════
+    const PHYS_BASE = '/img/game-assets/kenney-physics';
+    const PLAT_BASE = '/img/game-assets/kenney-platform';
+    const spriteCache = {};
+    let spritesLoaded = 0;
+    let spritesTotal  = 0;
+    let allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Road tile sprites (stone for road surface)
+        stoneMid:       `${PLAT_BASE}/ground/Stone/stoneMid.png`,
+        stoneCenter:    `${PLAT_BASE}/ground/Stone/stoneCenter.png`,
+        // Grass for shoulders/scenery
+        grassMid:       `${PLAT_BASE}/ground/Grass/grassMid.png`,
+        grassCenter:    `${PLAT_BASE}/ground/Grass/grassCenter.png`,
+        sandMid:        `${PLAT_BASE}/ground/Sand/sandMid.png`,
+        // Platform enemy sprites as obstacles
+        bee:            `${PLAT_BASE}/enemies/bee.png`,
+        beeMove:        `${PLAT_BASE}/enemies/bee_move.png`,
+        fly:            `${PLAT_BASE}/enemies/fly.png`,
+        flyMove:        `${PLAT_BASE}/enemies/fly_move.png`,
+        frog:           `${PLAT_BASE}/enemies/frog.png`,
+        fishBlue:       `${PLAT_BASE}/enemies/fishBlue.png`,
+        fishGreen:      `${PLAT_BASE}/enemies/fishGreen.png`,
+        fishPink:       `${PLAT_BASE}/enemies/fishPink.png`,
+        barnacle:       `${PLAT_BASE}/enemies/barnacle.png`,
+        // Coin sprites for collectibles
+        coinGold:       `${PLAT_BASE}/items/coinGold.png`,
+        coinSilver:     `${PLAT_BASE}/items/coinSilver.png`,
+        coinBronze:     `${PLAT_BASE}/items/coinBronze.png`,
+        // Gems for power-ups
+        gemRed:         `${PLAT_BASE}/items/gemRed.png`,
+        gemBlue:        `${PLAT_BASE}/items/gemBlue.png`,
+        gemGreen:       `${PLAT_BASE}/items/gemGreen.png`,
+        gemYellow:      `${PLAT_BASE}/items/gemYellow.png`,
+        // Background
+        bgLand:         `${PLAT_BASE}/backgrounds/colored_land.png`,
+        bgDesert:       `${PLAT_BASE}/backgrounds/colored_desert.png`,
+        // Scenery items
+        bush:           `${PLAT_BASE}/tiles/bush.png`,
+        cactus:         `${PLAT_BASE}/tiles/cactus.png`,
+        // Debris for crash effects
+        debrisWood1:    `${PHYS_BASE}/debris/debrisWood_1.png`,
+        debrisStone1:   `${PHYS_BASE}/debris/debrisStone_1.png`,
+        // Explosive crate for obstacles
+        boxCrate:       `${PLAT_BASE}/tiles/boxCrate.png`,
+        boxExplosive:   `${PLAT_BASE}/tiles/boxExplosive.png`,
+        // Stars
+        starGold:       `${PHYS_BASE}/other/starGold.png`,
+    };
+
+    // Obstacle sprite pool (enemies used as traffic obstacles)
+    const OBSTACLE_SPRITES = ['bee', 'beeMove', 'fly', 'flyMove', 'frog', 'fishBlue', 'fishGreen', 'fishPink', 'barnacle'];
+
+    function preloadSprites(onComplete) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        if (spritesTotal === 0) { allSpritesReady = true; onComplete(); return; }
+
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                spriteCache[key] = img;
+                spritesLoaded++;
+                if (spritesLoaded >= spritesTotal) { allSpritesReady = true; if (onComplete) onComplete(); }
+            };
+            img.onerror = () => {
+                spriteCache[key] = null;
+                spritesLoaded++;
+                if (spritesLoaded >= spritesTotal) { allSpritesReady = true; if (onComplete) onComplete(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function spr(name) { return spriteCache[name] || null; }
+
+    function drawTiledSprite(name, rx, ry, rw, rh, tileW, tileH, fallbackColor) {
+        const img = spr(name);
+        if (!img) {
+            if (fallbackColor) { ctx.fillStyle = fallbackColor; ctx.fillRect(rx, ry, rw, rh); }
+            return;
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(rx, ry, rw, rh);
+        ctx.clip();
+        for (let tx = rx; tx < rx + rw; tx += tileW) {
+            for (let ty = ry; ty < ry + rh; ty += tileH) {
+                ctx.drawImage(img, tx, ty, tileW, tileH);
+            }
+        }
+        ctx.restore();
     }
 
     // ── Constants ──
@@ -60,10 +159,11 @@ window.PixelRacer = (() => {
     let gameActive = false;
 
     // Game state
+    const ST_LOADING = -1;
     const ST_TITLE   = 0;
     const ST_PLAYING = 1;
     const ST_OVER    = 2;
-    let state = ST_TITLE;
+    let state = ST_LOADING;
 
     let score, distance, speed, baseSpeed, maxSpeed, bestScore;
     let lane;               // 0..NUM_LANES-1
@@ -456,25 +556,35 @@ window.PixelRacer = (() => {
     function drawRoad() {
         const env = ENVS[envIndex];
 
-        // Sky gradient
-        const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_H);
-        skyGrad.addColorStop(0, env.sky[0]);
-        skyGrad.addColorStop(1, env.sky[1]);
-        ctx.fillStyle = skyGrad;
-        ctx.fillRect(0, 0, GAME_W, GAME_H);
+        // Sky/background - use sprite bg or gradient fallback
+        const bgName = env.name === 'Desert Road' ? 'bgDesert' : 'bgLand';
+        const bgImg = spr(bgName);
+        if (bgImg) {
+            ctx.drawImage(bgImg, 0, 0, GAME_W, GAME_H);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(0, 0, GAME_W, GAME_H);
+        } else {
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_H);
+            skyGrad.addColorStop(0, env.sky[0]);
+            skyGrad.addColorStop(1, env.sky[1]);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, GAME_W, GAME_H);
+        }
 
-        // Grass/ground
-        ctx.fillStyle = env.grass;
-        ctx.fillRect(0, 0, ROAD_X, GAME_H);
-        ctx.fillRect(ROAD_X + ROAD_W, 0, GAME_W - ROAD_X - ROAD_W, GAME_H);
+        // Grass/ground sides - tiled sprite or fallback
+        const grassTile = env.name === 'Desert Road' ? 'sandMid' : 'grassMid';
+        drawTiledSprite(grassTile, 0, 0, ROAD_X, GAME_H, 48, 48, env.grass);
+        drawTiledSprite(grassTile, ROAD_X + ROAD_W, 0, GAME_W - ROAD_X - ROAD_W, GAME_H, 48, 48, env.grass);
 
         // Road shoulder
         ctx.fillStyle = env.shoulder;
         ctx.fillRect(ROAD_X - 6, 0, 6, GAME_H);
         ctx.fillRect(ROAD_X + ROAD_W, 0, 6, GAME_H);
 
-        // Road surface
-        ctx.fillStyle = env.road;
+        // Road surface - tiled stone sprite or fallback
+        drawTiledSprite('stoneCenter', ROAD_X, 0, ROAD_W, GAME_H, 48, 48, env.road);
+        // Darken overlay for road feel
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
         ctx.fillRect(ROAD_X, 0, ROAD_W, GAME_H);
 
         // Lane stripes
@@ -513,18 +623,22 @@ window.PixelRacer = (() => {
 
     function drawSceneryItem(x, y, type, env, dir) {
         if (type === 'tree') {
-            // Trunk
-            ctx.fillStyle = '#5C3D2E';
-            ctx.fillRect(x - 3, y - 5, 6, 20);
-            // Canopy
-            ctx.fillStyle = env.name === 'Desert Road' ? '#8B7B42' : '#1B8A1B';
-            ctx.beginPath();
-            ctx.arc(x, y - 12, 14, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = hexAlpha(env.name === 'Desert Road' ? '#A09050' : '#22AA22', 0.5);
-            ctx.beginPath();
-            ctx.arc(x + 3, y - 15, 10, 0, Math.PI * 2);
-            ctx.fill();
+            // Use bush sprite or fallback
+            const bushImg = spr('bush');
+            if (bushImg) {
+                ctx.drawImage(bushImg, x - 16, y - 24, 32, 32);
+            } else {
+                ctx.fillStyle = '#5C3D2E';
+                ctx.fillRect(x - 3, y - 5, 6, 20);
+                ctx.fillStyle = env.name === 'Desert Road' ? '#8B7B42' : '#1B8A1B';
+                ctx.beginPath();
+                ctx.arc(x, y - 12, 14, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = hexAlpha(env.name === 'Desert Road' ? '#A09050' : '#22AA22', 0.5);
+                ctx.beginPath();
+                ctx.arc(x + 3, y - 15, 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
         } else if (type === 'building') {
             const bw = 25 + Math.abs(Math.sin(x * 0.1)) * 20;
             const bh = 60 + Math.abs(Math.cos(x * 0.07)) * 80;
@@ -544,13 +658,17 @@ window.PixelRacer = (() => {
             }
             ctx.globalAlpha = 1;
         } else if (type === 'cactus') {
-            ctx.fillStyle = '#2D6B30';
-            ctx.fillRect(x - 3, y - 25, 6, 30);
-            // Arms
-            ctx.fillRect(x - 12, y - 18, 10, 5);
-            ctx.fillRect(x - 12, y - 25, 5, 12);
-            ctx.fillRect(x + 5, y - 12, 10, 5);
-            ctx.fillRect(x + 10, y - 20, 5, 13);
+            const cactusImg = spr('cactus');
+            if (cactusImg) {
+                ctx.drawImage(cactusImg, x - 14, y - 30, 28, 36);
+            } else {
+                ctx.fillStyle = '#2D6B30';
+                ctx.fillRect(x - 3, y - 25, 6, 30);
+                ctx.fillRect(x - 12, y - 18, 10, 5);
+                ctx.fillRect(x - 12, y - 25, 5, 12);
+                ctx.fillRect(x + 5, y - 12, 10, 5);
+                ctx.fillRect(x + 10, y - 20, 5, 13);
+            }
         } else if (type === 'rock') {
             ctx.fillStyle = '#666';
             ctx.beginPath();
@@ -578,25 +696,32 @@ window.PixelRacer = (() => {
     // ── Drawing: Coins & power-ups ──
     function drawCoin(x, y) {
         const pulse = Math.sin(Date.now() * 0.006) * 2;
+        const coinImg = spr('coinGold');
         ctx.save();
-        ctx.shadowColor = '#FFD700';
-        ctx.shadowBlur = 8 + pulse;
-        ctx.fillStyle = '#FFD700';
-        ctx.beginPath();
-        ctx.arc(x, y, COIN_R + pulse * 0.3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        // Inner
-        ctx.fillStyle = '#FFEE55';
-        ctx.beginPath();
-        ctx.arc(x, y, COIN_R * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-        // $ symbol
-        ctx.fillStyle = '#CC9900';
-        ctx.font = 'bold 10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('$', x, y + 1);
+        if (coinImg) {
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 8 + pulse;
+            const sz = (COIN_R + pulse * 0.3) * 2;
+            ctx.drawImage(coinImg, x - sz / 2, y - sz / 2, sz, sz);
+            ctx.shadowBlur = 0;
+        } else {
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 8 + pulse;
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(x, y, COIN_R + pulse * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#FFEE55';
+            ctx.beginPath();
+            ctx.arc(x, y, COIN_R * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#CC9900';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$', x, y + 1);
+        }
         ctx.restore();
     }
 
@@ -604,32 +729,44 @@ window.PixelRacer = (() => {
         const pulse = Math.sin(Date.now() * 0.008) * 3;
         const colors = ['#FF6600', '#38BDF8', '#A855F7'];
         const icons  = ['N', 'S', 'M'];  // Nitro, Shield, Magnet
+        const gemNames = ['gemRed', 'gemBlue', 'gemGreen'];
         const clr = colors[type];
 
         ctx.save();
-        ctx.shadowColor = clr;
-        ctx.shadowBlur = 12 + pulse;
-
-        // Outer glow ring
-        ctx.strokeStyle = hexAlpha(clr, 0.6);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x, y, POWERUP_R + pulse * 0.5, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Body
-        ctx.fillStyle = clr;
-        ctx.beginPath();
-        ctx.arc(x, y, POWERUP_R, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.shadowBlur = 0;
-        // Icon
-        ctx.fillStyle = '#FFF';
-        ctx.font = 'bold 14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(icons[type], x, y + 1);
+        const gemImg = spr(gemNames[type]);
+        if (gemImg) {
+            ctx.shadowColor = clr;
+            ctx.shadowBlur = 12 + pulse;
+            const sz = (POWERUP_R + pulse * 0.3) * 2;
+            ctx.drawImage(gemImg, x - sz / 2, y - sz / 2, sz, sz);
+            ctx.shadowBlur = 0;
+            // Letter overlay
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(icons[type], x, y + 1);
+        } else {
+            ctx.shadowColor = clr;
+            ctx.shadowBlur = 12 + pulse;
+            // Outer glow ring
+            ctx.strokeStyle = hexAlpha(clr, 0.6);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, POWERUP_R + pulse * 0.5, 0, Math.PI * 2);
+            ctx.stroke();
+            // Body
+            ctx.fillStyle = clr;
+            ctx.beginPath();
+            ctx.arc(x, y, POWERUP_R, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(icons[type], x, y + 1);
+        }
         ctx.restore();
     }
 
@@ -975,6 +1112,8 @@ window.PixelRacer = (() => {
 
     // ── Main draw ──
     function draw(time) {
+        if (state === ST_LOADING) { drawLoadingScreen(); return; }
+
         ctx.save();
 
         // Screen shake
@@ -1248,6 +1387,26 @@ window.PixelRacer = (() => {
     }
 
     // ── Public API ──
+    function drawLoadingScreen() {
+        ctx.fillStyle = '#0F1117';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 32px "Segoe UI", system-ui, sans-serif';
+        ctx.fillStyle = '#F43F5E';
+        ctx.fillText('PIXEL RACER', GAME_W / 2, GAME_H * 0.35);
+        ctx.font = '14px "Segoe UI", system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        const pct = spritesTotal > 0 ? Math.floor((spritesLoaded / spritesTotal) * 100) : 0;
+        ctx.fillText(`Loading sprites... ${pct}%`, GAME_W / 2, GAME_H * 0.48);
+        const barW = 200, barH = 6;
+        const barX = (GAME_W - barW) / 2, barY = GAME_H * 0.55;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#F43F5E';
+        ctx.fillRect(barX, barY, barW * (spritesLoaded / Math.max(1, spritesTotal)), barH);
+    }
+
     function init(canvasEl, activePlayer, gameOverCallback) {
         canvas = canvasEl;
         ctx = canvas.getContext('2d');
@@ -1274,7 +1433,7 @@ window.PixelRacer = (() => {
         coins = [];
         powerups = [];
         scenery = [];
-        state = ST_TITLE;
+        state = ST_LOADING;
         gameActive = false;
         bestScore = parseInt(localStorage.getItem('ywa_pixelracer_best') || '0', 10);
 
@@ -1288,6 +1447,11 @@ window.PixelRacer = (() => {
         canvas.addEventListener('touchstart', onTouchStart, { passive: true });
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: true });
+
+        // Preload sprites then show title
+        preloadSprites(() => {
+            state = ST_TITLE;
+        });
 
         animFrame = requestAnimationFrame(loop);
     }

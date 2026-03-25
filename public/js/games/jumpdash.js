@@ -16,6 +16,85 @@ window.JumpDash = (() => {
             return this;
         };
     }
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        playerStand:  `${SPRITE_BASE}/players/Blue/alienBlue_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Blue/alienBlue_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Blue/alienBlue_walk2.png`,
+        playerJump:   `${SPRITE_BASE}/players/Blue/alienBlue_jump.png`,
+        playerDuck:   `${SPRITE_BASE}/players/Blue/alienBlue_duck.png`,
+        playerHit:    `${SPRITE_BASE}/players/Blue/alienBlue_hit.png`,
+        grassMid:     `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        grassCenter:  `${SPRITE_BASE}/ground/Grass/grassCenter.png`,
+        sandMid:      `${SPRITE_BASE}/ground/Sand/sandMid.png`,
+        stoneMid:     `${SPRITE_BASE}/ground/Stone/stoneMid.png`,
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        coinBronze:   `${SPRITE_BASE}/items/coinBronze.png`,
+        gemBlue:      `${SPRITE_BASE}/items/gemBlue.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        gemGreen:     `${SPRITE_BASE}/items/gemGreen.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        hudCoin:      `${SPRITE_BASE}/hud/hudCoin.png`,
+        slimeGreen:   `${SPRITE_BASE}/enemies/slimeGreen.png`,
+        slimeGreenMove:`${SPRITE_BASE}/enemies/slimeGreen_move.png`,
+        fly:          `${SPRITE_BASE}/enemies/fly.png`,
+        flyMove:      `${SPRITE_BASE}/enemies/fly_move.png`,
+        bee:          `${SPRITE_BASE}/enemies/bee.png`,
+        beeMove:      `${SPRITE_BASE}/enemies/bee_move.png`,
+        saw:          `${SPRITE_BASE}/enemies/saw.png`,
+        sawMove:      `${SPRITE_BASE}/enemies/saw_move.png`,
+        spikes:       `${SPRITE_BASE}/tiles/spikes.png`,
+        spring:       `${SPRITE_BASE}/tiles/spring.png`,
+        boxCrate:     `${SPRITE_BASE}/tiles/boxCrate.png`,
+        brickBrown:   `${SPRITE_BASE}/tiles/brickBrown.png`,
+        fence:        `${SPRITE_BASE}/tiles/fence.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { sprites[key] = img; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { sprites[key] = null; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(key, x, y, w, h) {
+        const s = sprites[key];
+        if (s) { ctx.drawImage(s, x, y, w, h); return true; }
+        return false;
+    }
+
+    function drawLoadingScreen(loaded, total) {
+        if (!ctx) return;
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#87CEEB'); grad.addColorStop(1, '#D4F1F9');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#FF6B9D';
+        ctx.font = `bold ${gs(28)}px monospace`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('JUMP DASH', canvas.width / 2, canvas.height * 0.35);
+        const barW = gs(200), barH = gs(10);
+        const barX = (canvas.width - barW) / 2, barY = canvas.height * 0.5;
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, gs(5)); ctx.fill();
+        const pct = total > 0 ? loaded / total : 0;
+        ctx.fillStyle = '#FF6B9D';
+        ctx.beginPath(); ctx.roundRect(barX, barY, barW * pct, barH, gs(5)); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.font = `${gs(10)}px monospace`;
+        ctx.fillText(`Loading sprites... ${loaded}/${total}`, canvas.width / 2, canvas.height * 0.6);
+    }
+
     // ── Constants ──
     const GAME_W = 640, GAME_H = 360;
     const GROUND_Y = 300;          // ground surface Y
@@ -45,7 +124,7 @@ window.JumpDash = (() => {
     const MILESTONE_DISPLAY = 2000; // ms
 
     // States
-    const ST_SPLASH = 0, ST_PLAY = 1, ST_DEAD = 2, ST_OVER = 3;
+    const ST_LOADING = -1, ST_SPLASH = 0, ST_PLAY = 1, ST_DEAD = 2, ST_OVER = 3;
 
     // Obstacle types
     const OB_HURDLE = 0, OB_WALL = 1, OB_OVERHEAD = 2, OB_GAP = 3;
@@ -535,6 +614,29 @@ window.JumpDash = (() => {
         // Blink when invulnerable
         if (hitInvulnTimer > 0 && Math.floor(t / INVINCIBLE_BLINK) % 2 === 0) return;
 
+        // Try sprite-based rendering
+        let sprKey = 'playerStand';
+        if (isSliding) sprKey = 'playerDuck';
+        else if (!onGround) sprKey = 'playerJump';
+        else if (Math.sin(runFrame) > 0.3) sprKey = frameCount % 16 < 8 ? 'playerWalk1' : 'playerWalk2';
+
+        const sprW = gs(PLAYER_W * 1.6);
+        const sprH = gs((isSliding ? SLIDE_H : PLAYER_H) * 1.3);
+        if (sprites[sprKey]) {
+            ctx.drawImage(sprites[sprKey], gs(px) - sprW / 2, gs(py) - sprH, sprW, sprH);
+            // Star power glow
+            if (starActive) {
+                ctx.save();
+                ctx.shadowBlur = gs(12); ctx.shadowColor = '#FFD700';
+                ctx.fillStyle = 'rgba(255,215,0,0.15)';
+                ctx.beginPath(); ctx.arc(gs(px), gs(py) - sprH / 2, gs(24), 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+            ctx.save(); ctx.restore();
+            return;
+        }
+
         ctx.save();
         ctx.translate(gs(px), gs(py));
 
@@ -770,22 +872,20 @@ window.JumpDash = (() => {
             ctx.fillStyle = env.obstacles;
             switch (ob.type) {
                 case OB_HURDLE:
-                    // Post + bar
-                    ctx.fillRect(gs(ob.x), gs(ob.y), gs(4), gs(ob.h));
-                    ctx.fillRect(gs(ob.x + ob.w - 4), gs(ob.y), gs(4), gs(ob.h));
-                    ctx.fillStyle = env.accents;
-                    ctx.fillRect(gs(ob.x), gs(ob.y), gs(ob.w), gs(5));
+                    if (!drawSprite('spikes', gs(ob.x), gs(ob.y), gs(ob.w), gs(ob.h))) {
+                        ctx.fillRect(gs(ob.x), gs(ob.y), gs(4), gs(ob.h));
+                        ctx.fillRect(gs(ob.x + ob.w - 4), gs(ob.y), gs(4), gs(ob.h));
+                        ctx.fillStyle = env.accents;
+                        ctx.fillRect(gs(ob.x), gs(ob.y), gs(ob.w), gs(5));
+                    }
                     break;
                 case OB_WALL:
-                    ctx.fillRect(gs(ob.x), gs(ob.y), gs(ob.w), gs(ob.h));
-                    // Brick lines
-                    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-                    ctx.lineWidth = gs(1);
-                    for (let by = ob.y + 8; by < GROUND_Y; by += 8) {
-                        ctx.beginPath();
-                        ctx.moveTo(gs(ob.x), gs(by));
-                        ctx.lineTo(gs(ob.x + ob.w), gs(by));
-                        ctx.stroke();
+                    if (!drawSprite('boxCrate', gs(ob.x), gs(ob.y), gs(ob.w), gs(ob.h))) {
+                        ctx.fillRect(gs(ob.x), gs(ob.y), gs(ob.w), gs(ob.h));
+                        ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = gs(1);
+                        for (let by = ob.y + 8; by < GROUND_Y; by += 8) {
+                            ctx.beginPath(); ctx.moveTo(gs(ob.x), gs(by)); ctx.lineTo(gs(ob.x + ob.w), gs(by)); ctx.stroke();
+                        }
                     }
                     break;
                 case OB_OVERHEAD:
@@ -807,23 +907,17 @@ window.JumpDash = (() => {
                     ctx.globalAlpha = 1;
                     break;
                 case OB_BIRD:
-                    // Animated bird/butterfly
-                    ctx.save();
-                    ctx.translate(gs(ob.x + ob.w / 2), gs(ob.y));
-                    const wingAngle = Math.sin(performance.now() * 0.008 + ob.phase) * 0.6;
-                    ctx.fillStyle = env.accents;
-                    // Body
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, gs(6), gs(4), 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    // Wings
-                    ctx.beginPath();
-                    ctx.ellipse(gs(-6), gs(-2), gs(8), gs(3 + wingAngle * 4), -0.3, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.ellipse(gs(6), gs(-2), gs(8), gs(3 + wingAngle * 4), 0.3, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
+                    { const birdKey = frameCount % 20 < 10 ? 'bee' : 'beeMove';
+                    if (!drawSprite(birdKey, gs(ob.x), gs(ob.y - 10), gs(ob.w + 10), gs(ob.h + 10))) {
+                        ctx.save();
+                        ctx.translate(gs(ob.x + ob.w / 2), gs(ob.y));
+                        const wingAngle = Math.sin(performance.now() * 0.008 + ob.phase) * 0.6;
+                        ctx.fillStyle = env.accents;
+                        ctx.beginPath(); ctx.ellipse(0, 0, gs(6), gs(4), 0, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.ellipse(gs(-6), gs(-2), gs(8), gs(3 + wingAngle * 4), -0.3, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.ellipse(gs(6), gs(-2), gs(8), gs(3 + wingAngle * 4), 0.3, 0, Math.PI * 2); ctx.fill();
+                        ctx.restore();
+                    } }
                     break;
                 case OB_COMBO:
                     // Bottom hurdle
@@ -855,35 +949,22 @@ window.JumpDash = (() => {
 
             switch (c.type) {
                 case CL_COIN:
-                    // Gold circle with sparkle
-                    ctx.fillStyle = '#FFD700';
-                    ctx.shadowBlur = gs(4);
-                    ctx.shadowColor = '#FFD700';
-                    ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
-                    ctx.shadowBlur = 0;
-                    ctx.fillStyle = '#FFF8B0';
-                    ctx.beginPath(); ctx.arc(gs(-2), gs(-2), s * 0.35, 0, Math.PI * 2); ctx.fill();
+                    if (!drawSprite('coinGold', -s, -s, s * 2, s * 2)) {
+                        ctx.fillStyle = '#FFD700';
+                        ctx.shadowBlur = gs(4); ctx.shadowColor = '#FFD700';
+                        ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
                     break;
                 case CL_GEM:
-                    // Diamond shape
-                    ctx.fillStyle = pick(['#E040FB', '#7C4DFF', '#00BCD4', '#FF4081']);
-                    ctx.shadowBlur = gs(5);
-                    ctx.shadowColor = ctx.fillStyle;
-                    ctx.beginPath();
-                    ctx.moveTo(0, -s);
-                    ctx.lineTo(s * 0.7, 0);
-                    ctx.lineTo(0, s);
-                    ctx.lineTo(-s * 0.7, 0);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-                    ctx.beginPath();
-                    ctx.moveTo(0, -s * 0.6);
-                    ctx.lineTo(s * 0.3, 0);
-                    ctx.lineTo(0, -s * 0.2);
-                    ctx.closePath();
-                    ctx.fill();
+                    { const gk = ['gemBlue','gemRed','gemGreen'][Math.floor(c.sparkle) % 3];
+                    if (!drawSprite(gk, -s, -s, s * 2, s * 2)) {
+                        ctx.fillStyle = pick(['#E040FB', '#7C4DFF', '#00BCD4', '#FF4081']);
+                        ctx.shadowBlur = gs(5); ctx.shadowColor = ctx.fillStyle;
+                        ctx.beginPath();
+                        ctx.moveTo(0, -s); ctx.lineTo(s * 0.7, 0); ctx.lineTo(0, s); ctx.lineTo(-s * 0.7, 0);
+                        ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+                    } }
                     break;
                 case CL_HEART:
                     ctx.fillStyle = '#F44336';
@@ -893,10 +974,11 @@ window.JumpDash = (() => {
                     ctx.shadowBlur = 0;
                     break;
                 case CL_STAR:
-                    ctx.shadowBlur = gs(6);
-                    ctx.shadowColor = '#FFD700';
-                    drawStar4(0, 0, s * 1.2, s * 0.5, '#FFD700');
-                    ctx.shadowBlur = 0;
+                    if (!drawSprite('star', -s * 1.2, -s * 1.2, s * 2.4, s * 2.4)) {
+                        ctx.shadowBlur = gs(6); ctx.shadowColor = '#FFD700';
+                        drawStar4(0, 0, s * 1.2, s * 0.5, '#FFD700');
+                        ctx.shadowBlur = 0;
+                    }
                     break;
                 case CL_SHOE:
                     ctx.fillStyle = '#2196F3';
@@ -1438,6 +1520,11 @@ window.JumpDash = (() => {
     // ── Game loop ──
     function loop(ts) {
         if (!gameActive) return;
+        if (state === ST_LOADING) {
+            drawLoadingScreen(spritesLoaded, spritesTotal);
+            animFrame = requestAnimationFrame(loop);
+            return;
+        }
         if (!lastTime) lastTime = ts;
         const dt = Math.min(ts - lastTime, 50); // cap delta
         lastTime = ts;
@@ -1607,7 +1694,7 @@ window.JumpDash = (() => {
         gameOverCB = gameOverCallback || null;
         gameActive = true;
 
-        state = ST_SPLASH;
+        state = ST_LOADING;
         bestDistance = parseInt(localStorage.getItem('ywa_jumpdash_best') || '0', 10);
         resetGame();
         lastTime = null;
@@ -1615,6 +1702,11 @@ window.JumpDash = (() => {
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
         window.addEventListener('resize', fitCanvas);
+
+        loadSprites(
+            (loaded, total) => { drawLoadingScreen(loaded, total); },
+            () => { state = ST_SPLASH; }
+        );
 
         if (!inputBound) {
             document.addEventListener('keydown', handleKeyDown);

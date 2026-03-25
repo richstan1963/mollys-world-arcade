@@ -31,8 +31,8 @@ window.RubeGoldberg = (() => {
     const HUD_H = 40;
 
     // ── Isometric / diorama depth constants ─────────────────
-    const DEPTH_X = 4, DEPTH_Y = 6;   // shadow offset (pixels before scale)
-    const DEPTH_ALPHA = 0.35;          // shadow layer opacity
+    const DEPTH_X = 10, DEPTH_Y = 12;  // shadow offset — LARGE for obvious 3D
+    const DEPTH_ALPHA = 0.55;           // shadow layer opacity — punchy
 
     // ── Piece types ──────────────────────────────────────────
     const PIECE_TYPES = [
@@ -211,15 +211,24 @@ window.RubeGoldberg = (() => {
     function drawDepthShadow(x, y, w, h) {
         ctx.save();
         ctx.globalAlpha = DEPTH_ALPHA;
-        ctx.fillStyle = 'rgba(20,12,6,1)';
+        ctx.fillStyle = 'rgba(10,5,2,1)';
+        // Soft blurred shadow offset behind piece
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = DEPTH_X * 0.5;
+        ctx.shadowOffsetY = DEPTH_Y * 0.5;
         ctx.fillRect(x + DEPTH_X, y + DEPTH_Y, w, h);
         ctx.restore();
     }
 
-    // Draw a side-face parallelogram extending from the bottom edge of a rect
+    // Draw THICK side-face parallelogram (L-shaped extrusion) for obvious 3D
     function drawSideFace(x, y, w, h) {
         ctx.save();
-        ctx.fillStyle = 'rgba(60,40,20,0.5)';
+        // BOTTOM face — thick parallelogram
+        const bottomGrad = ctx.createLinearGradient(x, y + h, x, y + h + DEPTH_Y);
+        bottomGrad.addColorStop(0, 'rgba(80,55,30,0.85)');
+        bottomGrad.addColorStop(1, 'rgba(30,18,8,0.9)');
+        ctx.fillStyle = bottomGrad;
         ctx.beginPath();
         ctx.moveTo(x, y + h);
         ctx.lineTo(x + DEPTH_X, y + h + DEPTH_Y);
@@ -227,8 +236,19 @@ window.RubeGoldberg = (() => {
         ctx.lineTo(x + w, y + h);
         ctx.closePath();
         ctx.fill();
-        // Right-edge face for extra 3D
-        ctx.fillStyle = 'rgba(40,25,10,0.35)';
+        // Subtle line at bottom face top edge
+        ctx.strokeStyle = 'rgba(120,85,45,0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, y + h);
+        ctx.lineTo(x + w, y + h);
+        ctx.stroke();
+
+        // RIGHT face — thick parallelogram
+        const rightGrad = ctx.createLinearGradient(x + w, y, x + w + DEPTH_X, y);
+        rightGrad.addColorStop(0, 'rgba(65,42,22,0.8)');
+        rightGrad.addColorStop(1, 'rgba(20,10,4,0.85)');
+        ctx.fillStyle = rightGrad;
         ctx.beginPath();
         ctx.moveTo(x + w, y);
         ctx.lineTo(x + w + DEPTH_X, y + DEPTH_Y);
@@ -236,31 +256,77 @@ window.RubeGoldberg = (() => {
         ctx.lineTo(x + w, y + h);
         ctx.closePath();
         ctx.fill();
+        // Subtle line at right face left edge
+        ctx.strokeStyle = 'rgba(120,85,45,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + w, y);
+        ctx.lineTo(x + w, y + h);
+        ctx.stroke();
+
+        // Corner join highlight (where bottom and right meet)
+        ctx.fillStyle = 'rgba(100,70,35,0.5)';
+        ctx.beginPath();
+        ctx.moveTo(x + w, y + h);
+        ctx.lineTo(x + w + DEPTH_X, y + h + DEPTH_Y);
+        ctx.lineTo(x + w + DEPTH_X * 0.7, y + h + DEPTH_Y * 0.7);
+        ctx.closePath();
+        ctx.fill();
         ctx.restore();
     }
 
-    // Ambient-occlusion gradient at the base of a standing piece
+    // Ambient-occlusion gradient at the base of a standing piece — THICK
     function drawAmbientOcclusion(x, y, w, h) {
         ctx.save();
-        const aoH = Math.min(10, h * 0.2);
-        const aoGrad = ctx.createLinearGradient(x, y + h - aoH, x, y + h + 2);
+        const aoH = Math.min(22, h * 0.4);
+        const aoGrad = ctx.createLinearGradient(x, y + h - aoH, x, y + h + 6);
         aoGrad.addColorStop(0, 'rgba(0,0,0,0)');
-        aoGrad.addColorStop(1, 'rgba(0,0,0,0.25)');
+        aoGrad.addColorStop(0.5, 'rgba(0,0,0,0.15)');
+        aoGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
         ctx.fillStyle = aoGrad;
-        ctx.fillRect(x - 2, y + h - aoH, w + 4, aoH + 2);
+        ctx.fillRect(x - 6, y + h - aoH, w + 12 + DEPTH_X, aoH + 6);
+        // Also add an elliptical contact shadow directly under
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(x + w / 2 + DEPTH_X * 0.3, y + h + 2, w * 0.55, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 
-    // Top-left highlight strip on a rect (light direction cue)
+    // Top-left highlight + bottom-right shadow on EVERY piece (lighting cue)
     function drawHighlightEdge(x, y, w, h) {
         ctx.save();
-        ctx.globalAlpha = 0.18;
-        ctx.strokeStyle = 'rgba(255,240,200,1)';
-        ctx.lineWidth = 1.5;
+        // TOP-LEFT highlight — bright, 3px wide
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = 'rgba(255,245,210,1)';
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(x, y + h);
         ctx.lineTo(x, y);
         ctx.lineTo(x + w, y);
+        ctx.stroke();
+        // Inner glow along top edge
+        const topGlow = ctx.createLinearGradient(x, y, x, y + 8);
+        topGlow.addColorStop(0, 'rgba(255,240,200,0.25)');
+        topGlow.addColorStop(1, 'rgba(255,240,200,0)');
+        ctx.fillStyle = topGlow;
+        ctx.globalAlpha = 1;
+        ctx.fillRect(x, y, w, 8);
+        // Inner glow along left edge
+        const leftGlow = ctx.createLinearGradient(x, y, x + 8, y);
+        leftGlow.addColorStop(0, 'rgba(255,240,200,0.2)');
+        leftGlow.addColorStop(1, 'rgba(255,240,200,0)');
+        ctx.fillStyle = leftGlow;
+        ctx.fillRect(x, y, 8, h);
+
+        // BOTTOM-RIGHT shadow edge — dark, 2px
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = 'rgba(10,5,0,1)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + w, y);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x, y + h);
         ctx.stroke();
         ctx.restore();
     }
@@ -778,19 +844,20 @@ window.RubeGoldberg = (() => {
     // ── Drawing: Background ──────────────────────────────────
     let bgPattern = null;
     function drawBackground() {
-        // Warm workshop gradient background — darkened top for angled-down look
+        // Warm workshop gradient — VERY dark top, lighter bottom = looking DOWN at table
         const grad = ctx.createLinearGradient(0, 0, 0, GAME_H);
-        grad.addColorStop(0, '#2e2218');   // darker top (looking down at diorama)
-        grad.addColorStop(0.15, '#3d2e20');
-        grad.addColorStop(0.4, '#5c442f');
-        grad.addColorStop(0.7, '#6b5138');
-        grad.addColorStop(1, '#3d2e20');
+        grad.addColorStop(0, '#120a04');    // near-black top (far away)
+        grad.addColorStop(0.1, '#1a0f07');
+        grad.addColorStop(0.25, '#2a1a0e');
+        grad.addColorStop(0.5, '#4a3320');
+        grad.addColorStop(0.75, '#6b5138');
+        grad.addColorStop(1, '#8a6b48');    // warm bright bottom (close to viewer)
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
         // Tiled background image if loaded
         if (sprites.bgDesert) {
-            ctx.globalAlpha = 0.15;
+            ctx.globalAlpha = 0.12;
             const bgW = sprites.bgDesert.width;
             const bgH = sprites.bgDesert.height;
             const scaleX = GAME_W / bgW;
@@ -800,86 +867,162 @@ window.RubeGoldberg = (() => {
             ctx.globalAlpha = 1;
         }
 
-        // ── Top-edge darkening overlay (diorama depth cue) ──
-        const topDark = ctx.createLinearGradient(0, HUD_H, 0, HUD_H + 100);
-        topDark.addColorStop(0, 'rgba(0,0,0,0.18)');
+        // ── Heavy top-edge darkening (diorama depth — far end of table) ──
+        const topDark = ctx.createLinearGradient(0, HUD_H, 0, HUD_H + 180);
+        topDark.addColorStop(0, 'rgba(0,0,0,0.45)');
+        topDark.addColorStop(0.5, 'rgba(0,0,0,0.15)');
         topDark.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = topDark;
-        ctx.fillRect(0, HUD_H, GAME_W, 100);
+        ctx.fillRect(0, HUD_H, GAME_W, 180);
 
-        // Workshop grid (subtle, warm tones)
-        ctx.strokeStyle = 'rgba(200, 170, 120, 0.06)';
+        // ── Perspective grid — tiles CONVERGE toward vanishing point at top ──
+        // This is the key "tilted table" illusion
+        const vanishX = GAME_W / 2;    // vanishing point X
+        const vanishY = HUD_H - 40;    // vanishing point above screen
+        const gridRows = 14;
+        const gridCols = 16;
+        const offX = cameraX % (GAME_W / gridCols);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(200, 170, 120, 0.07)';
         ctx.lineWidth = 0.5;
-        const gridSize = 30;
-        const offX = cameraX % gridSize;
-        for (let x = -offX; x < GAME_W; x += gridSize) {
-            ctx.beginPath(); ctx.moveTo(x, HUD_H); ctx.lineTo(x, GAME_H); ctx.stroke();
+
+        // Horizontal lines — closer together at top, wider apart at bottom
+        for (let row = 0; row <= gridRows; row++) {
+            const t = row / gridRows;
+            // Perspective: rows crowd together near top
+            const perspT = t * t; // quadratic for perspective effect
+            const rowY = HUD_H + perspT * (GAME_H - HUD_H);
+            ctx.beginPath();
+            ctx.moveTo(0, rowY);
+            ctx.lineTo(GAME_W, rowY);
+            ctx.stroke();
         }
-        for (let y = HUD_H; y < GAME_H; y += gridSize) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(GAME_W, y); ctx.stroke();
+
+        // Vertical lines — converge toward vanishing point
+        for (let col = 0; col <= gridCols; col++) {
+            const bottomX = (col / gridCols) * GAME_W - offX;
+            // Lines converge toward vanishX at the top
+            const topX = vanishX + (bottomX - vanishX) * 0.35;
+            ctx.beginPath();
+            ctx.moveTo(topX, HUD_H);
+            ctx.lineTo(bottomX, GAME_H);
+            ctx.stroke();
         }
+        ctx.restore();
+
+        // ── Bottom-edge brightening (close to viewer, warm light spill) ──
+        const botLight = ctx.createLinearGradient(0, GAME_H - 60, 0, GAME_H);
+        botLight.addColorStop(0, 'rgba(180,140,80,0)');
+        botLight.addColorStop(1, 'rgba(180,140,80,0.08)');
+        ctx.fillStyle = botLight;
+        ctx.fillRect(0, GAME_H - 60, GAME_W, 60);
+
+        // ── Vignette edges (tilt-shift style) ──
+        // Left edge shadow
+        const leftVig = ctx.createLinearGradient(0, 0, 80, 0);
+        leftVig.addColorStop(0, 'rgba(0,0,0,0.25)');
+        leftVig.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = leftVig;
+        ctx.fillRect(0, HUD_H, 80, GAME_H - HUD_H);
+        // Right edge shadow
+        const rightVig = ctx.createLinearGradient(GAME_W, 0, GAME_W - 80, 0);
+        rightVig.addColorStop(0, 'rgba(0,0,0,0.25)');
+        rightVig.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = rightVig;
+        ctx.fillRect(GAME_W - 80, HUD_H, 80, GAME_H - HUD_H);
 
         // Ground strip with dirt/grass sprites
         drawGroundStrip();
     }
 
     function drawGroundStrip() {
-        const groundY = GAME_H - 30;
+        const groundY = GAME_H - 40;
 
-        // ── Perspective tile grid (workbench surface) ──
-        // Tiles get slightly smaller toward the top (fake perspective)
-        const tileBase = 40;    // tile size at bottom
-        const tileRows = 4;
+        // ── Perspective tile grid (workbench surface) — DRAMATIC perspective ──
+        const tileBase = 44;
+        const tileRows = 6;
         const offX = cameraX % tileBase;
 
         for (let row = 0; row < tileRows; row++) {
             const t = row / tileRows;                          // 0 = bottom, 1 = top
-            const tileW = tileBase * (1 - t * 0.12);          // shrink toward top
-            const tileH = (30 / tileRows) * (1 - t * 0.08);
-            const rowY = groundY + (30 / tileRows) * (tileRows - 1 - row);
+            const tileW = tileBase * (1 - t * 0.3);           // STRONG shrink toward top
+            const tileH = (40 / tileRows) * (1 - t * 0.25);
+            const rowY = groundY + (40 / tileRows) * (tileRows - 1 - row);
+            // Brightness: front rows lighter, back rows darker
+            const brightness = 1 - t * 0.4;
 
             for (let x = -offX - tileW; x < GAME_W + tileW; x += tileW) {
                 const col = Math.floor((x + offX) / tileW);
                 const isLight = (row + col) % 2 === 0;
-                ctx.fillStyle = isLight ? 'rgba(110,78,50,0.6)' : 'rgba(90,62,38,0.6)';
+                const r = Math.round((isLight ? 120 : 95) * brightness);
+                const g = Math.round((isLight ? 85 : 68) * brightness);
+                const b = Math.round((isLight ? 55 : 42) * brightness);
+                ctx.fillStyle = `rgba(${r},${g},${b},0.75)`;
                 ctx.fillRect(x, rowY, tileW - 1, tileH - 0.5);
             }
         }
 
         // Dirt base sprites on top of tiles
         if (sprites.dirt) {
-            const dirtW = 70, dirtH = 30;
-            ctx.globalAlpha = 0.4;
+            const dirtW = 70, dirtH = 35;
+            ctx.globalAlpha = 0.35;
             for (let x = -(cameraX % dirtW); x < GAME_W + dirtW; x += dirtW) {
                 ctx.drawImage(sprites.dirt, x, groundY, dirtW, dirtH);
             }
             ctx.globalAlpha = 1;
         }
 
-        // Front edge of workbench (isometric thickness)
-        ctx.fillStyle = 'rgba(70,48,28,0.7)';
-        ctx.fillRect(0, GAME_H - 4, GAME_W, 4);
-        ctx.fillStyle = 'rgba(50,32,16,0.5)';
-        ctx.fillRect(0, GAME_H - 8, GAME_W, 4);
+        // Front edge of workbench — THICK isometric thickness (like viewing table edge)
+        const edgeH = 14;
+        const edgeGrad = ctx.createLinearGradient(0, GAME_H - edgeH, 0, GAME_H);
+        edgeGrad.addColorStop(0, 'rgba(90,62,35,0.9)');
+        edgeGrad.addColorStop(0.3, 'rgba(70,48,28,0.85)');
+        edgeGrad.addColorStop(1, 'rgba(35,22,10,0.9)');
+        ctx.fillStyle = edgeGrad;
+        ctx.fillRect(0, GAME_H - edgeH, GAME_W, edgeH);
+        // Bright top edge of table front
+        ctx.strokeStyle = 'rgba(160,120,70,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, GAME_H - edgeH);
+        ctx.lineTo(GAME_W, GAME_H - edgeH);
+        ctx.stroke();
 
-        // Occasional grass tufts
+        // Occasional grass tufts with drop shadow
         if (sprites.grass) {
             for (let x = -(cameraX % 120); x < GAME_W + 120; x += 120) {
-                ctx.drawImage(sprites.grass, x + 20, groundY - 12, 40, 20);
-            }
-        }
-        // Occasional rocks with shadow
-        if (sprites.rock) {
-            for (let x = -(cameraX % 300) + 50; x < GAME_W + 300; x += 300) {
-                // Rock shadow
+                // Grass shadow
                 ctx.save();
-                ctx.globalAlpha = 0.25;
-                ctx.fillStyle = 'rgba(15,8,3,1)';
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = 'rgba(0,0,0,1)';
                 ctx.beginPath();
-                ctx.ellipse(x + 12 + DEPTH_X, groundY - 2 + DEPTH_Y, 14, 5, 0, 0, Math.PI * 2);
+                ctx.ellipse(x + 40 + DEPTH_X * 0.5, groundY - 2 + DEPTH_Y * 0.5, 20, 4, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
-                ctx.drawImage(sprites.rock, x, groundY - 8, 24, 18);
+                ctx.drawImage(sprites.grass, x + 20, groundY - 14, 40, 22);
+            }
+        }
+        // Occasional rocks with LARGE drop shadow
+        if (sprites.rock) {
+            for (let x = -(cameraX % 300) + 50; x < GAME_W + 300; x += 300) {
+                ctx.save();
+                ctx.globalAlpha = 0.4;
+                ctx.fillStyle = 'rgba(10,5,2,1)';
+                ctx.beginPath();
+                ctx.ellipse(x + 12 + DEPTH_X, groundY - 2 + DEPTH_Y, 18, 7, 0.1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                ctx.drawImage(sprites.rock, x, groundY - 10, 26, 20);
+                // Highlight on top-left of rock
+                ctx.save();
+                ctx.globalAlpha = 0.2;
+                ctx.strokeStyle = 'rgba(255,240,200,1)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(x + 6, groundY - 6, 8, Math.PI, Math.PI * 1.5);
+                ctx.stroke();
+                ctx.restore();
             }
         }
     }
@@ -912,26 +1055,55 @@ window.RubeGoldberg = (() => {
 
     function drawTrackSegment(seg) {
         const endY = seg.endY || seg.y;
-        const thickness = 10;
+        const thickness = 14;  // thicker track planks
 
-        // ── Isometric side face for track surface ──
-        // Draw a parallelogram under the track to give depth
+        // ── THICK isometric underside for track — clearly visible depth ──
+        // Right side face of track (dark)
         ctx.save();
-        ctx.fillStyle = 'rgba(60,40,20,0.45)';
+        const rightFaceGrad = ctx.createLinearGradient(seg.x + seg.w, seg.y, seg.x + seg.w + DEPTH_X, seg.y);
+        rightFaceGrad.addColorStop(0, 'rgba(65,42,22,0.7)');
+        rightFaceGrad.addColorStop(1, 'rgba(20,10,4,0.8)');
+        ctx.fillStyle = rightFaceGrad;
         ctx.beginPath();
-        ctx.moveTo(seg.x, seg.y);
-        ctx.lineTo(seg.x + seg.w, endY);
-        ctx.lineTo(seg.x + seg.w + DEPTH_X, endY + DEPTH_Y);
-        ctx.lineTo(seg.x + DEPTH_X, seg.y + DEPTH_Y);
+        ctx.moveTo(seg.x + seg.w, endY - 1);
+        ctx.lineTo(seg.x + seg.w + DEPTH_X, endY + DEPTH_Y - 1);
+        ctx.lineTo(seg.x + seg.w + DEPTH_X, endY + thickness + DEPTH_Y);
+        ctx.lineTo(seg.x + seg.w, endY + thickness);
         ctx.closePath();
         ctx.fill();
-        // Bottom face
-        ctx.fillStyle = 'rgba(40,25,10,0.35)';
+        ctx.restore();
+
+        // Bottom face of track (visible underside — dark wood)
+        ctx.save();
+        const botFaceGrad = ctx.createLinearGradient(seg.x, seg.y + thickness, seg.x, seg.y + thickness + DEPTH_Y);
+        botFaceGrad.addColorStop(0, 'rgba(80,55,30,0.75)');
+        botFaceGrad.addColorStop(1, 'rgba(30,18,8,0.85)');
+        ctx.fillStyle = botFaceGrad;
         ctx.beginPath();
         ctx.moveTo(seg.x, seg.y + thickness);
         ctx.lineTo(seg.x + DEPTH_X, seg.y + thickness + DEPTH_Y);
         ctx.lineTo(seg.x + seg.w + DEPTH_X, endY + thickness + DEPTH_Y);
         ctx.lineTo(seg.x + seg.w, endY + thickness);
+        ctx.closePath();
+        ctx.fill();
+        // Subtle line at top of bottom face
+        ctx.strokeStyle = 'rgba(100,70,40,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(seg.x, seg.y + thickness);
+        ctx.lineTo(seg.x + seg.w, endY + thickness);
+        ctx.stroke();
+        ctx.restore();
+
+        // Drop shadow under the entire track segment
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = 'rgba(0,0,0,1)';
+        ctx.beginPath();
+        ctx.moveTo(seg.x + DEPTH_X + 2, seg.y + thickness + DEPTH_Y + 4);
+        ctx.lineTo(seg.x + seg.w + DEPTH_X + 2, endY + thickness + DEPTH_Y + 4);
+        ctx.lineTo(seg.x + seg.w + DEPTH_X + 2, endY + thickness + DEPTH_Y + 8);
+        ctx.lineTo(seg.x + DEPTH_X + 2, seg.y + thickness + DEPTH_Y + 8);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
@@ -959,42 +1131,72 @@ window.RubeGoldberg = (() => {
                 ctx.restore();
             }
 
-            // ── Top-left highlight on track surface (light direction) ──
+            // ── Top-left highlight on track surface ──
             ctx.save();
-            ctx.globalAlpha = 0.12;
-            ctx.strokeStyle = 'rgba(255,240,200,1)';
-            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.3;
+            ctx.strokeStyle = 'rgba(255,245,210,1)';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(seg.x, seg.y - 1);
             ctx.lineTo(seg.x + seg.w, endY - 1);
             ctx.stroke();
             ctx.restore();
+            // ── Bottom-right shadow on track surface ──
+            ctx.save();
+            ctx.globalAlpha = 0.25;
+            ctx.strokeStyle = 'rgba(10,5,0,1)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(seg.x, seg.y + thickness);
+            ctx.lineTo(seg.x + seg.w, endY + thickness);
+            ctx.stroke();
+            ctx.restore();
         } else {
             // Fallback: simple line
             ctx.strokeStyle = '#8B7355';
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 8;
             ctx.beginPath();
             ctx.moveTo(seg.x, seg.y);
             ctx.lineTo(seg.x + seg.w, endY);
             ctx.stroke();
         }
 
-        // Support posts under track
+        // Support posts under track — with thick depth faces
         if (sprites.woodPost) {
             const postSpacing = 80;
+            const postW = 10;
             for (let px = seg.x + 20; px < seg.x + seg.w - 10; px += postSpacing) {
                 const t = (px - seg.x) / seg.w;
-                const py = seg.y + t * (endY - seg.y);
-                const postH = Math.min(60, GAME_H - py - 30);
+                const py = seg.y + t * (endY - seg.y) + thickness;
+                const postH = Math.min(60, GAME_H - py - 40);
                 if (postH > 10) {
+                    // Post right side face
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(50,30,15,0.6)';
+                    ctx.beginPath();
+                    ctx.moveTo(px + postW / 2, py);
+                    ctx.lineTo(px + postW / 2 + DEPTH_X * 0.6, py + DEPTH_Y * 0.6);
+                    ctx.lineTo(px + postW / 2 + DEPTH_X * 0.6, py + postH + DEPTH_Y * 0.6);
+                    ctx.lineTo(px + postW / 2, py + postH);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
                     // Post shadow
+                    ctx.globalAlpha = 0.35;
+                    ctx.fillStyle = 'rgba(10,5,2,1)';
+                    ctx.fillRect(px - postW / 2 + DEPTH_X, py + DEPTH_Y, postW, postH);
+                    ctx.globalAlpha = 0.6;
+                    ctx.drawImage(sprites.woodPost, px - postW / 2, py, postW, postH);
+                    // Post highlight (left edge)
                     ctx.globalAlpha = 0.2;
-                    ctx.fillStyle = 'rgba(20,12,6,1)';
-                    ctx.fillRect(px - 4 + DEPTH_X, py + DEPTH_Y, 8, postH);
-                    ctx.globalAlpha = 0.5;
-                    ctx.drawImage(sprites.woodPost, px - 4, py, 8, postH);
+                    ctx.strokeStyle = 'rgba(255,240,200,1)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(px - postW / 2, py);
+                    ctx.lineTo(px - postW / 2, py + postH);
+                    ctx.stroke();
                     // Ambient occlusion at post base
-                    drawAmbientOcclusion(px - 6, py, 12, postH);
+                    drawAmbientOcclusion(px - postW / 2 - 2, py, postW + 4, postH);
                     ctx.globalAlpha = 1;
                 }
             }
@@ -1037,25 +1239,40 @@ window.RubeGoldberg = (() => {
         const fx = lastSeg.x + lastSeg.w - 20;
         const fy = (lastSeg.endY || lastSeg.y) - 50;
 
-        // ── Isometric flag shadow ──
+        // ── LARGE isometric flag shadow ──
         ctx.save();
-        ctx.globalAlpha = 0.25;
-        ctx.fillStyle = 'rgba(15,8,3,1)';
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = 'rgba(5,2,0,1)';
         ctx.beginPath();
-        ctx.ellipse(fx + 15 + DEPTH_X, fy + 52 + DEPTH_Y, 18, 6, 0.1, 0, Math.PI * 2);
+        ctx.ellipse(fx + 15 + DEPTH_X * 1.5, fy + 55 + DEPTH_Y * 1.2, 28, 10, 0.1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = 'rgba(10,5,2,1)';
+        ctx.beginPath();
+        ctx.ellipse(fx + 15 + DEPTH_X, fy + 52 + DEPTH_Y, 20, 7, 0.1, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
         if (sprites.flagGreen) {
             ctx.drawImage(sprites.flagGreen, fx - 5, fy - 5, 40, 55);
-            // Highlight edge on flag pole (top-left light)
+            // Highlight edge on flag pole (top-left light) — strong
             ctx.save();
-            ctx.globalAlpha = 0.15;
-            ctx.strokeStyle = 'rgba(255,240,200,1)';
-            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.35;
+            ctx.strokeStyle = 'rgba(255,245,210,1)';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(fx - 3, fy + 50);
             ctx.lineTo(fx - 3, fy - 3);
+            ctx.stroke();
+            ctx.restore();
+            // Flag pole right-side dark edge
+            ctx.save();
+            ctx.globalAlpha = 0.25;
+            ctx.strokeStyle = 'rgba(10,5,0,1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(fx + 1, fy + 50);
+            ctx.lineTo(fx + 1, fy - 3);
             ctx.stroke();
             ctx.restore();
         } else {
@@ -1570,20 +1787,33 @@ window.RubeGoldberg = (() => {
         for (const b of balls) {
             if (!b.alive) continue;
 
-            // ── Isometric drop shadow (ellipse offset by DEPTH) ──
-            // Shadow scales: larger when ball is "higher" (lower Y = higher up)
+            // ── LARGE isometric drop shadow — clearly separated from ball ──
             const trackYAtBall = getTrackYAt(b.x);
-            const heightAboveTrack = trackYAtBall !== null ? Math.max(0, trackYAtBall - b.y) : 30;
-            const shadowScale = 1 + heightAboveTrack * 0.015;
-            const shadowAlpha = Math.max(0.1, 0.35 - heightAboveTrack * 0.003);
+            const heightAboveTrack = trackYAtBall !== null ? Math.max(0, trackYAtBall - b.y) : 40;
+            const shadowScale = 1.3 + heightAboveTrack * 0.025;
+            const shadowSep = Math.max(6, heightAboveTrack * 0.4);  // separation grows with height
+            const shadowAlpha = Math.max(0.15, 0.55 - heightAboveTrack * 0.004);
             ctx.save();
-            ctx.globalAlpha = shadowAlpha;
-            ctx.fillStyle = 'rgba(15,8,3,1)';
+            // Outer soft shadow (large, blurry)
+            ctx.globalAlpha = shadowAlpha * 0.5;
+            ctx.fillStyle = 'rgba(5,2,0,1)';
             ctx.beginPath();
             ctx.ellipse(
-                b.x + DEPTH_X * 1.5,
-                (trackYAtBall !== null ? trackYAtBall : b.y) + DEPTH_Y,
-                BALL_R * shadowScale * 1.2,
+                b.x + DEPTH_X * 1.2,
+                (trackYAtBall !== null ? trackYAtBall : b.y + shadowSep) + DEPTH_Y + 2,
+                BALL_R * shadowScale * 1.8,
+                BALL_R * shadowScale * 0.7,
+                0.15, 0, Math.PI * 2
+            );
+            ctx.fill();
+            // Inner hard shadow (darker, sharper)
+            ctx.globalAlpha = shadowAlpha;
+            ctx.fillStyle = 'rgba(10,5,2,1)';
+            ctx.beginPath();
+            ctx.ellipse(
+                b.x + DEPTH_X,
+                (trackYAtBall !== null ? trackYAtBall : b.y + shadowSep) + DEPTH_Y,
+                BALL_R * shadowScale * 1.3,
                 BALL_R * shadowScale * 0.5,
                 0.15, 0, Math.PI * 2
             );
@@ -1706,6 +1936,29 @@ window.RubeGoldberg = (() => {
             ctx.lineWidth = 1;
             ctx.strokeRect(qx, qy, qw, qh);
 
+            // Mini 3D extrusion on queue pieces
+            const miniDX = 4, miniDY = 5;
+            ctx.save();
+            ctx.fillStyle = 'rgba(40,25,12,0.5)';
+            // Bottom face
+            ctx.beginPath();
+            ctx.moveTo(qx + 2, qy + qh - 2);
+            ctx.lineTo(qx + 2 + miniDX, qy + qh - 2 + miniDY);
+            ctx.lineTo(qx + qw - 2 + miniDX, qy + qh - 2 + miniDY);
+            ctx.lineTo(qx + qw - 2, qy + qh - 2);
+            ctx.closePath();
+            ctx.fill();
+            // Right face
+            ctx.fillStyle = 'rgba(30,16,6,0.45)';
+            ctx.beginPath();
+            ctx.moveTo(qx + qw - 2, qy + 2);
+            ctx.lineTo(qx + qw - 2 + miniDX, qy + 2 + miniDY);
+            ctx.lineTo(qx + qw - 2 + miniDX, qy + qh - 2 + miniDY);
+            ctx.lineTo(qx + qw - 2, qy + qh - 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
             drawPieceGraphic(queue[i].type, qx + 2, qy + 2, qw - 4, qh - 4, 0);
 
             // Label
@@ -1718,9 +1971,21 @@ window.RubeGoldberg = (() => {
 
     function drawDragPiece() {
         if (!dragPiece) return;
-        ctx.globalAlpha = 0.8;
-        drawPieceGraphic(dragPiece.type, dragX - PIECE_W / 2, dragY - PIECE_H / 2, PIECE_W, PIECE_H, 0);
+        const dx = dragX - PIECE_W / 2, dy = dragY - PIECE_H / 2;
+        // Lifted shadow (large, offset, separated — piece is "held up")
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = 'rgba(0,0,0,1)';
+        ctx.beginPath();
+        ctx.ellipse(dragX + DEPTH_X * 2, dragY + PIECE_H / 2 + DEPTH_Y * 2, PIECE_W * 0.55, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Side faces (piece is elevated)
+        drawSideFace(dx, dy, PIECE_W, PIECE_H);
+        ctx.globalAlpha = 0.85;
+        drawPieceGraphic(dragPiece.type, dx, dy, PIECE_W, PIECE_H, 0);
         ctx.globalAlpha = 1;
+        drawHighlightEdge(dx, dy, PIECE_W, PIECE_H);
     }
 
     // ── Drawing: HUD ─────────────────────────────────────────

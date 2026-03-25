@@ -1,4 +1,4 @@
-/* YWA Defender — Horizontal scrolling shooter with humanoid rescue */
+/* YWA Defender — Horizontal scrolling shooter with Kenney CC0 space sprites */
 window.Defender = (() => {
 
     // -- roundRect polyfill (Safari <16, older browsers) --
@@ -16,6 +16,62 @@ window.Defender = (() => {
             return this;
         };
     }
+
+    // ── Sprite Atlas ──
+    const SPRITE_BASE = '/img/game-assets/kenney-space';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+    let spriteExplosions = [];
+
+    const SPRITE_MANIFEST = {
+        playerBlue:   `${SPRITE_BASE}/ships/playerShip2_blue.png`,
+        playerGreen:  `${SPRITE_BASE}/ships/playerShip2_green.png`,
+        playerOrange: `${SPRITE_BASE}/ships/playerShip2_orange.png`,
+        playerRed:    `${SPRITE_BASE}/ships/playerShip2_red.png`,
+        // Enemies by type
+        lander:       `${SPRITE_BASE}/enemies/enemyGreen1.png`,
+        mutant:       `${SPRITE_BASE}/enemies/enemyRed3.png`,
+        bomber:       `${SPRITE_BASE}/enemies/enemyBlue5.png`,
+        pod:          `${SPRITE_BASE}/enemies/enemyGreen4.png`,
+        swarmer:      `${SPRITE_BASE}/enemies/enemyBlack3.png`,
+        baiter:       `${SPRITE_BASE}/enemies/enemyRed5.png`,
+        // Lasers
+        laserBlue:    `${SPRITE_BASE}/lasers/laserBlue01.png`,
+        laserGreen:   `${SPRITE_BASE}/lasers/laserGreen11.png`,
+    };
+
+    const EXPLOSION_FRAME_IDS = [];
+    const EXPLOSION_FRAME_COUNT = 8;
+    for (let i = 0; i < 20; i += Math.floor(20 / EXPLOSION_FRAME_COUNT)) {
+        const id = `fire${String(i).padStart(2, '0')}`;
+        SPRITE_MANIFEST[id] = `${SPRITE_BASE}/effects/fire${String(i).padStart(2, '0')}.png`;
+        EXPLOSION_FRAME_IDS.push(id);
+        if (EXPLOSION_FRAME_IDS.length >= EXPLOSION_FRAME_COUNT) break;
+    }
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { sprites[key] = img; done++; spritesLoaded = done; if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { sprites[key] = null; done++; spritesLoaded = done; if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function defenderPlayerKey(color) {
+        const c = (color || '').toLowerCase();
+        if (c.includes('22c5') || c.includes('34d3') || c.includes('10b9')) return 'playerGreen';
+        if (c.includes('f43f') || c.includes('ef44') || c.includes('e11d')) return 'playerRed';
+        if (c.includes('f59e') || c.includes('f97') || c.includes('fbb')) return 'playerOrange';
+        return 'playerBlue';
+    }
+
+    const ENEMY_SPRITE_KEYS = ['lander', 'mutant', 'bomber', 'pod', 'swarmer', 'baiter'];
+
     // ── Design Constants ──
     const GAME_W = 960, GAME_H = 540;
     const WORLD_W = GAME_W * 6; // wrap-around world width
@@ -39,7 +95,7 @@ window.Defender = (() => {
     const BAITER_SPAWN_DELAY = 1200; // frames before baiter appears
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_GAMEOVER = 3, ST_EXPLODE = 4;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_GAMEOVER = 3, ST_EXPLODE = 4;
 
     // Game state
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -256,6 +312,15 @@ window.Defender = (() => {
 
     // ── Particles & score popups ──
     function spawnParticles(x, y, count, color, sizeMin = 1, sizeMax = 4, speedMax = 4) {
+        // Sprite explosion
+        if (allSpritesReady && count >= 10 && EXPLOSION_FRAME_IDS.length > 0) {
+            spriteExplosions.push({
+                x, y, frame: 0, timer: 0,
+                size: Math.max(20, sizeMax * 6),
+                totalFrames: EXPLOSION_FRAME_IDS.length,
+                frameDur: 60
+            });
+        }
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = rand(0.5, speedMax);
@@ -463,6 +528,13 @@ window.Defender = (() => {
                     break;
                 }
             }
+        }
+
+        // Sprite explosions
+        for (let i = spriteExplosions.length - 1; i >= 0; i--) {
+            const se = spriteExplosions[i];
+            se.timer += dt * 16.67;
+            if (se.timer >= se.frameDur) { se.timer -= se.frameDur; se.frame++; if (se.frame >= se.totalFrames) spriteExplosions.splice(i, 1); }
         }
 
         // Particles
@@ -742,33 +814,43 @@ window.Defender = (() => {
             drawEnemy(e, sx);
         }
 
-        // Lasers
+        // Lasers (sprite or canvas fallback)
         for (const l of lasers) {
             const sx = toScreen(l.x);
             if (sx < -30 || sx > GAME_W + 30) continue;
             const alpha = Math.min(1, l.life / 15);
-            // Trail
-            ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.3})`;
-            ctx.lineWidth = gs(3);
-            ctx.beginPath();
-            ctx.moveTo(gs(sx - (l.vx > 0 ? LASER_LEN : -LASER_LEN)), gs(l.y));
-            ctx.lineTo(gs(sx), gs(l.y));
-            ctx.stroke();
-            // Core
-            ctx.strokeStyle = playerColor;
-            ctx.shadowColor = playerColor;
-            ctx.shadowBlur = gs(6);
-            ctx.lineWidth = gs(2);
-            ctx.beginPath();
-            ctx.moveTo(gs(sx - (l.vx > 0 ? LASER_LEN * 0.5 : -LASER_LEN * 0.5)), gs(l.y));
-            ctx.lineTo(gs(sx), gs(l.y));
-            ctx.stroke();
-            // Bright tip
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(gs(sx), gs(l.y), gs(1.5), 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
+            const laserSprite = sprites['laserBlue'];
+            if (laserSprite && allSpritesReady) {
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.translate(gs(sx), gs(l.y));
+                ctx.rotate(l.vx > 0 ? 0 : Math.PI);
+                ctx.drawImage(laserSprite, gs(-LASER_LEN), gs(-2), gs(LASER_LEN), gs(4));
+                ctx.restore();
+            } else {
+                // Trail
+                ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.3})`;
+                ctx.lineWidth = gs(3);
+                ctx.beginPath();
+                ctx.moveTo(gs(sx - (l.vx > 0 ? LASER_LEN : -LASER_LEN)), gs(l.y));
+                ctx.lineTo(gs(sx), gs(l.y));
+                ctx.stroke();
+                // Core
+                ctx.strokeStyle = playerColor;
+                ctx.shadowColor = playerColor;
+                ctx.shadowBlur = gs(6);
+                ctx.lineWidth = gs(2);
+                ctx.beginPath();
+                ctx.moveTo(gs(sx - (l.vx > 0 ? LASER_LEN * 0.5 : -LASER_LEN * 0.5)), gs(l.y));
+                ctx.lineTo(gs(sx), gs(l.y));
+                ctx.stroke();
+                // Bright tip
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(gs(sx), gs(l.y), gs(1.5), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
         }
 
         // Ship
@@ -786,6 +868,18 @@ window.Defender = (() => {
             ctx.fillRect(gs(sx - p.size / 2), gs(p.y - p.size / 2), gs(p.size), gs(p.size));
         }
         ctx.globalAlpha = 1;
+
+        // Sprite explosions
+        for (const se of spriteExplosions) {
+            const esx = toScreen(se.x);
+            if (esx < -60 || esx > GAME_W + 60) continue;
+            const fid = EXPLOSION_FRAME_IDS[se.frame];
+            const fSprite = fid ? sprites[fid] : null;
+            if (fSprite) {
+                const half = se.size / 2;
+                ctx.drawImage(fSprite, gs(esx - half), gs(se.y - half), gs(se.size), gs(se.size));
+            }
+        }
 
         // Score popups
         for (const p of scorePopups) {
@@ -856,6 +950,37 @@ window.Defender = (() => {
 
         if (ship.invincible > 0 && Math.floor(ship.invincible / 3) % 2) return; // blink
 
+        // ── Sprite-based ship rendering ──
+        const shipSprite = sprites[defenderPlayerKey(playerColor)];
+        if (shipSprite && allSpritesReady) {
+            ctx.save();
+            ctx.translate(gs(sx), gs(sy + SHIP_H / 2));
+            if (f < 0) ctx.scale(-1, 1);
+            // Rotate 90deg CCW since ship sprites face up
+            ctx.rotate(-Math.PI / 2);
+            ctx.drawImage(shipSprite, gs(-SHIP_H / 2 - 2), gs(-SHIP_W / 2 - 2), gs(SHIP_H + 4), gs(SHIP_W + 4));
+            ctx.restore();
+
+            // Engine thrust flame (still canvas for animation)
+            const thrustIntensity = Math.abs(ship.vx) / MAX_VX;
+            if (ship.thrust || thrustIntensity > 0.2) {
+                const intensity = Math.max(thrustIntensity, 0.3);
+                const flameLen = (6 + intensity * 14) + Math.random() * 6 * intensity;
+                const flameW = (3 + intensity * 5) + Math.random() * 2;
+                ctx.fillStyle = '#F97316';
+                ctx.shadowColor = '#F97316';
+                ctx.shadowBlur = gs(6 + intensity * 10);
+                ctx.beginPath();
+                ctx.moveTo(gs(sx - f * SHIP_W / 2), gs(sy + SHIP_H / 2 - flameW / 2));
+                ctx.lineTo(gs(sx - f * (SHIP_W / 2 + flameLen)), gs(sy + SHIP_H / 2));
+                ctx.lineTo(gs(sx - f * SHIP_W / 2), gs(sy + SHIP_H / 2 + flameW / 2));
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            return;
+        }
+
+        // ── Canvas fallback below ──
         // Engine thrust flame that scales with thrust intensity
         const thrustIntensity = Math.abs(ship.vx) / MAX_VX;
         if (ship.thrust || thrustIntensity > 0.2) {
@@ -936,6 +1061,16 @@ window.Defender = (() => {
         const color = ENEMY_COLORS[e.type];
         const pulse = 0.8 + Math.sin(frameCount * 0.1 + e.x) * 0.2;
 
+        // ── Sprite-based enemy rendering ──
+        const eKey = ENEMY_SPRITE_KEYS[e.type];
+        const eSprite = eKey ? sprites[eKey] : null;
+        if (eSprite && allSpritesReady) {
+            const eSize = e.type === EN_POD ? 24 : (e.type === EN_SWARMER ? 10 : (e.type === EN_BAITER ? 20 : 18));
+            ctx.drawImage(eSprite, gs(sx - eSize / 2), gs(e.y - eSize / 2), gs(eSize), gs(eSize));
+            return;
+        }
+
+        // ── Canvas fallback ──
         switch (e.type) {
             case EN_LANDER: {
                 // UFO shape
@@ -1377,13 +1512,31 @@ window.Defender = (() => {
     }
 
     // ── Game Loop ──
+    function drawLoadingScreen() {
+        ctx.fillStyle = '#020210';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#E0E7FF';
+        ctx.font = `bold ${gs(16)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('LOADING SPRITES...', W / 2, H * 0.45);
+        const barW = gs(180), barH = gs(10);
+        const barX = W / 2 - barW / 2, barY = H * 0.52;
+        ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barW, barH);
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#06B6D4';
+        ctx.fillRect(barX + 2, barY + 2, (barW - 4) * pct, barH - 4);
+    }
+
     function gameLoop(ts) {
         if (!gameActive) return;
         const dt = Math.min((ts - (lastTime || ts)) / 16.67, 3);
         lastTime = ts;
         frameCount++;
 
-        if (state === ST_TITLE) {
+        if (state === ST_LOADING) {
+            drawLoadingScreen();
+        } else if (state === ST_TITLE) {
             drawTitle();
         } else if (state === ST_PLAY) {
             update(dt);
@@ -1506,7 +1659,7 @@ window.Defender = (() => {
             themeAccent = _t.colors[1] || themeAccent;
         }
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         lastTime = 0;
         lastFireTime = 0;
@@ -1516,6 +1669,7 @@ window.Defender = (() => {
         rescueParticles = [];
         nextBonusScore = BONUS_LIFE_INTERVAL;
         waveFrameCount = 0;
+        spriteExplosions = [];
 
         W = canvas.width || 960;
         H = canvas.height || 540;
@@ -1533,6 +1687,10 @@ window.Defender = (() => {
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        // Load sprites then transition
+        loadSprites(null, () => { if (state === ST_LOADING) state = ST_TITLE; });
+        setTimeout(() => { if (state === ST_LOADING) state = ST_TITLE; }, 5000);
 
         animFrame = requestAnimationFrame(gameLoop);
     }

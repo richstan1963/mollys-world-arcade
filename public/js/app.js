@@ -27,6 +27,7 @@ minniepac: 'MinniePac', mickeypop: 'MickeyPop',
     pixelracer: 'PixelRacer', towerdefense: 'TowerDefense',
     rhythmtap: 'RhythmTap', memorymatch: 'MemoryMatch',
     pixelfighter: 'PixelFighter', aquarium: 'Aquarium',
+    centiballs: 'CentiBalls',
 };
 
 window.arcade = {

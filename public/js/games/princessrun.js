@@ -16,6 +16,120 @@ window.PrincessRun = (() => {
             return this;
         };
     }
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Player (Pink alien = princess)
+        playerStand:  `${SPRITE_BASE}/players/Pink/alienPink_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Pink/alienPink_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Pink/alienPink_walk2.png`,
+        playerJump:   `${SPRITE_BASE}/players/Pink/alienPink_jump.png`,
+        playerDuck:   `${SPRITE_BASE}/players/Pink/alienPink_duck.png`,
+        playerHit:    `${SPRITE_BASE}/players/Pink/alienPink_hit.png`,
+        playerFront:  `${SPRITE_BASE}/players/Pink/alienPink_front.png`,
+        // Ground tiles
+        grassLeft:    `${SPRITE_BASE}/ground/Grass/grassLeft.png`,
+        grassMid:     `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        grassRight:   `${SPRITE_BASE}/ground/Grass/grassRight.png`,
+        grassCenter:  `${SPRITE_BASE}/ground/Grass/grassCenter.png`,
+        // Platform tiles
+        grassHalfLeft:  `${SPRITE_BASE}/ground/Grass/grassHalf_left.png`,
+        grassHalfMid:   `${SPRITE_BASE}/ground/Grass/grassHalf_mid.png`,
+        grassHalfRight: `${SPRITE_BASE}/ground/Grass/grassHalf_right.png`,
+        stoneHalfLeft:  `${SPRITE_BASE}/ground/Stone/stoneHalf_left.png`,
+        stoneHalfMid:   `${SPRITE_BASE}/ground/Stone/stoneHalf_mid.png`,
+        stoneHalfRight: `${SPRITE_BASE}/ground/Stone/stoneHalf_right.png`,
+        // Items
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        coinBronze:   `${SPRITE_BASE}/items/coinBronze.png`,
+        gemBlue:      `${SPRITE_BASE}/items/gemBlue.png`,
+        gemGreen:     `${SPRITE_BASE}/items/gemGreen.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        gemYellow:    `${SPRITE_BASE}/items/gemYellow.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        keyBlue:      `${SPRITE_BASE}/items/keyBlue.png`,
+        keyRed:       `${SPRITE_BASE}/items/keyRed.png`,
+        // HUD
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        hudHeartEmpty:`${SPRITE_BASE}/hud/hudHeart_empty.png`,
+        hudCoin:      `${SPRITE_BASE}/hud/hudCoin.png`,
+        // Enemies
+        slimeGreen:   `${SPRITE_BASE}/enemies/slimeGreen.png`,
+        slimeGreenMove:`${SPRITE_BASE}/enemies/slimeGreen_move.png`,
+        slimePurple:  `${SPRITE_BASE}/enemies/slimePurple.png`,
+        slimePurpleMove:`${SPRITE_BASE}/enemies/slimePurple_move.png`,
+        fly:          `${SPRITE_BASE}/enemies/fly.png`,
+        flyMove:      `${SPRITE_BASE}/enemies/fly_move.png`,
+        bee:          `${SPRITE_BASE}/enemies/bee.png`,
+        beeMove:      `${SPRITE_BASE}/enemies/bee_move.png`,
+        saw:          `${SPRITE_BASE}/enemies/saw.png`,
+        sawMove:      `${SPRITE_BASE}/enemies/saw_move.png`,
+        snail:        `${SPRITE_BASE}/enemies/snail.png`,
+        snailShell:   `${SPRITE_BASE}/enemies/snail_shell.png`,
+        // Tiles / environment
+        spikes:       `${SPRITE_BASE}/tiles/spikes.png`,
+        cactus:       `${SPRITE_BASE}/tiles/cactus.png`,
+        bush:         `${SPRITE_BASE}/tiles/bush.png`,
+        mushroomRed:  `${SPRITE_BASE}/tiles/mushroomRed.png`,
+        mushroomBrown:`${SPRITE_BASE}/tiles/mushroomBrown.png`,
+        boxCoin:      `${SPRITE_BASE}/tiles/boxCoin.png`,
+        boxItem:      `${SPRITE_BASE}/tiles/boxItem.png`,
+        spring:       `${SPRITE_BASE}/tiles/spring.png`,
+        fence:        `${SPRITE_BASE}/tiles/fence.png`,
+        sign:         `${SPRITE_BASE}/tiles/sign.png`,
+        plantPurple:  `${SPRITE_BASE}/tiles/plantPurple.png`,
+        rock:         `${SPRITE_BASE}/tiles/rock.png`,
+        // Backgrounds
+        bgGrass:      `${SPRITE_BASE}/backgrounds/blue_grass.png`,
+        bgLand:       `${SPRITE_BASE}/backgrounds/colored_land.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++;
+                spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++;
+                spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    // Helper to safely draw a sprite with fallback
+    function drawSprite(key, x, y, w, h, flipX) {
+        const s = sprites[key];
+        if (s) {
+            ctx.save();
+            if (flipX) {
+                ctx.translate(x + w, y);
+                ctx.scale(-1, 1);
+                ctx.drawImage(s, 0, 0, w, h);
+            } else {
+                ctx.drawImage(s, x, y, w, h);
+            }
+            ctx.restore();
+            return true;
+        }
+        return false;
+    }
+
     // ── Design Constants ──
     const GAME_W = 640, GAME_H = 360;
     const GROUND_Y = 310, GROUND_H = 50;
@@ -52,7 +166,7 @@ window.PrincessRun = (() => {
     const ANIMALS = ['bunny', 'kitten', 'puppy', 'bird', 'fawn', 'fox'];
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_BOSS = 3;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_BOSS = 3;
 
     // Game state
     let canvas, ctx, W, H, SCALE, animFrame, gameActive = false;
@@ -667,63 +781,89 @@ window.PrincessRun = (() => {
     }
 
     function drawGround(e) {
-        const gy = gs(GROUND_Y);
-        // Main ground
-        ctx.fillStyle = e.ground;
-        ctx.fillRect(0, gy, W, H - gy);
-        // Grass line
-        ctx.fillStyle = e.groundDark;
-        ctx.fillRect(0, gy, W, gs(3));
-        // Tiny grass tufts
-        ctx.fillStyle = e.groundDark;
-        const off = (distance * 1.0) % 40;
-        for (let x = -off; x < GAME_W + 40; x += 20) {
-            ctx.fillRect(gs(x), gy - gs(2), gs(2), gs(4));
-            ctx.fillRect(gs(x + 8), gy - gs(3), gs(2), gs(5));
+        const groundTop = gs(GROUND_Y);
+        const tileH = gs(GROUND_H);
+        const tileW = tileH;
+        // Try sprite ground tiles
+        if (sprites['grassMid']) {
+            const off = (distance * SCALE) % tileW;
+            for (let tx = -off - tileW; tx < W + tileW; tx += tileW) {
+                drawSprite('grassMid', tx, groundTop, tileW, tileH);
+            }
+            // Fill below with dirt
+            if (sprites['grassCenter']) {
+                for (let tx = -off - tileW; tx < W + tileW; tx += tileW) {
+                    drawSprite('grassCenter', tx, groundTop + tileH, tileW, tileH);
+                }
+            }
+        } else {
+            // Canvas fallback
+            ctx.fillStyle = e.ground;
+            ctx.fillRect(0, groundTop, W, H - groundTop);
+            ctx.fillStyle = e.groundDark;
+            ctx.fillRect(0, groundTop, W, gs(3));
+            const off = (distance * 1.0) % 40;
+            for (let x = -off; x < GAME_W + 40; x += 20) {
+                ctx.fillRect(gs(x), groundTop - gs(2), gs(2), gs(4));
+                ctx.fillRect(gs(x + 8), groundTop - gs(3), gs(2), gs(5));
+            }
         }
     }
 
     function drawPlatforms(e) {
         for (const p of platforms) {
-            const px = gs(p.x - distance), py = gs(p.y), pw = gs(p.w), ph = gs(10);
+            const px = gs(p.x - distance), py = gs(p.y), pw = gs(p.w), ph = gs(14);
             if (px + pw < 0 || px > W) continue;
-            ctx.fillStyle = e.platColor;
-            ctx.strokeStyle = e.platStroke;
-            ctx.lineWidth = gs(2);
-            ctx.beginPath();
-            ctx.roundRect(px, py, pw, ph, gs(5));
-            ctx.fill();
-            ctx.stroke();
+            // Try sprite-based platform tiles
+            const tileW = ph; // square tiles
+            const useStone = envIndex % 2 === 1;
+            const leftKey = useStone ? 'stoneHalfLeft' : 'grassHalfLeft';
+            const midKey = useStone ? 'stoneHalfMid' : 'grassHalfMid';
+            const rightKey = useStone ? 'stoneHalfRight' : 'grassHalfRight';
+            let drawn = false;
+            if (sprites[midKey]) {
+                drawn = true;
+                drawSprite(leftKey, px, py, tileW, ph);
+                for (let tx = tileW; tx < pw - tileW; tx += tileW) {
+                    drawSprite(midKey, px + tx, py, tileW, ph);
+                }
+                drawSprite(rightKey, px + pw - tileW, py, tileW, ph);
+            }
+            if (!drawn) {
+                ctx.fillStyle = e.platColor;
+                ctx.strokeStyle = e.platStroke;
+                ctx.lineWidth = gs(2);
+                ctx.beginPath();
+                ctx.roundRect(px, py, pw, gs(10), gs(5));
+                ctx.fill();
+                ctx.stroke();
+            }
         }
     }
 
     function drawGems() {
+        const gemSprites = ['gemRed', 'gemBlue', 'gemGreen', 'gemYellow'];
         for (const g of gems) {
             if (g.collected) continue;
-            const gx = gs(g.x - distance), gy = gs(g.y);
-            if (gx < -20 || gx > W + 20) continue;
+            const gsx = gs(g.x - distance), gsy = gs(g.y);
+            if (gsx < -20 || gsx > W + 20) continue;
             const bob = Math.sin(frameCount * 0.08 + g.x * 0.1) * gs(2);
-            ctx.save();
-            ctx.translate(gx, gy + bob);
-            // Pink diamond shape
-            ctx.fillStyle = '#FF69B4';
-            ctx.beginPath();
-            ctx.moveTo(0, -gs(GEM_R));
-            ctx.lineTo(gs(GEM_R * 0.7), 0);
-            ctx.lineTo(0, gs(GEM_R));
-            ctx.lineTo(-gs(GEM_R * 0.7), 0);
-            ctx.closePath();
-            ctx.fill();
-            // Shine
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.beginPath();
-            ctx.moveTo(0, -gs(GEM_R * 0.6));
-            ctx.lineTo(gs(GEM_R * 0.3), -gs(1));
-            ctx.lineTo(0, gs(GEM_R * 0.2));
-            ctx.lineTo(-gs(GEM_R * 0.1), -gs(2));
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
+            const sz = gs(GEM_R * 2);
+            const sprKey = gemSprites[Math.abs(Math.floor(g.x * 0.1)) % gemSprites.length];
+            if (!drawSprite(sprKey, gsx - sz / 2, gsy + bob - sz / 2, sz, sz)) {
+                // Canvas fallback
+                ctx.save();
+                ctx.translate(gsx, gsy + bob);
+                ctx.fillStyle = '#FF69B4';
+                ctx.beginPath();
+                ctx.moveTo(0, -gs(GEM_R));
+                ctx.lineTo(gs(GEM_R * 0.7), 0);
+                ctx.lineTo(0, gs(GEM_R));
+                ctx.lineTo(-gs(GEM_R * 0.7), 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
         }
     }
 
@@ -733,7 +873,10 @@ window.PrincessRun = (() => {
             const hx = gs(h.x - distance), hy = gs(h.y);
             if (hx < -20 || hx > W + 20) continue;
             const bob = Math.sin(frameCount * 0.06 + h.x * 0.05) * gs(2);
-            drawHeart(hx, hy + bob, gs(HEART_R), '#FF1493');
+            const sz = gs(HEART_R * 2.5);
+            if (!drawSprite('hudHeart', hx - sz / 2, hy + bob - sz / 2, sz, sz)) {
+                drawHeart(hx, hy + bob, gs(HEART_R), '#FF1493');
+            }
         }
     }
 
@@ -795,71 +938,75 @@ window.PrincessRun = (() => {
             const ox = gs(o.x - distance), oy = gs(o.y), ow = gs(o.w), oh = gs(o.h);
             if (ox + ow < 0 || ox > W) continue;
             if (o.type === 'thorn') {
-                ctx.fillStyle = '#7B1FA2';
-                ctx.beginPath();
-                ctx.moveTo(ox, oy + oh);
-                ctx.lineTo(ox + ow / 2, oy);
-                ctx.lineTo(ox + ow, oy + oh);
-                ctx.closePath();
-                ctx.fill();
-                ctx.fillStyle = '#4A148C';
-                ctx.beginPath();
-                ctx.moveTo(ox + ow * 0.3, oy + oh);
-                ctx.lineTo(ox + ow / 2, oy + oh * 0.3);
-                ctx.lineTo(ox + ow * 0.7, oy + oh);
-                ctx.closePath();
-                ctx.fill();
-            } else if (o.type === 'shadow') {
-                // Shadow creature
-                ctx.fillStyle = '#311B92';
-                ctx.beginPath();
-                ctx.ellipse(ox + ow / 2, oy + oh * 0.6, ow / 2, oh * 0.5, 0, 0, Math.PI * 2);
-                ctx.fill();
-                // Eyes
-                ctx.fillStyle = '#FF1744';
-                ctx.beginPath(); ctx.arc(ox + ow * 0.35, oy + oh * 0.4, gs(2.5), 0, Math.PI * 2); ctx.fill();
-                ctx.beginPath(); ctx.arc(ox + ow * 0.65, oy + oh * 0.4, gs(2.5), 0, Math.PI * 2); ctx.fill();
-            } else if (o.type === 'overhead') {
-                ctx.fillStyle = '#4A148C';
-                ctx.globalAlpha = 0.8;
-                ctx.fillRect(ox, oy, ow, oh);
-                // Thorny bottom edge
-                ctx.fillStyle = '#7B1FA2';
-                for (let tx = 0; tx < ow; tx += gs(8)) {
+                // Use spikes sprite
+                const anim = frameCount % 40 < 20 ? 'slimePurple' : 'slimePurpleMove';
+                if (!drawSprite(anim, ox, oy, ow, oh)) {
+                    ctx.fillStyle = '#7B1FA2';
                     ctx.beginPath();
-                    ctx.moveTo(ox + tx, oy + oh);
-                    ctx.lineTo(ox + tx + gs(4), oy + oh + gs(6));
-                    ctx.lineTo(ox + tx + gs(8), oy + oh);
-                    ctx.fill();
+                    ctx.moveTo(ox, oy + oh); ctx.lineTo(ox + ow / 2, oy); ctx.lineTo(ox + ow, oy + oh);
+                    ctx.closePath(); ctx.fill();
                 }
-                ctx.globalAlpha = 1;
+            } else if (o.type === 'shadow') {
+                // Use slime enemy sprite
+                const anim = frameCount % 30 < 15 ? 'slimeGreen' : 'slimeGreenMove';
+                if (!drawSprite(anim, ox, oy, ow, oh)) {
+                    ctx.fillStyle = '#311B92';
+                    ctx.beginPath();
+                    ctx.ellipse(ox + ow / 2, oy + oh * 0.6, ow / 2, oh * 0.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#FF1744';
+                    ctx.beginPath(); ctx.arc(ox + ow * 0.35, oy + oh * 0.4, gs(2.5), 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(ox + ow * 0.65, oy + oh * 0.4, gs(2.5), 0, Math.PI * 2); ctx.fill();
+                }
+            } else if (o.type === 'overhead') {
+                // Use saw sprite tiled across overhead
+                const sawSpr = frameCount % 20 < 10 ? 'saw' : 'sawMove';
+                let drawn = false;
+                for (let sx = 0; sx < ow; sx += oh) {
+                    if (drawSprite(sawSpr, ox + sx, oy, Math.min(oh, ow - sx), oh)) drawn = true;
+                }
+                if (!drawn) {
+                    ctx.fillStyle = '#4A148C';
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillRect(ox, oy, ow, oh);
+                    ctx.fillStyle = '#7B1FA2';
+                    for (let tx = 0; tx < ow; tx += gs(8)) {
+                        ctx.beginPath();
+                        ctx.moveTo(ox + tx, oy + oh);
+                        ctx.lineTo(ox + tx + gs(4), oy + oh + gs(6));
+                        ctx.lineTo(ox + tx + gs(8), oy + oh);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1;
+                }
             }
         }
     }
 
     function drawPowerups() {
+        const puSpriteMap = { wand: 'star', shield: 'keyBlue', magnet: 'keyRed', wings: 'star' };
         for (const p of powerups) {
             if (p.collected) continue;
             const px = gs(p.x - distance), py = gs(p.y);
             if (px < -20 || px > W + 20) continue;
             p.bob += 0.04;
             const bob = Math.sin(p.bob) * gs(4);
-            const r = gs(POWERUP_R);
+            const sz = gs(POWERUP_R * 2);
 
             // Glow
             ctx.fillStyle = 'rgba(255,215,0,0.2)';
-            ctx.beginPath(); ctx.arc(px, py + bob, r * 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px, py + bob, sz * 0.75, 0, Math.PI * 2); ctx.fill();
 
-            // Circle bg
-            ctx.fillStyle = p.type === 'wand' ? '#E040FB' : p.type === 'shield' ? '#4FC3F7' : p.type === 'magnet' ? '#FF5722' : '#FFD700';
-            ctx.beginPath(); ctx.arc(px, py + bob, r, 0, Math.PI * 2); ctx.fill();
-
-            // Icon
-            ctx.fillStyle = '#FFF';
-            ctx.font = `bold ${gs(12)}px sans-serif`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            const icon = p.type === 'wand' ? '\u2728' : p.type === 'shield' ? '\uD83D\uDEE1' : p.type === 'magnet' ? '\uD83E\uDDF2' : '\uD83E\uDE75';
-            ctx.fillText(icon, px, py + bob);
+            const sprKey = puSpriteMap[p.type] || 'star';
+            if (!drawSprite(sprKey, px - sz / 2, py + bob - sz / 2, sz, sz)) {
+                ctx.fillStyle = p.type === 'wand' ? '#E040FB' : p.type === 'shield' ? '#4FC3F7' : p.type === 'magnet' ? '#FF5722' : '#FFD700';
+                ctx.beginPath(); ctx.arc(px, py + bob, gs(POWERUP_R), 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#FFF';
+                ctx.font = `bold ${gs(12)}px sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const icon = p.type === 'wand' ? '\u2728' : p.type === 'shield' ? '\uD83D\uDEE1' : p.type === 'magnet' ? '\uD83E\uDDF2' : '\uD83E\uDE75';
+                ctx.fillText(icon, px, py + bob);
+            }
         }
     }
 
@@ -959,18 +1106,52 @@ window.PrincessRun = (() => {
         const pw = gs(PRINCESS_W), ph = gs(princess.sliding ? SLIDE_H : PRINCESS_H);
         const slidePy = princess.sliding ? gs(GROUND_Y - SLIDE_H) : py;
 
-        ctx.save();
-        ctx.translate(px, slidePy);
+        // Choose sprite based on state
+        let sprKey = 'playerStand';
+        if (princess.sliding) sprKey = 'playerDuck';
+        else if (princess.invincible && princess.invTimer > 40) sprKey = 'playerHit';
+        else if (!princess.onGround) sprKey = 'playerJump';
+        else if (Math.abs(Math.sin(runFrame)) > 0.5) sprKey = frameCount % 20 < 10 ? 'playerWalk1' : 'playerWalk2';
 
-        if (princess.sliding) {
-            // Sliding pose
-            ctx.rotate(-0.3);
-            drawPrincessBody(0, 0, pw, ph, true);
+        const sprW = gs(PRINCESS_W * 1.4);
+        const sprH = gs((princess.sliding ? SLIDE_H : PRINCESS_H) * 1.3);
+
+        if (drawSprite(sprKey, px - sprW / 2, slidePy - sprH * 0.1, sprW, sprH)) {
+            // Sprite drawn successfully
+            // Shield bubble overlay
+            if (activePower && activePower.type === 'shield') {
+                ctx.strokeStyle = `rgba(79,195,247,${0.4 + Math.sin(frameCount * 0.1) * 0.2})`;
+                ctx.lineWidth = gs(2);
+                ctx.beginPath();
+                ctx.ellipse(px, slidePy + sprH * 0.4, sprW * 0.6, sprH * 0.55, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            // Wings overlay
+            if (activePower && activePower.type === 'wings') {
+                const wingFlap = Math.sin(frameCount * 0.3) * 0.3;
+                ctx.fillStyle = 'rgba(255,215,0,0.4)';
+                ctx.save();
+                ctx.translate(px, slidePy + sprH * 0.3);
+                ctx.save(); ctx.rotate(-0.5 + wingFlap);
+                ctx.beginPath(); ctx.ellipse(-sprW * 0.4, -sprH * 0.1, sprW * 0.35, sprH * 0.25, -0.3, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+                ctx.save(); ctx.rotate(0.5 - wingFlap);
+                ctx.beginPath(); ctx.ellipse(sprW * 0.4, -sprH * 0.1, sprW * 0.35, sprH * 0.25, 0.3, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+                ctx.restore();
+            }
         } else {
-            drawPrincessBody(0, 0, pw, ph, false);
+            // Canvas fallback
+            ctx.save();
+            ctx.translate(px, slidePy);
+            if (princess.sliding) {
+                ctx.rotate(-0.3);
+                drawPrincessBody(0, 0, pw, ph, true);
+            } else {
+                drawPrincessBody(0, 0, pw, ph, false);
+            }
+            ctx.restore();
         }
-
-        ctx.restore();
 
         // Sparkle trail when powered up
         if (activePower) {
@@ -1189,11 +1370,16 @@ window.PrincessRun = (() => {
         ctx.shadowBlur = 0;
         for (let i = 0; i < princess.maxHealth; i++) {
             const hx = W - gs(16) - i * gs(18);
-            const hy = gs(12);
+            const hy = gs(8);
+            const hsz = gs(14);
             if (i < princess.health) {
-                drawHeart(hx, hy, gs(6), '#FF1493');
+                if (!drawSprite('hudHeart', hx - hsz / 2, hy, hsz, hsz)) {
+                    drawHeart(hx, hy + hsz / 2, gs(6), '#FF1493');
+                }
             } else {
-                drawHeart(hx, hy, gs(6), 'rgba(255,255,255,0.25)');
+                if (!drawSprite('hudHeartEmpty', hx - hsz / 2, hy, hsz, hsz)) {
+                    drawHeart(hx, hy + hsz / 2, gs(6), 'rgba(255,255,255,0.25)');
+                }
             }
         }
 
@@ -1241,6 +1427,42 @@ window.PrincessRun = (() => {
         ctx.fillStyle = '#333';
         ctx.fillText('SLIDE', gs(50), H - gs(40));
         ctx.globalAlpha = 1;
+        ctx.restore();
+    }
+
+    // ── Loading Screen ──
+    function drawLoadingScreen(loaded, total) {
+        if (!ctx) return;
+        ctx.save();
+        // Dark gradient background
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#FFB6C1');
+        grad.addColorStop(1, '#FFF0F5');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Title
+        ctx.fillStyle = '#FF69B4';
+        ctx.font = `bold ${gs(22)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Princess Run', W / 2, H * 0.35);
+
+        // Loading bar background
+        const barW = gs(200), barH = gs(12);
+        const barX = (W - barW) / 2, barY = H * 0.5;
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, gs(6)); ctx.fill();
+
+        // Loading bar fill
+        const pct = total > 0 ? loaded / total : 0;
+        ctx.fillStyle = '#FF69B4';
+        ctx.beginPath(); ctx.roundRect(barX, barY, barW * pct, barH, gs(6)); ctx.fill();
+
+        // Loading text
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.font = `${gs(10)}px sans-serif`;
+        ctx.fillText(`Loading sprites... ${loaded}/${total}`, W / 2, H * 0.6);
         ctx.restore();
     }
 
@@ -1499,6 +1721,11 @@ window.PrincessRun = (() => {
 
     function gameLoop(ts) {
         if (!gameActive) return;
+        if (state === ST_LOADING) {
+            drawLoadingScreen(spritesLoaded, spritesTotal);
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         if (state !== ST_TITLE) update();
         else frameCount++;
         draw();
@@ -1521,7 +1748,7 @@ window.PrincessRun = (() => {
         const pc = hexToRgb(princessColor);
         princessColorLight = rgbStr(Math.min(255, pc.r + 60), Math.min(255, pc.g + 60), Math.min(255, pc.b + 60));
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         keys = {};
         particles = [];
@@ -1562,6 +1789,12 @@ window.PrincessRun = (() => {
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        // Load sprites then start
+        loadSprites(
+            (loaded, total) => { drawLoadingScreen(loaded, total); },
+            () => { state = ST_TITLE; }
+        );
 
         animFrame = requestAnimationFrame(gameLoop);
     }

@@ -1,4 +1,4 @@
-/* YWA Space Invaders — 4K-quality canvas arcade game for Your World Arcade */
+/* YWA Space Invaders — 4K-quality canvas arcade game with Kenney CC0 space sprites */
 window.SpaceInvaders = (() => {
 
     // -- roundRect polyfill (Safari <16, older browsers) --
@@ -16,6 +16,105 @@ window.SpaceInvaders = (() => {
             return this;
         };
     }
+
+    // ── Sprite Atlas ──
+    const SPRITE_BASE = '/img/game-assets/kenney-space';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Player ships
+        playerBlue:   `${SPRITE_BASE}/ships/playerShip1_blue.png`,
+        playerGreen:  `${SPRITE_BASE}/ships/playerShip1_green.png`,
+        playerOrange: `${SPRITE_BASE}/ships/playerShip1_orange.png`,
+        playerRed:    `${SPRITE_BASE}/ships/playerShip1_red.png`,
+        // Aliens row by row (top→bottom: 5 rows)
+        alien0a:      `${SPRITE_BASE}/enemies/enemyRed1.png`,
+        alien0b:      `${SPRITE_BASE}/enemies/enemyRed2.png`,
+        alien1a:      `${SPRITE_BASE}/enemies/enemyBlue3.png`,
+        alien1b:      `${SPRITE_BASE}/enemies/enemyBlue4.png`,
+        alien2a:      `${SPRITE_BASE}/enemies/enemyGreen1.png`,
+        alien2b:      `${SPRITE_BASE}/enemies/enemyGreen2.png`,
+        alien3a:      `${SPRITE_BASE}/enemies/enemyBlack1.png`,
+        alien3b:      `${SPRITE_BASE}/enemies/enemyBlack2.png`,
+        alien4a:      `${SPRITE_BASE}/enemies/enemyBlue1.png`,
+        alien4b:      `${SPRITE_BASE}/enemies/enemyBlue2.png`,
+        // UFO
+        ufo:          `${SPRITE_BASE}/enemies/enemyRed4.png`,
+        // Boss
+        boss:         `${SPRITE_BASE}/enemies/enemyGreen5.png`,
+        // Lasers
+        laserBlue:    `${SPRITE_BASE}/lasers/laserBlue01.png`,
+        laserRed:     `${SPRITE_BASE}/lasers/laserRed01.png`,
+        laserGreen:   `${SPRITE_BASE}/lasers/laserGreen01.png`,
+        // Power-ups
+        puSpeed:      `${SPRITE_BASE}/powerups/powerupBlue_bolt.png`,
+        puDouble:     `${SPRITE_BASE}/powerups/powerupRed_bolt.png`,
+        puRepair:     `${SPRITE_BASE}/powerups/powerupGreen_shield.png`,
+        // Meteors (background)
+        meteorBig1:   `${SPRITE_BASE}/meteors/meteorBrown_big1.png`,
+        meteorSmall1: `${SPRITE_BASE}/meteors/meteorBrown_small1.png`,
+    };
+
+    // Explosion frames (fire00-fire19, pick 8 evenly spaced)
+    const EXPLOSION_FRAME_IDS = [];
+    const EXPLOSION_FRAME_COUNT = 8;
+    for (let i = 0; i < 20; i += Math.floor(20 / EXPLOSION_FRAME_COUNT)) {
+        const id = `fire${String(i).padStart(2, '0')}`;
+        SPRITE_MANIFEST[id] = `${SPRITE_BASE}/effects/fire${String(i).padStart(2, '0')}.png`;
+        EXPLOSION_FRAME_IDS.push(id);
+        if (EXPLOSION_FRAME_IDS.length >= EXPLOSION_FRAME_COUNT) break;
+    }
+
+    let spriteExplosions = [];
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSpriteOrFallback(spriteKey, x, y, w, h, fallbackFn) {
+        const s = sprites[spriteKey];
+        if (s && allSpritesReady) {
+            ctx.drawImage(s, gx(x), gy(y), gs(w), gs(h));
+        } else if (fallbackFn) {
+            fallbackFn();
+        }
+    }
+
+    // Map player color → sprite key
+    function playerSpriteKey() {
+        const c = (playerColor || PLAYER_COLOR).toLowerCase();
+        if (c.includes('22c5') || c.includes('34d3') || c.includes('10b9')) return 'playerGreen';
+        if (c.includes('f43f') || c.includes('ef44') || c.includes('e11d')) return 'playerRed';
+        if (c.includes('f59e') || c.includes('f97') || c.includes('fbb')) return 'playerOrange';
+        return 'playerBlue';
+    }
+
+    // Map alien row (0-4) to sprite keys (a/b for animation frame)
+    function alienSpriteKeys(row) {
+        const r = Math.min(row, 4);
+        return [`alien${r}a`, `alien${r}b`];
+    }
+
     // ── Design Constants ──
     const GAME_W = 960, GAME_H = 1080; // Internal resolution (scales to any display)
     const COLS = 11, ROWS = 5;
@@ -68,7 +167,7 @@ window.SpaceInvaders = (() => {
     let BOSS_GLOW = '#C084FC';
 
     // ── State ──
-    const ST_TITLE = 0, ST_PLAYING = 1, ST_DYING = 2, ST_LEVEL_SPLASH = 3, ST_GAMEOVER = 4, ST_BOSS = 5;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAYING = 1, ST_DYING = 2, ST_LEVEL_SPLASH = 3, ST_GAMEOVER = 4, ST_BOSS = 5;
     let canvas, ctx, audioCtx;
     let W, H, SCALE, DPR;
     let animFrame, lastTime, state;
@@ -214,8 +313,20 @@ window.SpaceInvaders = (() => {
         ctx.restore();
     }
 
-    // ── Alien Shapes (detailed vector-drawn, resolution-independent) ──
+    // ── Alien Drawing (sprite-based with canvas fallback) ──
+    function drawAlienSprite(x, y, w, h, row, frame) {
+        const keys = alienSpriteKeys(row);
+        const key = frame ? keys[1] : keys[0];
+        const s = sprites[key];
+        if (s && allSpritesReady) {
+            ctx.drawImage(s, gx(x), gy(y), gs(w), gs(h));
+            return true;
+        }
+        return false;
+    }
+
     function drawAlienType0(x, y, w, h, color, glow, frame) {
+        if (drawAlienSprite(x, y, w, h, 0, frame)) return;
         // Squid type — top row, pointy head with detailed tentacles
         const cx = gx(x + w/2), cy = gy(y + h/2);
         const s = gs(1);
@@ -285,6 +396,7 @@ window.SpaceInvaders = (() => {
     }
 
     function drawAlienType1(x, y, w, h, color, glow, frame) {
+        if (drawAlienSprite(x, y, w, h, 1, frame)) return;
         // Crab type — mid rows, armored body with snapping claws
         const cx = gx(x + w/2), cy = gy(y + h/2);
         ctx.save();
@@ -376,6 +488,7 @@ window.SpaceInvaders = (() => {
     }
 
     function drawAlienType2(x, y, w, h, color, glow, frame) {
+        if (drawAlienSprite(x, y, w, h, 3, frame)) return;
         // Octopus type — bottom rows, round squishy with pulsing tentacles
         const cx = gx(x + w/2), cy = gy(y + h/2);
         ctx.save();
@@ -453,7 +566,7 @@ window.SpaceInvaders = (() => {
 
     const ALIEN_DRAW = [drawAlienType0, drawAlienType1, drawAlienType1, drawAlienType2, drawAlienType2];
 
-    // ── Player Ship (detailed with cockpit, wings, thrust glow) ──
+    // ── Player Ship (sprite-based with canvas fallback) ──
     function drawPlayer(x, y) {
         const cx = gx(x + PLAYER_W / 2), cy = gy(y + PLAYER_H / 2);
         ctx.save();
@@ -461,6 +574,43 @@ window.SpaceInvaders = (() => {
         // Engine glow - larger, pulsing
         const thrustPulse = 0.25 + Math.sin(frameCount * 0.25) * 0.08;
         drawGlow(x + PLAYER_W/2, y + PLAYER_H + 6, 24, PLAYER_GLOW, thrustPulse);
+
+        // Sprite-based player rendering
+        const pKey = playerSpriteKey();
+        const pSprite = sprites[pKey];
+        if (pSprite && allSpritesReady) {
+            ctx.drawImage(pSprite, gx(x - 2), gy(y - 4), gs(PLAYER_W + 4), gs(PLAYER_H + 8));
+            // Engine thrust — dual flame (still canvas for animation)
+            for (const dir of [-1, 1]) {
+                const thrustH = gs(5 + Math.random() * 8);
+                const ex = cx + gs(dir * PLAYER_W * 0.08);
+                const grad = ctx.createLinearGradient(ex, cy + gs(PLAYER_H * 0.5), ex, cy + gs(PLAYER_H * 0.5) + thrustH);
+                grad.addColorStop(0, '#FFF');
+                grad.addColorStop(0.2, '#FFE066');
+                grad.addColorStop(0.5, PLAYER_GLOW);
+                grad.addColorStop(1, 'transparent');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(ex - gs(5), cy + gs(PLAYER_H * 0.48));
+                ctx.lineTo(ex, cy + gs(PLAYER_H * 0.48) + thrustH);
+                ctx.lineTo(ex + gs(5), cy + gs(PLAYER_H * 0.48));
+                ctx.fill();
+            }
+            // Double-shot indicator
+            if (activePowerup && activePowerup.type === 'double') {
+                ctx.fillStyle = POWERUP_COLORS.double;
+                ctx.globalAlpha = 0.5 + Math.sin(frameCount * 0.2) * 0.3;
+                ctx.beginPath();
+                ctx.arc(cx - gs(PLAYER_W * 0.3), cy - gs(4), gs(3), 0, Math.PI * 2);
+                ctx.arc(cx + gs(PLAYER_W * 0.3), cy - gs(4), gs(3), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+            ctx.restore();
+            return;
+        }
+
+        // ── Canvas fallback below ──
 
         // Speed boost trail
         if (activePowerup && activePowerup.type === 'speed') {
@@ -587,11 +737,34 @@ window.SpaceInvaders = (() => {
         ctx.restore();
     }
 
-    // ── UFO (detailed saucer) ──
+    // ── UFO (sprite-based with canvas fallback) ──
     function drawUFO(u) {
         const cx = gx(u.x + UFO_W/2), cy = gy(u.y + UFO_H/2);
         ctx.save();
         drawGlow(u.x + UFO_W/2, u.y + UFO_H/2, UFO_W * 0.9, UFO_COLOR, 0.25 + Math.sin(frameCount * 0.15) * 0.1);
+
+        // Sprite rendering
+        const ufoSprite = sprites['ufo'];
+        if (ufoSprite && allSpritesReady) {
+            ctx.drawImage(ufoSprite, gx(u.x), gy(u.y - 4), gs(UFO_W), gs(UFO_H + 8));
+            // Rotating lights overlay (still canvas for animation)
+            for (let i = 0; i < 6; i++) {
+                const angle = (frameCount * 0.05) + i * (Math.PI / 3);
+                const lx = cx + Math.cos(angle) * gs(UFO_W * 0.38);
+                const ly = cy + Math.sin(angle) * gs(UFO_H * 0.18);
+                const pulse = Math.sin(frameCount * 0.2 + i * 1.2) * 0.5 + 0.5;
+                ctx.fillStyle = i % 2 === 0 ? '#FFFF00' : '#00FFFF';
+                ctx.globalAlpha = 0.5 + pulse * 0.5;
+                ctx.beginPath();
+                ctx.arc(lx, ly, gs(2.5), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            ctx.restore();
+            return;
+        }
+
+        // ── Canvas fallback below ──
         // Beam below
         ctx.fillStyle = UFO_COLOR;
         ctx.globalAlpha = 0.05 + Math.sin(frameCount * 0.1) * 0.03;
@@ -715,6 +888,15 @@ window.SpaceInvaders = (() => {
 
     // ── Particles ──
     function spawnExplosion(x, y, count, colors, sizeRange, debrisShape) {
+        // Add sprite explosion if sprites are loaded
+        if (allSpritesReady && EXPLOSION_FRAME_IDS.length > 0) {
+            spriteExplosions.push({
+                x, y, frame: 0, timer: 0,
+                size: (sizeRange ? (sizeRange[1] || 24) : 24) * 2.5,
+                totalFrames: EXPLOSION_FRAME_IDS.length,
+                frameDur: 60 // ms per frame
+            });
+        }
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 1 + Math.random() * 4;
@@ -819,6 +1001,17 @@ window.SpaceInvaders = (() => {
         ctx.save();
         // Glow
         drawGlow(pu.x + POWERUP_W/2, pu.y + POWERUP_H/2, POWERUP_W, col, 0.25);
+
+        // Sprite rendering
+        const puKeyMap = { speed: 'puSpeed', double: 'puDouble', repair: 'puRepair' };
+        const puSprite = sprites[puKeyMap[pu.type]];
+        if (puSprite && allSpritesReady) {
+            ctx.drawImage(puSprite, cx - gs(POWERUP_W/2), cy - gs(POWERUP_H/2) + bob, gs(POWERUP_W), gs(POWERUP_H));
+            ctx.restore();
+            return;
+        }
+
+        // ── Canvas fallback below ──
 
         // Outer ring
         ctx.strokeStyle = col;
@@ -930,6 +1123,31 @@ window.SpaceInvaders = (() => {
             ctx.globalAlpha = 1;
         }
 
+        // Sprite rendering
+        const bossSprite = sprites['boss'];
+        if (bossSprite && allSpritesReady) {
+            ctx.drawImage(bossSprite, gx(boss.x), gy(boss.y), gs(BOSS_W), gs(BOSS_H));
+            // HP bar
+            const barW = BOSS_W * 1.2;
+            const barH = 8;
+            const barX = boss.x + BOSS_W/2 - barW/2;
+            const barY = boss.y - 20;
+            const hpPct = boss.hp / boss.maxHp;
+            ctx.fillStyle = '#333';
+            ctx.fillRect(gx(barX), gy(barY), gs(barW), gs(barH));
+            const hpColor = hpPct > 0.5 ? '#22C55E' : hpPct > 0.25 ? '#F59E0B' : '#EF4444';
+            ctx.fillStyle = hpColor;
+            ctx.fillRect(gx(barX), gy(barY), gs(barW * hpPct), gs(barH));
+            ctx.strokeStyle = '#FFF'; ctx.lineWidth = gs(1);
+            ctx.strokeRect(gx(barX), gy(barY), gs(barW), gs(barH));
+            ctx.fillStyle = '#FFF'; ctx.font = `bold ${gs(10)}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillText(`${boss.hp}/${boss.maxHp}`, gx(boss.x + BOSS_W/2), gy(barY - 4));
+            ctx.restore();
+            return;
+        }
+
+        // ── Canvas fallback below ──
         // Main body — large armored alien
         ctx.fillStyle = BOSS_COLOR;
         ctx.beginPath();
@@ -1431,6 +1649,17 @@ window.SpaceInvaders = (() => {
             if (activePowerup.timer <= 0) activePowerup = null;
         }
 
+        // Update sprite explosions
+        for (let i = spriteExplosions.length - 1; i >= 0; i--) {
+            const se = spriteExplosions[i];
+            se.timer += dt;
+            if (se.timer >= se.frameDur) {
+                se.timer -= se.frameDur;
+                se.frame++;
+                if (se.frame >= se.totalFrames) spriteExplosions.splice(i, 1);
+            }
+        }
+
         // Update particles
         for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
@@ -1547,6 +1776,13 @@ window.SpaceInvaders = (() => {
         ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, W, H);
 
+        // Loading screen
+        if (state === ST_LOADING) {
+            drawLoadingScreen();
+            ctx.restore();
+            return;
+        }
+
         drawStars();
 
         // Wave clear flash overlay
@@ -1589,30 +1825,39 @@ window.SpaceInvaders = (() => {
             drawPlayer(playerX, GAME_H - 60);
         }
 
-        // Player bullets
+        // Player bullets (sprite laser or canvas fallback)
         for (const b of playerBullets) {
-            ctx.fillStyle = BULLET_COLOR;
             drawGlow(b.x + BULLET_W/2, b.y + BULLET_H/2, 8, BULLET_COLOR, 0.3);
-            ctx.fillRect(gx(b.x), gy(b.y), gs(BULLET_W), gs(BULLET_H));
+            const laserS = sprites['laserBlue'];
+            if (laserS && allSpritesReady) {
+                ctx.drawImage(laserS, gx(b.x - 2), gy(b.y - 2), gs(BULLET_W + 4), gs(BULLET_H + 4));
+            } else {
+                ctx.fillStyle = BULLET_COLOR;
+                ctx.fillRect(gx(b.x), gy(b.y), gs(BULLET_W), gs(BULLET_H));
+            }
             // Bullet trail
             ctx.globalAlpha = 0.15;
             ctx.fillRect(gx(b.x + 1), gy(b.y + BULLET_H), gs(BULLET_W - 2), gs(12));
             ctx.globalAlpha = 1;
         }
 
-        // Alien bullets
-        ctx.fillStyle = '#F43F5E';
+        // Alien bullets (sprite laser or canvas fallback)
         for (const b of alienBullets) {
             drawGlow(b.x + 2, b.y + 8, 6, '#F43F5E', 0.2);
-            // Zigzag bullet shape
-            ctx.beginPath();
-            ctx.moveTo(gx(b.x), gy(b.y));
-            ctx.lineTo(gx(b.x + 4), gy(b.y + 5));
-            ctx.lineTo(gx(b.x), gy(b.y + 10));
-            ctx.lineTo(gx(b.x + 4), gy(b.y + 16));
-            ctx.lineWidth = gs(2);
-            ctx.strokeStyle = '#F43F5E';
-            ctx.stroke();
+            const aLaser = sprites['laserRed'];
+            if (aLaser && allSpritesReady) {
+                ctx.drawImage(aLaser, gx(b.x - 2), gy(b.y), gs(8), gs(18));
+            } else {
+                ctx.fillStyle = '#F43F5E';
+                ctx.beginPath();
+                ctx.moveTo(gx(b.x), gy(b.y));
+                ctx.lineTo(gx(b.x + 4), gy(b.y + 5));
+                ctx.lineTo(gx(b.x), gy(b.y + 10));
+                ctx.lineTo(gx(b.x + 4), gy(b.y + 16));
+                ctx.lineWidth = gs(2);
+                ctx.strokeStyle = '#F43F5E';
+                ctx.stroke();
+            }
         }
 
         // Boss bullets — glowing orbs
@@ -1658,6 +1903,16 @@ window.SpaceInvaders = (() => {
             ctx.restore();
         }
         ctx.globalAlpha = 1;
+
+        // Sprite explosions
+        for (const se of spriteExplosions) {
+            const fid = EXPLOSION_FRAME_IDS[se.frame];
+            const fSprite = fid ? sprites[fid] : null;
+            if (fSprite) {
+                const half = se.size / 2;
+                ctx.drawImage(fSprite, gx(se.x - half), gy(se.y - half), gs(se.size), gs(se.size));
+            }
+        }
 
         // Score popups
         for (const p of scorePopups) {
@@ -1864,7 +2119,7 @@ window.SpaceInvaders = (() => {
     //  GAME LOOP
     // ═══════════════════════════════════════════
     function gameLoop(ts) {
-        if (!gameActive && state !== ST_TITLE && state !== ST_GAMEOVER) return;
+        if (!gameActive && state !== ST_LOADING && state !== ST_TITLE && state !== ST_GAMEOVER) return;
         animFrame = requestAnimationFrame(gameLoop);
         const dt = Math.min(ts - (lastTime || ts), 50);
         lastTime = ts;
@@ -1911,6 +2166,26 @@ window.SpaceInvaders = (() => {
         bgGradient = null;
     }
 
+    function drawLoadingScreen() {
+        ctx.fillStyle = '#080818';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#E0E7FF';
+        ctx.font = `bold ${gs(20)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('LOADING SPRITES...', W / 2, H * 0.45);
+        // Progress bar
+        const barW = gs(200), barH = gs(12);
+        const barX = W / 2 - barW / 2, barY = H * 0.52;
+        ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barW, barH);
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#06B6D4';
+        ctx.fillRect(barX + 2, barY + 2, (barW - 4) * pct, barH - 4);
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = `${gs(11)}px monospace`;
+        ctx.fillText(`${spritesLoaded}/${spritesTotal}`, W / 2, barY + barH + gs(18));
+    }
+
     function init(cvs, player, onGameOver) {
         canvas = cvs;
         ctx = canvas.getContext('2d');
@@ -1930,7 +2205,7 @@ window.SpaceInvaders = (() => {
             playerColor = _t.colors[0] || playerColor;
         }
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         lastTime = 0;
         keys = {};
@@ -1964,6 +2239,14 @@ window.SpaceInvaders = (() => {
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
+        // Load sprites then transition to title
+        spriteExplosions = [];
+        loadSprites(null, () => {
+            if (state === ST_LOADING) state = ST_TITLE;
+        });
+        // Fallback: if sprites take too long, go to title after 5s
+        setTimeout(() => { if (state === ST_LOADING) state = ST_TITLE; }, 5000);
+
         animFrame = requestAnimationFrame(gameLoop);
     }
 
@@ -1991,6 +2274,7 @@ window.SpaceInvaders = (() => {
         powerups = [];
         boss = null;
         bossBullets = [];
+        spriteExplosions = [];
     }
 
     function rand(min, max) { return min + Math.random() * (max - min); }

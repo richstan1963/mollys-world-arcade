@@ -1,4 +1,4 @@
-/* YWA Snake — Enhanced arcade snake with obstacles, portals, prey, poison, speed boosts, rainbow mode */
+/* YWA Snake — Enhanced arcade snake with Kenney CC0 sprites, obstacles, portals, prey, poison, speed boosts, rainbow mode */
 window.Snake = (() => {
 
     // -- roundRect polyfill (Safari <16, older browsers) --
@@ -45,7 +45,7 @@ window.Snake = (() => {
     const PREY_DURATION = 8000; // ms before prey escapes
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_GAMEOVER = 3;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_GAMEOVER = 3;
 
     // Game state
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -75,6 +75,70 @@ window.Snake = (() => {
     let moveProgress; // 0..1 interpolation between grid cells
     let prevSnakePositions; // previous grid positions for interpolation
     let deathScatterSegments; // for staggered death animation
+
+    // ── Sprite Atlas ──
+    const SPRITE_BASE_TILES = '/img/game-assets/kenney-tiles';
+    const SPRITE_BASE_PLATFORM = '/img/game-assets/kenney-platform';
+    const SPRITE_BASE_COINS = '/img/game-assets/kenney-coins';
+    const SPRITE_BASE_PARTICLES = '/img/game-assets/kenney-particles';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Snake body tiles (colored)
+        bodyGreen:   `${SPRITE_BASE_TILES}/tileGreen_02.png`,
+        bodyBlue:    `${SPRITE_BASE_TILES}/tileBlue_02.png`,
+        bodyOrange:  `${SPRITE_BASE_TILES}/tileOrange_02.png`,
+        bodyRed:     `${SPRITE_BASE_TILES}/tileRed_02.png`,
+        bodyYellow:  `${SPRITE_BASE_TILES}/tileYellow_02.png`,
+        bodyPink:    `${SPRITE_BASE_TILES}/tilePink_02.png`,
+        // Snake head tiles
+        headGreen:   `${SPRITE_BASE_TILES}/tileGreen_01.png`,
+        headBlue:    `${SPRITE_BASE_TILES}/tileBlue_01.png`,
+        headOrange:  `${SPRITE_BASE_TILES}/tileOrange_01.png`,
+        headRed:     `${SPRITE_BASE_TILES}/tileRed_01.png`,
+        // Food items
+        food:        `${SPRITE_BASE_PLATFORM}/items/gemRed.png`,
+        goldenFood:  `${SPRITE_BASE_PLATFORM}/items/gemYellow.png`,
+        poisonFood:  `${SPRITE_BASE_PLATFORM}/items/gemGreen.png`,
+        speedFood:   `${SPRITE_BASE_PLATFORM}/items/gemBlue.png`,
+        // Prey
+        prey:        `${SPRITE_BASE_PLATFORM}/enemies/mouse.png`,
+        preyMove:    `${SPRITE_BASE_PLATFORM}/enemies/mouse_move.png`,
+        // Obstacles
+        obstacle:    `${SPRITE_BASE_PLATFORM}/tiles/boxCrate.png`,
+        // Coins for scoring
+        coin1:       `${SPRITE_BASE_COINS}/coin_01.png`,
+        coin2:       `${SPRITE_BASE_COINS}/coin_02.png`,
+        // Particles
+        particle1:   `${SPRITE_BASE_PARTICLES}/particleWhite_1.png`,
+        particle2:   `${SPRITE_BASE_PARTICLES}/particleWhite_2.png`,
+        particle3:   `${SPRITE_BASE_PARTICLES}/particleWhite_3.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { sprites[key] = img; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { sprites[key] = null; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(img, cx, cy, w, h, rot, alpha) {
+        if (!img) return false;
+        ctx.save();
+        ctx.translate(cx, cy);
+        if (rot) ctx.rotate(rot);
+        if (alpha !== undefined) ctx.globalAlpha = alpha;
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        ctx.restore();
+        return true;
+    }
 
     // Audio
     let audioCtx;
@@ -758,7 +822,13 @@ window.Snake = (() => {
             const sz = gs(CELL);
             const pad = gs(1);
 
-            // Dark brick with subtle texture
+            // Try sprite first
+            if (sprites.obstacle) {
+                ctx.drawImage(sprites.obstacle, px, py, sz, sz);
+                continue;
+            }
+
+            // Fallback: dark brick with subtle texture
             const brickGrad = ctx.createLinearGradient(px, py, px + sz, py + sz);
             brickGrad.addColorStop(0, '#64748B');
             brickGrad.addColorStop(0.5, COL_OBSTACLE);
@@ -768,13 +838,11 @@ window.Snake = (() => {
             ctx.fillStyle = brickGrad;
             ctx.fill();
 
-            // Inner highlight
             ctx.beginPath();
             ctx.roundRect(px + pad + gs(2), py + pad + gs(1), sz * 0.4, sz * 0.2, gs(1));
             ctx.fillStyle = 'rgba(255,255,255,0.08)';
             ctx.fill();
 
-            // Cross hatch pattern
             ctx.strokeStyle = 'rgba(0,0,0,0.2)';
             ctx.lineWidth = gs(0.5);
             ctx.beginPath();
@@ -912,21 +980,30 @@ window.Snake = (() => {
 
             const r = gs(4);
             const pad = gs(1);
-            ctx.beginPath();
-            ctx.roundRect(px + pad, py + pad, sz - pad * 2, sz - pad * 2, r);
 
-            const segGrad = ctx.createLinearGradient(px, py, px + sz, py + sz);
-            segGrad.addColorStop(0, shineColor);
-            segGrad.addColorStop(0.4, bodyColor);
-            segGrad.addColorStop(1, withAlpha(segDarkColor, alpha));
-            ctx.fillStyle = segGrad;
-            ctx.fill();
-
-            // Shine highlight
-            ctx.beginPath();
-            ctx.roundRect(px + pad + gs(2), py + pad + gs(1), sz * 0.4, sz * 0.25, gs(2));
-            ctx.fillStyle = withAlpha('#FFFFFF', 0.15 * alpha);
-            ctx.fill();
+            // Try sprite tile for body segment
+            const bodyKey = i === 0 ? (rainbowMode ? 'headGreen' : 'headBlue') :
+                            (rainbowMode ? ['bodyGreen','bodyOrange','bodyRed','bodyYellow','bodyPink','bodyBlue'][i % 6] : 'bodyBlue');
+            if (sprites[bodyKey]) {
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.drawImage(sprites[bodyKey], px, py, sz, sz);
+                ctx.restore();
+            } else {
+                // Fallback canvas drawing
+                ctx.beginPath();
+                ctx.roundRect(px + pad, py + pad, sz - pad * 2, sz - pad * 2, r);
+                const segGrad = ctx.createLinearGradient(px, py, px + sz, py + sz);
+                segGrad.addColorStop(0, shineColor);
+                segGrad.addColorStop(0.4, bodyColor);
+                segGrad.addColorStop(1, withAlpha(segDarkColor, alpha));
+                ctx.fillStyle = segGrad;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.roundRect(px + pad + gs(2), py + pad + gs(1), sz * 0.4, sz * 0.25, gs(2));
+                ctx.fillStyle = withAlpha('#FFFFFF', 0.15 * alpha);
+                ctx.fill();
+            }
 
             // Speed boost trail effect
             if (speedBoostActive && i > 0 && i % 2 === 0) {
@@ -1077,9 +1154,19 @@ window.Snake = (() => {
 
     function drawFood() {
         if (!food) return;
-        drawFoodOrb(food.x, food.y, COL_FOOD, lighten(COL_FOOD, -60), 0.35, 4, '#FFAAAA');
+        const fpx = gs(food.x * CELL + CELL / 2), fpy = gs(food.y * CELL + CELL / 2);
+        const fsz = gs(CELL * 0.8);
+        const pulse = 1 + Math.sin(frameCount * 0.08) * 0.1;
+        if (sprites.food) {
+            ctx.save();
+            ctx.translate(fpx, fpy);
+            ctx.scale(pulse, pulse);
+            ctx.drawImage(sprites.food, -fsz / 2, -fsz / 2, fsz, fsz);
+            ctx.restore();
+        } else {
+            drawFoodOrb(food.x, food.y, COL_FOOD, lighten(COL_FOOD, -60), 0.35, 4, '#FFAAAA');
+        }
 
-        // Particle trail
         if (frameCount % 6 === 0) {
             spawnParticles(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, COL_FOOD, 1, 1);
         }
@@ -1090,8 +1177,19 @@ window.Snake = (() => {
         const px = gs(poisonFood.x * CELL + CELL / 2);
         const py = gs(poisonFood.y * CELL + CELL / 2);
         const r = gs(CELL * 0.35) + Math.sin(frameCount * 0.1) * gs(1);
+        const fsz = gs(CELL * 0.8);
 
-        // Glow
+        if (sprites.poisonFood) {
+            const pulse = 1 + Math.sin(frameCount * 0.1) * 0.08;
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.scale(pulse, pulse);
+            ctx.drawImage(sprites.poisonFood, -fsz / 2, -fsz / 2, fsz, fsz);
+            ctx.restore();
+            return;
+        }
+
+        // Fallback glow
         const glow = ctx.createRadialGradient(px, py, r * 0.2, px, py, r * 2.5);
         glow.addColorStop(0, withAlpha(COL_POISON, 0.4));
         glow.addColorStop(1, 'transparent');
@@ -1159,6 +1257,17 @@ window.Snake = (() => {
         if (!speedFood) return;
         const px = gs(speedFood.x * CELL + CELL / 2);
         const py = gs(speedFood.y * CELL + CELL / 2);
+        const fsz = gs(CELL * 0.8);
+        if (sprites.speedFood) {
+            const pulse = 1 + Math.sin(frameCount * 0.12) * 0.1;
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.scale(pulse, pulse);
+            ctx.drawImage(sprites.speedFood, -fsz / 2, -fsz / 2, fsz, fsz);
+            ctx.restore();
+            if (frameCount % 4 === 0) spawnParticles(speedFood.x * CELL + CELL / 2, speedFood.y * CELL + CELL / 2, COL_SPEED, 1, 1.5);
+            return;
+        }
         const r = gs(CELL * 0.38) + Math.sin(frameCount * 0.12) * gs(1.5);
 
         // Electric glow
@@ -1219,6 +1328,7 @@ window.Snake = (() => {
         const py = gs(prey.y * CELL + CELL / 2);
         const r = gs(CELL * 0.35);
         const bounce = Math.abs(Math.sin(frameCount * 0.15)) * gs(3);
+        const fsz = gs(CELL * 0.9);
 
         // Timer bar
         const remaining = prey.timer / PREY_DURATION;
@@ -1227,6 +1337,16 @@ window.Snake = (() => {
         ctx.fillRect(px - barW / 2, py + r + gs(4), barW, gs(3));
         ctx.fillStyle = remaining > 0.3 ? COL_PREY : '#EF4444';
         ctx.fillRect(px - barW / 2, py + r + gs(4), barW * remaining, gs(3));
+
+        const preySprite = (frameCount % 30 < 15) ? sprites.preyMove : sprites.prey;
+        if (preySprite) {
+            ctx.save();
+            ctx.translate(px, py - bounce);
+            ctx.drawImage(preySprite, -fsz / 2, -fsz / 2, fsz, fsz);
+            ctx.restore();
+            if (frameCount % 8 === 0) spawnParticles(prey.x * CELL + CELL / 2, prey.y * CELL + CELL / 2, COL_PREY, 1, 1);
+            return;
+        }
 
         ctx.save();
         ctx.translate(px, py - bounce);
@@ -1302,12 +1422,26 @@ window.Snake = (() => {
         if (!goldenFood) return;
         const px = gs(goldenFood.x * CELL + CELL / 2);
         const py = gs(goldenFood.y * CELL + CELL / 2);
+        const fsz = gs(CELL * 0.9);
+        const remaining = goldenTimer / GOLDEN_DURATION;
+        const flicker = remaining < 0.3 ? (Math.sin(frameCount * 0.4) > 0 ? 1 : 0.3) : 1;
+
+        if (sprites.goldenFood) {
+            const pulse = 1 + Math.sin(frameCount * 0.15) * 0.15;
+            ctx.save();
+            ctx.globalAlpha = flicker;
+            ctx.translate(px, py);
+            ctx.scale(pulse, pulse);
+            ctx.rotate(Math.sin(frameCount * 0.05) * 0.15);
+            ctx.drawImage(sprites.goldenFood, -fsz / 2, -fsz / 2, fsz, fsz);
+            ctx.restore();
+            if (frameCount % 3 === 0) spawnParticles(goldenFood.x * CELL + CELL / 2, goldenFood.y * CELL + CELL / 2, COL_GOLDEN, 2, 2);
+            return;
+        }
+
         const baseR = gs(CELL * 0.4);
         const pulse = Math.sin(frameCount * 0.15) * gs(3);
         const r = baseR + pulse;
-
-        const remaining = goldenTimer / GOLDEN_DURATION;
-        const flicker = remaining < 0.3 ? (Math.sin(frameCount * 0.4) > 0 ? 1 : 0.3) : 1;
 
         ctx.globalAlpha = flicker;
 
@@ -1698,9 +1832,36 @@ window.Snake = (() => {
         drawVignette();
     }
 
+    function drawLoading() {
+        ctx.fillStyle = '#0A0E1A';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#22C55E';
+        ctx.shadowColor = '#4ADE80'; ctx.shadowBlur = gs(10);
+        ctx.font = `bold ${gs(30)}px monospace`;
+        ctx.fillText('SNAKE', gs(GAME_W / 2), gs(GAME_H / 2 - 50));
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#E0E7FF'; ctx.font = `${gs(12)}px monospace`;
+        ctx.fillText('LOADING SPRITES...', gs(GAME_W / 2), gs(GAME_H / 2));
+        const barW = 160, barH = 6;
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 16), gs(barW), gs(barH));
+        ctx.fillStyle = '#22C55E';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 16), gs(barW * pct), gs(barH));
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = `${gs(9)}px monospace`;
+        ctx.fillText(`${spritesLoaded} / ${spritesTotal}`, gs(GAME_W / 2), gs(GAME_H / 2 + 38));
+    }
+
     // ── Game Loop ──
     function gameLoop(timestamp) {
         if (!gameActive) return;
+        if (state === ST_LOADING) {
+            drawLoading();
+            if (allSpritesReady) state = ST_TITLE;
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         const dt = lastTime ? timestamp - lastTime : 16;
         lastTime = timestamp;
         update(timestamp, dt);
@@ -1743,7 +1904,7 @@ window.Snake = (() => {
 
         applyTheme();
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         lastTime = 0;
         lastMoveTime = 0;
@@ -1778,6 +1939,7 @@ window.Snake = (() => {
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
+        loadSprites(null, null);
         animFrame = requestAnimationFrame(gameLoop);
     }
 

@@ -1,7 +1,7 @@
 /* YWA Contra — Side-scrolling run-and-gun with color-chain combo system
    Upgraded: new enemies, hazards, mid-boss, vehicle section, weapon combos,
    destructible environment, parallax foreground, weather, muzzle flash per weapon,
-   ragdoll enemy deaths */
+   ragdoll enemy deaths — Kenney Platform CC0 sprites */
 window.Contra = (() => {
 
     // -- roundRect polyfill (Safari <16, older browsers) --
@@ -33,7 +33,121 @@ window.Contra = (() => {
     const LEVEL_LENGTH = 9600; // longer for vehicle + mid-boss
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_GAMEOVER = 3, ST_WIN = 4;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2, ST_GAMEOVER = 3, ST_WIN = 4;
+
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Player
+        playerStand:  `${SPRITE_BASE}/players/Blue/alienBlue_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Blue/alienBlue_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Blue/alienBlue_walk2.png`,
+        playerJump:   `${SPRITE_BASE}/players/Blue/alienBlue_jump.png`,
+        playerDuck:   `${SPRITE_BASE}/players/Blue/alienBlue_duck.png`,
+        playerHit:    `${SPRITE_BASE}/players/Blue/alienBlue_hit.png`,
+        // Enemies
+        enemySlime:   `${SPRITE_BASE}/enemies/slimeGreen.png`,
+        enemySlimeM:  `${SPRITE_BASE}/enemies/slimeGreen_move.png`,
+        enemyBee:     `${SPRITE_BASE}/enemies/bee.png`,
+        enemyBeeM:    `${SPRITE_BASE}/enemies/bee_move.png`,
+        enemyFly:     `${SPRITE_BASE}/enemies/fly.png`,
+        enemyFlyM:    `${SPRITE_BASE}/enemies/fly_move.png`,
+        enemyMouse:   `${SPRITE_BASE}/enemies/mouse.png`,
+        enemyMouseM:  `${SPRITE_BASE}/enemies/mouse_move.png`,
+        enemySnail:   `${SPRITE_BASE}/enemies/snail.png`,
+        enemySnailM:  `${SPRITE_BASE}/enemies/snail_move.png`,
+        enemySaw:     `${SPRITE_BASE}/enemies/saw.png`,
+        enemySawM:    `${SPRITE_BASE}/enemies/saw_move.png`,
+        // Tiles / platforms
+        grassMid:     `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        grassLeft:    `${SPRITE_BASE}/ground/Grass/grassLeft.png`,
+        grassRight:   `${SPRITE_BASE}/ground/Grass/grassRight.png`,
+        grassCenter:  `${SPRITE_BASE}/ground/Grass/grassCenter.png`,
+        stoneMid:     `${SPRITE_BASE}/ground/Stone/stoneMid.png`,
+        stoneCenter:  `${SPRITE_BASE}/ground/Stone/stoneCenter.png`,
+        // Items
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        gemBlue:      `${SPRITE_BASE}/items/gemBlue.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        gemGreen:     `${SPRITE_BASE}/items/gemGreen.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        keyBlue:      `${SPRITE_BASE}/items/keyBlue.png`,
+        fireball:     `${SPRITE_BASE}/particles/fireball.png`,
+        // Tiles - props
+        boxCrate:     `${SPRITE_BASE}/tiles/boxCrate.png`,
+        boxExplosive: `${SPRITE_BASE}/tiles/boxExplosive.png`,
+        bomb:         `${SPRITE_BASE}/tiles/bomb.png`,
+        spikes:       `${SPRITE_BASE}/tiles/spikes.png`,
+        bush:         `${SPRITE_BASE}/tiles/bush.png`,
+        rock:         `${SPRITE_BASE}/tiles/rock.png`,
+        flagRed:      `${SPRITE_BASE}/items/flagRed1.png`,
+        // HUD
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        hudHeartE:    `${SPRITE_BASE}/hud/hudHeart_empty.png`,
+        // Background
+        bgGrass:      `${SPRITE_BASE}/backgrounds/blue_grass.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(img, x, y, w, h, flipX) {
+        if (!img) return false;
+        ctx.save();
+        if (flipX) {
+            ctx.translate(gx(x + w), gy(y));
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, gs(w), gs(h));
+        } else {
+            ctx.drawImage(img, gx(x), gy(y), gs(w), gs(h));
+        }
+        ctx.restore();
+        return true;
+    }
+
+    function drawLoading() {
+        ctx.fillStyle = '#050510';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#EF4444';
+        ctx.shadowColor = '#EF4444'; ctx.shadowBlur = gs(10);
+        ctx.font = `bold ${gs(44)}px monospace`;
+        ctx.fillText('CONTRA', gs(GAME_W / 2), gs(GAME_H / 2 - 50));
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#E0E7FF'; ctx.font = `${gs(13)}px monospace`;
+        ctx.fillText('LOADING SPRITES...', gs(GAME_W / 2), gs(GAME_H / 2));
+        const barW = 200, barH = 8;
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW), gs(barH));
+        ctx.fillStyle = '#EF4444';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW * pct), gs(barH));
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = `${gs(10)}px monospace`;
+        ctx.fillText(`${spritesLoaded} / ${spritesTotal}`, gs(GAME_W / 2), gs(GAME_H / 2 + 45));
+    }
 
     // Game state
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -1179,7 +1293,37 @@ window.Contra = (() => {
             if (p.type === 'gap') continue;
             const px2 = p.x - cameraX;
             if (px2 + p.w < -10 || px2 > GAME_W + 10) continue;
-            if (p.type === 'ground') {
+
+            // Sprite-based platform rendering
+            let platSpriteDrawn = false;
+            if (allSpritesReady) {
+                const tileW = 40;
+                if (p.type === 'ground') {
+                    const grassImg = sprites['grassMid'];
+                    const dirtImg = sprites['grassCenter'];
+                    if (grassImg) {
+                        for (let tx = p.x; tx < p.x + p.w; tx += tileW) {
+                            const screenX = tx - cameraX;
+                            if (screenX + tileW < -5 || screenX > GAME_W + 5) continue;
+                            ctx.drawImage(grassImg, gx(tx), gy(p.y), gs(tileW), gs(20));
+                            if (dirtImg) ctx.drawImage(dirtImg, gx(tx), gy(p.y + 20), gs(tileW), gs(p.h - 20));
+                        }
+                        platSpriteDrawn = true;
+                    }
+                } else {
+                    const stoneImg = sprites['stoneMid'];
+                    if (stoneImg) {
+                        for (let tx = p.x; tx < p.x + p.w; tx += tileW) {
+                            const screenX = tx - cameraX;
+                            if (screenX + tileW < -5 || screenX > GAME_W + 5) continue;
+                            ctx.drawImage(stoneImg, gx(tx), gy(p.y), gs(tileW), gs(p.h + 4));
+                        }
+                        platSpriteDrawn = true;
+                    }
+                }
+            }
+
+            if (!platSpriteDrawn && p.type === 'ground') {
                 const gGrad = ctx.createLinearGradient(0, gy(p.y), 0, gy(p.y + p.h));
                 gGrad.addColorStop(0, '#2a3a2a');
                 gGrad.addColorStop(0.3, '#1e2e1e');
@@ -1206,7 +1350,7 @@ window.Contra = (() => {
                     ctx.fillRect(gx(dx + 5), gy(p.y + 8), gs(3), gs(2));
                     ctx.fillRect(gx(dx + 15), gy(p.y + 14), gs(2), gs(2));
                 }
-            } else {
+            } else if (!platSpriteDrawn) {
                 const pGrad = ctx.createLinearGradient(0, gy(p.y), 0, gy(p.y + p.h));
                 pGrad.addColorStop(0, '#6a6a7a');
                 pGrad.addColorStop(0.5, '#4a4a5a');
@@ -1231,7 +1375,19 @@ window.Contra = (() => {
             if (!d.alive) continue;
             const dx = d.x - cameraX;
             if (dx + d.w < -5 || dx > GAME_W + 5) continue;
-            if (d.type === 'crate') {
+            let destSpriteDrawn = false;
+            if (allSpritesReady) {
+                const dImg = sprites[d.type === 'crate' ? 'boxCrate' : 'rock'];
+                if (dImg) {
+                    ctx.drawImage(dImg, gx(d.x), gy(d.y), gs(d.w), gs(d.h));
+                    if (d.secret) {
+                        ctx.fillStyle = 'rgba(255,200,50,0.2)';
+                        ctx.fillRect(gx(d.x + 2), gy(d.y + 2), gs(d.w - 4), gs(d.h - 4));
+                    }
+                    destSpriteDrawn = true;
+                }
+            }
+            if (!destSpriteDrawn && d.type === 'crate') {
                 ctx.fillStyle = '#6B4423';
                 ctx.fillRect(gx(d.x), gy(d.y), gs(d.w), gs(d.h));
                 ctx.strokeStyle = '#4A2F14';
@@ -1249,12 +1405,11 @@ window.Contra = (() => {
                     ctx.fillStyle = 'rgba(255,200,50,0.15)';
                     ctx.fillRect(gx(d.x + 2), gy(d.y + 2), gs(d.w - 4), gs(d.h - 4));
                 }
-            } else { // wall
+            } else if (!destSpriteDrawn) { // wall
                 ctx.fillStyle = '#555';
                 ctx.fillRect(gx(d.x), gy(d.y), gs(d.w), gs(d.h));
                 ctx.fillStyle = '#666';
                 ctx.fillRect(gx(d.x), gy(d.y), gs(d.w), gs(3));
-                // Cracks
                 ctx.strokeStyle = '#444';
                 ctx.lineWidth = gs(0.5);
                 ctx.beginPath();
@@ -1270,7 +1425,12 @@ window.Contra = (() => {
             if (hz.type === 'barrel' && hz.alive) {
                 const bx = hz.x - cameraX;
                 if (bx + hz.w < -5 || bx > GAME_W + 5) continue;
-                // Red barrel body
+                // Try sprite
+                if (allSpritesReady && sprites['boxExplosive']) {
+                    ctx.drawImage(sprites['boxExplosive'], gx(hz.x), gy(hz.y), gs(hz.w), gs(hz.h));
+                    continue;
+                }
+                // Red barrel body fallback
                 ctx.fillStyle = '#CC2200';
                 ctx.fillRect(gx(hz.x), gy(hz.y), gs(hz.w), gs(hz.h));
                 ctx.fillStyle = '#FF4400';
@@ -1375,7 +1535,23 @@ window.Contra = (() => {
             ctx.ellipse(gx(cx), gy(e.y + e.h + 2), gs(10), gs(3), 0, 0, Math.PI * 2);
             ctx.fill();
 
-            if (e.type === 'turret') {
+            // Try sprite rendering for enemies
+            let enemySpriteDrawn = false;
+            if (allSpritesReady) {
+                const anim = Math.floor(frameCount / 10) % 2 === 0;
+                let eSpr = null;
+                if (e.type === 'turret') eSpr = sprites[anim ? 'enemySaw' : 'enemySawM'];
+                else if (e.type === 'sniper') eSpr = sprites[anim ? 'enemyBee' : 'enemyBeeM'];
+                else if (e.type === 'grenadier') eSpr = sprites[anim ? 'enemyFly' : 'enemyFlyM'];
+                else if (e.type === 'shield') eSpr = sprites[anim ? 'enemySnail' : 'enemySnailM'];
+                else if (e.type === 'runner') eSpr = sprites[anim ? 'enemyMouse' : 'enemyMouseM'];
+                else eSpr = sprites[anim ? 'enemySlime' : 'enemySlimeM'];
+                if (eSpr) {
+                    enemySpriteDrawn = drawSprite(eSpr, e.x - 4, e.y - 4, e.w + 8, e.h + 8, gdir < 0);
+                }
+            }
+
+            if (!enemySpriteDrawn && e.type === 'turret') {
                 ctx.fillStyle = '#444';
                 ctx.fillRect(gx(e.x - 4), gy(e.y + e.h - 12), gs(e.w + 8), gs(12));
                 ctx.fillStyle = '#555';
@@ -1395,7 +1571,7 @@ window.Contra = (() => {
                 const bAngle = Math.atan2(player.y - (e.y + e.h - 18), player.x - cx);
                 ctx.lineTo(gx(cx + Math.cos(bAngle) * 20), gy(e.y + e.h - 18 + Math.sin(bAngle) * 20));
                 ctx.stroke();
-            } else if (e.type === 'sniper') {
+            } else if (!enemySpriteDrawn && e.type === 'sniper') {
                 // Sniper: camo-themed, scope glint (feature 1)
                 const lo = 0; // stationary
                 // Body — darker tone
@@ -1432,7 +1608,7 @@ window.Contra = (() => {
                 ctx.fillStyle = darkenColor(e.color, 0.6);
                 ctx.fillRect(gx(e.x + 6), gy(e.y + e.h - 10), gs(5), gs(10));
                 ctx.fillRect(gx(e.x + e.w - 11), gy(e.y + e.h - 10), gs(5), gs(10));
-            } else if (e.type === 'grenadier') {
+            } else if (!enemySpriteDrawn && e.type === 'grenadier') {
                 // Grenadier: bulky, holding grenade (feature 1)
                 const lo = Math.sin(frameCount * 0.2 + e.x) * 3;
                 // Legs
@@ -1461,7 +1637,7 @@ window.Contra = (() => {
                 ctx.beginPath();
                 ctx.arc(gx(e.x + (gdir > 0 ? e.w + 4 : -4)), gy(e.y + 18), gs(2.5), 0, Math.PI * 2);
                 ctx.fill();
-            } else if (e.type === 'shield') {
+            } else if (!enemySpriteDrawn && e.type === 'shield') {
                 // Shield soldier (feature 1)
                 const lo = Math.sin(frameCount * 0.25 + e.x) * 4;
                 // Legs
@@ -1500,7 +1676,7 @@ window.Contra = (() => {
                 ctx.beginPath(); ctx.arc(gx(cx), gy(e.y + 5), gs(8), Math.PI, 0); ctx.fill();
                 ctx.fillStyle = '#111';
                 ctx.fillRect(gx(cx + gdir * 2), gy(e.y + 6), gs(2), gs(2));
-            } else {
+            } else if (!enemySpriteDrawn) {
                 // Standard soldier / runner
                 const running = e.type === 'runner';
                 const legSpeed = running ? 0.4 : 0.2;
@@ -1715,12 +1891,24 @@ window.Contra = (() => {
                 const px = player.x, py = player.y;
                 const f = player.facing;
 
+                // Shadow
                 ctx.fillStyle = 'rgba(0,0,0,0.3)';
                 ctx.beginPath();
                 ctx.ellipse(gx(px + PLAYER_W/2), gy(py + ph + 2), gs(12), gs(3), 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                if (player.prone) {
+                // Try sprite rendering first
+                let playerSpriteDrawn = false;
+                if (allSpritesReady) {
+                    let sprKey;
+                    if (player.prone) sprKey = 'playerDuck';
+                    else if (!player.grounded) sprKey = 'playerJump';
+                    else if (Math.abs(player.vx) > 0) sprKey = (Math.floor(frameCount / 8) % 2 === 0) ? 'playerWalk1' : 'playerWalk2';
+                    else sprKey = 'playerStand';
+                    playerSpriteDrawn = drawSprite(sprites[sprKey], px - 4, py - 6, PLAYER_W + 8, ph + 8, f < 0);
+                }
+
+                if (!playerSpriteDrawn && player.prone) {
                     ctx.fillStyle = darkenColor(playerColor, 0.7);
                     ctx.fillRect(gx(px), gy(py + 6), gs(PLAYER_W), gs(PRONE_H - 6));
                     ctx.fillStyle = playerColor;
@@ -1733,7 +1921,7 @@ window.Contra = (() => {
                     ctx.beginPath();
                     ctx.arc(gx(px + (f > 0 ? PLAYER_W - 4 : 4)), gy(py + 10), gs(6), Math.PI, 0);
                     ctx.fill();
-                } else {
+                } else if (!playerSpriteDrawn) {
                     const running = player.grounded && Math.abs(player.vx) > 0;
                     const lo = running ? Math.sin(frameCount * 0.35) * 5 : 0;
                     ctx.fillStyle = darkenColor(playerColor, 0.5);
@@ -2008,15 +2196,19 @@ window.Contra = (() => {
         ctx.font = `bold ${gs(12)}px monospace`;
         ctx.fillText('LIVES', gs(8), gs(38));
         for (let i = 0; i < Math.max(0, lives); i++) {
-            ctx.fillStyle = '#EF4444';
-            ctx.beginPath();
-            const hx2 = 68 + i * 16, hy2 = 32;
-            ctx.arc(gs(hx2 - 3), gs(hy2), gs(4), Math.PI, 0);
-            ctx.arc(gs(hx2 + 3), gs(hy2), gs(4), Math.PI, 0);
-            ctx.lineTo(gs(hx2 + 7), gs(hy2 + 4));
-            ctx.lineTo(gs(hx2), gs(hy2 + 10));
-            ctx.lineTo(gs(hx2 - 7), gs(hy2 + 4));
-            ctx.fill();
+            const hx2 = 68 + i * 16, hy2 = 28;
+            if (allSpritesReady && sprites['hudHeart']) {
+                ctx.drawImage(sprites['hudHeart'], gs(hx2 - 7), gs(hy2 - 4), gs(14), gs(14));
+            } else {
+                ctx.fillStyle = '#EF4444';
+                ctx.beginPath();
+                ctx.arc(gs(hx2 - 3), gs(hy2), gs(4), Math.PI, 0);
+                ctx.arc(gs(hx2 + 3), gs(hy2), gs(4), Math.PI, 0);
+                ctx.lineTo(gs(hx2 + 7), gs(hy2 + 4));
+                ctx.lineTo(gs(hx2), gs(hy2 + 10));
+                ctx.lineTo(gs(hx2 - 7), gs(hy2 + 4));
+                ctx.fill();
+            }
         }
 
         // Weapon indicator with upgrade level
@@ -2222,7 +2414,10 @@ window.Contra = (() => {
         lastTime = ts;
         frameCount++;
 
-        if (state === ST_TITLE) {
+        if (state === ST_LOADING) {
+            drawLoading();
+            if (allSpritesReady) state = ST_TITLE;
+        } else if (state === ST_TITLE) {
             drawTitle();
         } else if (state === ST_PLAY) {
             update(dt);
@@ -2339,7 +2534,7 @@ window.Contra = (() => {
         const _t = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(themeId) : null;
         if (_t) playerColor = _t.colors[0] || playerColor;
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         lastTime = 0;
         keys = {};
@@ -2356,6 +2551,8 @@ window.Contra = (() => {
         H = canvas.height || 540;
         SCALE = W / GAME_W;
         DPR = Math.min(window.devicePixelRatio || 1, 3);
+
+        if (!allSpritesReady) loadSprites();
 
         createStars();
 

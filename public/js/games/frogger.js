@@ -38,8 +38,114 @@ window.Frogger = (() => {
     const TOTAL_ROWS = 14;
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_LEVEL_SPLASH = 3, ST_GAMEOVER = 4, ST_WIN = 5;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_LEVEL_SPLASH = 3, ST_GAMEOVER = 4, ST_WIN = 5;
     const LS_KEY = 'ywa_frogger_hiscore';
+
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Frog = green alien
+        frogStand:   `${SPRITE_BASE}/players/Green/alienGreen_stand.png`,
+        frogFront:   `${SPRITE_BASE}/players/Green/alienGreen_front.png`,
+        frogJump:    `${SPRITE_BASE}/players/Green/alienGreen_jump.png`,
+        frogSwim1:   `${SPRITE_BASE}/players/Green/alienGreen_swim1.png`,
+        frogSwim2:   `${SPRITE_BASE}/players/Green/alienGreen_swim2.png`,
+        frogHit:     `${SPRITE_BASE}/players/Green/alienGreen_hit.png`,
+        frogDuck:    `${SPRITE_BASE}/players/Green/alienGreen_duck.png`,
+        // Cars = colored block enemies
+        fishBlue:    `${SPRITE_BASE}/enemies/fishBlue.png`,
+        fishGreen:   `${SPRITE_BASE}/enemies/fishGreen.png`,
+        fishPink:    `${SPRITE_BASE}/enemies/fishPink.png`,
+        wormGreen:   `${SPRITE_BASE}/enemies/wormGreen.png`,
+        wormPink:    `${SPRITE_BASE}/enemies/wormPink.png`,
+        // Logs = brown tiles
+        brickBrown:  `${SPRITE_BASE}/tiles/brickBrown.png`,
+        bridgeA:     `${SPRITE_BASE}/tiles/bridgeA.png`,
+        bridgeB:     `${SPRITE_BASE}/tiles/bridgeB.png`,
+        // Turtles = enemy sprites
+        snail:       `${SPRITE_BASE}/enemies/snail.png`,
+        snailM:      `${SPRITE_BASE}/enemies/snail_move.png`,
+        barnacle:    `${SPRITE_BASE}/enemies/barnacle.png`,
+        barnacleA:   `${SPRITE_BASE}/enemies/barnacle_attack.png`,
+        // Ground tiles
+        grassMid:    `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        grassCenter: `${SPRITE_BASE}/ground/Grass/grassCenter.png`,
+        sandMid:     `${SPRITE_BASE}/ground/Sand/sandMid.png`,
+        // Water tiles
+        water:       `${SPRITE_BASE}/tiles/water.png`,
+        waterTop:    `${SPRITE_BASE}/tiles/waterTop_high.png`,
+        // Items
+        coinGold:    `${SPRITE_BASE}/items/coinGold.png`,
+        star:        `${SPRITE_BASE}/items/star.png`,
+        gemGreen:    `${SPRITE_BASE}/items/gemGreen.png`,
+        flagGreen:   `${SPRITE_BASE}/items/flagGreen1.png`,
+        // HUD
+        hudHeart:    `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        // Misc
+        bush:        `${SPRITE_BASE}/tiles/bush.png`,
+        sign:        `${SPRITE_BASE}/tiles/sign.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(img, x, y, w, h, flipX) {
+        if (!img) return false;
+        ctx.save();
+        if (flipX) {
+            ctx.translate(x + w, y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, w, h);
+        } else {
+            ctx.drawImage(img, x, y, w, h);
+        }
+        ctx.restore();
+        return true;
+    }
+
+    function drawLoading() {
+        ctx.fillStyle = '#0A0A1A';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#22C55E';
+        ctx.shadowColor = '#22C55E'; ctx.shadowBlur = gs(10);
+        ctx.font = `bold ${gs(36)}px monospace`;
+        ctx.fillText('FROGGER', gs(GAME_W / 2), gs(GAME_H / 2 - 50));
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#E0E7FF'; ctx.font = `${gs(13)}px monospace`;
+        ctx.fillText('LOADING SPRITES...', gs(GAME_W / 2), gs(GAME_H / 2));
+        const barW = 200, barH = 8;
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW), gs(barH));
+        ctx.fillStyle = '#22C55E';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW * pct), gs(barH));
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = `${gs(10)}px monospace`;
+        ctx.fillText(`${spritesLoaded} / ${spritesTotal}`, gs(GAME_W / 2), gs(GAME_H / 2 + 45));
+    }
 
     // ── Game State ──
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -1095,6 +1201,24 @@ window.Frogger = (() => {
         const hop = frog.hopAnim;
         const squash = frog.squash || 0;
 
+        // Try sprite frog
+        if (allSpritesReady) {
+            let sprKey;
+            if (state === ST_DYING) sprKey = 'frogHit';
+            else if (hop > 0) sprKey = 'frogJump';
+            else sprKey = 'frogStand';
+            const spr = sprites[sprKey];
+            if (spr) {
+                ctx.save();
+                ctx.translate(gx(cx), gy(cy));
+                const angles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+                ctx.rotate(angles[frog.dir]);
+                ctx.drawImage(spr, gs(-frog.w / 2 - 2), gs(-frog.h / 2 - 2), gs(frog.w + 4), gs(frog.h + 4));
+                ctx.restore();
+                return;
+            }
+        }
+
         ctx.save();
         ctx.translate(gx(cx), gy(cy));
         // Rotate based on direction
@@ -1228,6 +1352,18 @@ window.Frogger = (() => {
     function drawCar(obj, lane) {
         const x = obj.x, y = lane.row * TILE + 4, w = obj.w, h = TILE - 8;
         const cx = gx(x), cy = gy(y), cw = gs(w), ch = gs(h);
+
+        // Try sprite car
+        if (allSpritesReady) {
+            const carSprites = ['fishBlue', 'fishPink', 'fishGreen', 'wormGreen', 'wormPink'];
+            const idx = Math.abs(Math.floor(obj.x * 7 + lane.row * 3)) % carSprites.length;
+            const spr = sprites[carSprites[idx]];
+            if (spr) {
+                const flipX = lane.speed < 0;
+                drawSprite(spr, x, y, w, h, flipX);
+                return;
+            }
+        }
 
         ctx.save();
         // Body
@@ -1367,6 +1503,16 @@ window.Frogger = (() => {
         const x = obj.x, y = lane.row * TILE + 6, w = obj.w, h = TILE - 12;
         const cx = gx(x), cy = gy(y), cw = gs(w), ch = gs(h);
 
+        // Try sprite log
+        if (allSpritesReady && sprites['brickBrown']) {
+            const tW = gs(h + 4);
+            for (let tx = 0; tx < cw; tx += tW) {
+                const drawW = Math.min(tW, cw - tx);
+                ctx.drawImage(sprites['brickBrown'], cx + tx, cy - gs(2), drawW, ch + gs(4));
+            }
+            return;
+        }
+
         ctx.save();
         // Main log shape
         const grad = ctx.createLinearGradient(cx, cy, cx, cy + ch);
@@ -1414,6 +1560,20 @@ window.Frogger = (() => {
     }
 
     function drawTurtle(obj, lane) {
+        // Try sprite turtles (when not submerged)
+        if (!obj.submerged && allSpritesReady) {
+            const ty = lane.row * TILE + 4;
+            const count = lane.turtleCount || 2;
+            const anim = Math.floor(frameCount / 15) % 2 === 0;
+            const spr = sprites[anim ? 'snail' : 'snailM'];
+            if (spr) {
+                for (let i = 0; i < count; i++) {
+                    const tx = obj.x + 2 + i * 28;
+                    ctx.drawImage(spr, gx(tx), gy(ty), gs(24), gs(TILE - 8));
+                }
+                return;
+            }
+        }
         if (obj.submerged) {
             // Just show ripple
             ctx.save();
@@ -2160,8 +2320,13 @@ window.Frogger = (() => {
         if (!lastTime) lastTime = ts;
         const dt = Math.min((ts - lastTime) / 1000, 0.05);
         lastTime = ts;
-        update(dt);
-        draw();
+        if (state === ST_LOADING) {
+            drawLoading();
+            if (allSpritesReady) state = ST_TITLE;
+        } else {
+            update(dt);
+            draw();
+        }
         animFrame = requestAnimationFrame(gameLoop);
     }
 
@@ -2298,7 +2463,8 @@ window.Frogger = (() => {
         }
 
         try { bestScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { bestScore = 0; }
-        state = ST_TITLE;
+        state = ST_LOADING;
+        if (!allSpritesReady) loadSprites();
         frameCount = 0;
         lastTime = 0;
         keys = {};

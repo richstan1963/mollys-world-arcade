@@ -1,4 +1,4 @@
-/* Breakout — Theme-aware brick breaker for Your World Arcade */
+/* Breakout — Kenney CC0 sprite rendering — brick breaker for Your World Arcade */
 window.Maekout = (() => {
 
     // -- roundRect polyfill (Safari <16, older browsers) --
@@ -16,6 +16,80 @@ window.Maekout = (() => {
             return this;
         };
     }
+
+    // ══════════════════════════════════════════
+    //  SPRITE SYSTEM — Kenney tiles + platform
+    // ══════════════════════════════════════════
+    const SPRITES = {};
+    let spritesLoaded = false;
+    let spriteLoadTotal = 0, spriteLoadDone = 0;
+    const SPRITE_OK = {};
+    const SPRITE_MANIFEST = {};
+
+    const BRICK_TILE_COLORS = ['Red','Pink','Orange','Yellow','Green','Blue'];
+    for (const color of BRICK_TILE_COLORS) {
+        for (let v = 1; v <= 5; v++) {
+            const vStr = String(v).padStart(2, '0');
+            SPRITE_MANIFEST[`tile${color}_${vStr}`] = `/img/game-assets/kenney-tiles/tile${color}_${vStr}.png`;
+        }
+    }
+    // Ball sprite
+    SPRITE_MANIFEST['ball'] = '/img/game-assets/kenney-balls/ballYellow_01.png';
+    // Paddle tile
+    SPRITE_MANIFEST['paddleTile'] = '/img/game-assets/kenney-platform/ground/Stone/stoneHalf_mid.png';
+    SPRITE_MANIFEST['paddleLeft'] = '/img/game-assets/kenney-platform/ground/Stone/stoneHalf_left.png';
+    SPRITE_MANIFEST['paddleRight'] = '/img/game-assets/kenney-platform/ground/Stone/stoneHalf_right.png';
+    // Powerup items
+    SPRITE_MANIFEST['gemGreen'] = '/img/game-assets/kenney-platform/items/gemGreen.png';
+    SPRITE_MANIFEST['gemBlue'] = '/img/game-assets/kenney-platform/items/gemBlue.png';
+    SPRITE_MANIFEST['gemRed'] = '/img/game-assets/kenney-platform/items/gemRed.png';
+    SPRITE_MANIFEST['star'] = '/img/game-assets/kenney-ui/star.png';
+
+    function getBrickSprite(rowIdx) {
+        const color = BRICK_TILE_COLORS[rowIdx % BRICK_TILE_COLORS.length];
+        const variant = String((rowIdx % 5) + 1).padStart(2, '0');
+        const key = `tile${color}_${variant}`;
+        return SPRITE_OK[key] ? SPRITES[key] : null;
+    }
+
+    function preloadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spriteLoadTotal = keys.length;
+        spriteLoadDone = 0;
+        if (keys.length === 0) { spritesLoaded = true; onDone(); return; }
+        for (const key of keys) {
+            const img = new Image();
+            img.onload = () => { SPRITE_OK[key] = true; spriteLoadDone++; onProgress(spriteLoadDone / spriteLoadTotal); if (spriteLoadDone >= spriteLoadTotal) { spritesLoaded = true; onDone(); } };
+            img.onerror = () => { SPRITE_OK[key] = false; spriteLoadDone++; onProgress(spriteLoadDone / spriteLoadTotal); if (spriteLoadDone >= spriteLoadTotal) { spritesLoaded = true; onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+            SPRITES[key] = img;
+        }
+    }
+
+    function spr(key) { return SPRITE_OK[key] ? SPRITES[key] : null; }
+
+    let loadingProgress = 0;
+    let isLoading = true;
+
+    function drawLoadingScreen() {
+        const cW = canvas.width, cH = canvas.height;
+        ctx.fillStyle = '#1a1025';
+        ctx.fillRect(0, 0, cW, cH);
+        ctx.fillStyle = '#EC4899';
+        ctx.font = 'bold 28px "Segoe UI", system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('BREAKOUT', cW / 2, cH / 2 - 40);
+        const barW = cW * 0.5, barH = 12;
+        const barX = (cW - barW) / 2, barY = cH / 2;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#EC4899';
+        ctx.fillRect(barX, barY, barW * loadingProgress, barH);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+        ctx.fillText('Loading sprites...', cW / 2, barY + barH + 20);
+    }
+
     // ── Constants ──
     const PADDLE_WIDTH_RATIO = 0.15;
     const PADDLE_HEIGHT = 14;
@@ -525,13 +599,38 @@ window.Maekout = (() => {
         return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
     }
 
-    // ── Draw helpers — theme-aware brick rendering ──
-    function drawBrick(x, y, w, h, color, wobblePhase) {
+    // ── Draw helpers — sprite-first brick rendering with fallback ──
+    function drawBrick(x, y, w, h, color, wobblePhase, rowIdx) {
+        // TRY SPRITE FIRST
+        const sprite = getBrickSprite(rowIdx !== undefined ? rowIdx : 0);
+        if (sprite) {
+            ctx.save();
+            ctx.shadowColor = color.hex;
+            ctx.shadowBlur = 6;
+            ctx.drawImage(sprite, x, y, w, h);
+            ctx.shadowBlur = 0;
+            // Glossy overlay
+            const hl = ctx.createLinearGradient(x, y, x, y + h * 0.5);
+            hl.addColorStop(0, 'rgba(255,255,255,0.2)');
+            hl.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = hl;
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h * 0.5, Math.min(w, h) * 0.18);
+            ctx.fill();
+            if (color.emoji && w > 16) {
+                const fs = Math.min(w * 0.5, h * 0.7, 16);
+                ctx.font = fs + 'px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(color.emoji, x + w / 2, y + h / 2 + 1);
+            }
+            ctx.restore();
+            return;
+        }
+
+        // FALLBACK — original themed rendering
         const style = theme ? theme.blockStyle : 'round';
         const r = Math.min(w, h) * 0.18;
         ctx.save();
-
-        // Enhanced glow
         ctx.shadowColor = color.hex;
         ctx.shadowBlur = 8;
 
@@ -683,10 +782,10 @@ window.Maekout = (() => {
             ctx.restore();
         });
 
-        // Themed bricks!
+        // Themed bricks with Kenney sprites!
         bricks.forEach(br => {
             if (!br.alive) return;
-            drawBrick(br.x, br.y, br.w, br.h, br.color, br.wobble);
+            drawBrick(br.x, br.y, br.w, br.h, br.color, br.wobble, br.r);
 
             // Flash on nearby break
             if (br.flash > 0) {
@@ -725,43 +824,35 @@ window.Maekout = (() => {
             ctx.restore();
         });
 
-        // Balls — enhanced jawbreaker style with glow
+        // Balls — Kenney sprite or fallback jawbreaker style
+        const ballSpr = spr('ball');
         balls.forEach(b => {
             ctx.save();
-            // Outer glow ring
-            ctx.shadowColor = lastHitColor;
-            ctx.shadowBlur = 18;
-            ctx.strokeStyle = lastHitColor;
-            ctx.lineWidth = 1;
-            ctx.globalAlpha = 0.25;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.radius + 4, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-
-            // Main ball with gradient
-            ctx.shadowBlur = 14;
-            const grad = ctx.createRadialGradient(b.x - 2, b.y - 2, 0, b.x, b.y, b.radius);
-            grad.addColorStop(0, '#FFFFFF');
-            grad.addColorStop(0.3, '#FDE68A');
-            grad.addColorStop(0.7, '#F59E0B');
-            grad.addColorStop(1, '#B45309');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Specular highlight
-            ctx.shadowBlur = 0;
-            ctx.globalAlpha = 0.7;
-            ctx.fillStyle = '#FFF';
-            ctx.beginPath();
-            ctx.arc(b.x - 2, b.y - 2, b.radius * 0.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 0.3;
-            ctx.beginPath();
-            ctx.ellipse(b.x, b.y - b.radius * 0.3, b.radius * 0.5, b.radius * 0.2, 0, 0, Math.PI * 2);
-            ctx.fill();
+            if (ballSpr) {
+                ctx.shadowColor = lastHitColor;
+                ctx.shadowBlur = 12;
+                const bsz = b.radius * 2.2;
+                ctx.drawImage(ballSpr, b.x - bsz / 2, b.y - bsz / 2, bsz, bsz);
+                ctx.shadowBlur = 0;
+            } else {
+                ctx.shadowColor = lastHitColor;
+                ctx.shadowBlur = 14;
+                const grad = ctx.createRadialGradient(b.x - 2, b.y - 2, 0, b.x, b.y, b.radius);
+                grad.addColorStop(0, '#FFFFFF');
+                grad.addColorStop(0.3, '#FDE68A');
+                grad.addColorStop(0.7, '#F59E0B');
+                grad.addColorStop(1, '#B45309');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 0.7;
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath();
+                ctx.arc(b.x - 2, b.y - 2, b.radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
             ctx.restore();
         });
 
@@ -805,62 +896,50 @@ window.Maekout = (() => {
             }
         }
 
-        // Paddle — neon glow themed
+        // Paddle — Kenney platform tile or fallback neon glow
         {
-            const pc = BLOCK_COLORS[0] || { hex: '#EC4899', light: '#F9A8D4', dark: '#BE185D' };
-            const pc2 = BLOCK_COLORS[1] || pc;
-            ctx.save();
-            const pr = paddle.h / 2;
-
-            // Outer neon glow (double layer)
-            ctx.shadowColor = pc.hex;
-            ctx.shadowBlur = activePowerups.wide ? 28 : 18;
-            ctx.fillStyle = 'rgba(0,0,0,0)';
-            ctx.beginPath();
-            ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, pr);
-            ctx.fill();
-
-            // Main body gradient
-            const pg = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.h);
-            pg.addColorStop(0, pc.light);
-            pg.addColorStop(0.4, pc.hex);
-            pg.addColorStop(0.6, pc.hex);
-            pg.addColorStop(1, pc.dark);
-            ctx.fillStyle = pg;
-            ctx.shadowBlur = activePowerups.wide ? 22 : 14;
-            ctx.beginPath();
-            ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, pr);
-            ctx.fill();
-
-            // Neon edge stroke
-            ctx.shadowBlur = 8;
-            ctx.strokeStyle = pc.light;
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, pr);
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-
-            // Accent stripe down the middle
-            ctx.fillStyle = pc2.hex;
-            ctx.globalAlpha = 0.3;
-            ctx.fillRect(paddle.x + paddle.w * 0.4, paddle.y + 1, paddle.w * 0.2, paddle.h - 2);
-            ctx.globalAlpha = 1;
-
-            // Glossy top highlight
-            ctx.globalAlpha = 0.4;
-            ctx.fillStyle = '#FFF';
-            ctx.beginPath();
-            ctx.ellipse(paddle.x + paddle.w / 2, paddle.y + 3, paddle.w * 0.35, 3, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Core bright line
-            ctx.globalAlpha = 0.35;
-            ctx.fillStyle = pc.light;
-            ctx.beginPath();
-            ctx.roundRect(paddle.x + 8, paddle.y + paddle.h / 2 - 0.5, paddle.w - 16, 1, 1);
-            ctx.fill();
-            ctx.restore();
+            const pLeft = spr('paddleLeft');
+            const pMid = spr('paddleTile');
+            const pRight = spr('paddleRight');
+            if (pLeft && pMid && pRight) {
+                ctx.save();
+                const ph = paddle.h + 4;
+                const endW = Math.min(ph, paddle.w * 0.2);
+                ctx.shadowColor = '#A0C4FF';
+                ctx.shadowBlur = 10;
+                ctx.drawImage(pLeft, paddle.x, paddle.y - 2, endW, ph);
+                ctx.drawImage(pMid, paddle.x + endW, paddle.y - 2, paddle.w - endW * 2, ph);
+                ctx.drawImage(pRight, paddle.x + paddle.w - endW, paddle.y - 2, endW, ph);
+                ctx.shadowBlur = 0;
+                // Glossy highlight
+                ctx.globalAlpha = 0.25;
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath();
+                ctx.ellipse(paddle.x + paddle.w / 2, paddle.y + 1, paddle.w * 0.35, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } else {
+                const pc = BLOCK_COLORS[0] || { hex: '#EC4899', light: '#F9A8D4', dark: '#BE185D' };
+                ctx.save();
+                const pr = paddle.h / 2;
+                ctx.shadowColor = pc.hex;
+                ctx.shadowBlur = 14;
+                const pg = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.h);
+                pg.addColorStop(0, pc.light);
+                pg.addColorStop(0.5, pc.hex);
+                pg.addColorStop(1, pc.dark);
+                ctx.fillStyle = pg;
+                ctx.beginPath();
+                ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, pr);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 0.4;
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath();
+                ctx.ellipse(paddle.x + paddle.w / 2, paddle.y + 3, paddle.w * 0.35, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
         }
 
         // Power-ups — glowing capsule design
@@ -1218,26 +1297,38 @@ window.Maekout = (() => {
             }
         });
 
-        score = 0; level = 1; lives = LIVES_MAX;
-        gameActive = true; paused = false; waitingLaunch = true;
-        balls = []; particles = []; powerups = [];
-        floatingTexts = []; trail = [];
-        activePowerups = {};
-        keysDown = {}; mouseX = null;
-        lastHitColor = '#FFFFFF';
-        levelClearAnim = 0; lifeLostAnim = 0; shakeAmount = 0;
-        bricksDestroyed = 0;
-        startTime = Date.now();
+        // Show loading screen and preload sprites
+        isLoading = true;
+        loadingProgress = 0;
+        drawLoadingScreen();
 
-        generateStars();
-        paddle = { x: undefined, y: 0, w: 0, h: PADDLE_HEIGHT };
-        calcLayout();
-        paddle.x = (W - paddle.w) / 2;
-        buildBricks();
+        preloadSprites(
+            (progress) => { loadingProgress = progress; if (isLoading) drawLoadingScreen(); },
+            () => { isLoading = false; startBreakoutGame(); }
+        );
 
-        bindEvents();
-        lastTime = performance.now();
-        animFrame = requestAnimationFrame(gameLoop);
+        function startBreakoutGame() {
+            score = 0; level = 1; lives = LIVES_MAX;
+            gameActive = true; paused = false; waitingLaunch = true;
+            balls = []; particles = []; powerups = [];
+            floatingTexts = []; trail = [];
+            activePowerups = {};
+            keysDown = {}; mouseX = null;
+            lastHitColor = '#FFFFFF';
+            levelClearAnim = 0; lifeLostAnim = 0; shakeAmount = 0;
+            bricksDestroyed = 0;
+            startTime = Date.now();
+
+            generateStars();
+            paddle = { x: undefined, y: 0, w: 0, h: PADDLE_HEIGHT };
+            calcLayout();
+            paddle.x = (W - paddle.w) / 2;
+            buildBricks();
+
+            bindEvents();
+            lastTime = performance.now();
+            animFrame = requestAnimationFrame(gameLoop);
+        }
     }
 
     function destroy() {

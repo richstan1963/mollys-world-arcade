@@ -1,5 +1,63 @@
 /* Sky Jump — Endless vertical jumper for Your World Arcade */
 window.SkyJump = (() => {
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        playerStand:  `${SPRITE_BASE}/players/Yellow/alienYellow_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Yellow/alienYellow_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Yellow/alienYellow_walk2.png`,
+        playerJump:   `${SPRITE_BASE}/players/Yellow/alienYellow_jump.png`,
+        playerHit:    `${SPRITE_BASE}/players/Yellow/alienYellow_hit.png`,
+        playerFront:  `${SPRITE_BASE}/players/Yellow/alienYellow_front.png`,
+        grassHalfLeft:  `${SPRITE_BASE}/ground/Grass/grassHalf_left.png`,
+        grassHalfMid:   `${SPRITE_BASE}/ground/Grass/grassHalf_mid.png`,
+        grassHalfRight: `${SPRITE_BASE}/ground/Grass/grassHalf_right.png`,
+        snowHalfLeft:   `${SPRITE_BASE}/ground/Snow/snowHalf_left.png`,
+        snowHalfMid:    `${SPRITE_BASE}/ground/Snow/snowHalf_mid.png`,
+        snowHalfRight:  `${SPRITE_BASE}/ground/Snow/snowHalf_right.png`,
+        stoneHalfMid:   `${SPRITE_BASE}/ground/Stone/stoneHalf_mid.png`,
+        planetHalfMid:  `${SPRITE_BASE}/ground/Planet/planetHalf_mid.png`,
+        sandHalfMid:    `${SPRITE_BASE}/ground/Sand/sandHalf_mid.png`,
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        gemBlue:      `${SPRITE_BASE}/items/gemBlue.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        hudCoin:      `${SPRITE_BASE}/hud/hudCoin.png`,
+        slimeGreen:   `${SPRITE_BASE}/enemies/slimeGreen.png`,
+        slimeGreenMove:`${SPRITE_BASE}/enemies/slimeGreen_move.png`,
+        fly:          `${SPRITE_BASE}/enemies/fly.png`,
+        flyMove:      `${SPRITE_BASE}/enemies/fly_move.png`,
+        bee:          `${SPRITE_BASE}/enemies/bee.png`,
+        beeMove:      `${SPRITE_BASE}/enemies/bee_move.png`,
+        frog:         `${SPRITE_BASE}/enemies/frog.png`,
+        frogMove:     `${SPRITE_BASE}/enemies/frog_move.png`,
+        spring:       `${SPRITE_BASE}/tiles/spring.png`,
+        sprung:       `${SPRITE_BASE}/tiles/sprung.png`,
+        spikes:       `${SPRITE_BASE}/tiles/spikes.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { sprites[key] = img; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { sprites[key] = null; done++; spritesLoaded = done; if (onProgress) onProgress(done, spritesTotal); if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(key, x, y, w, h) {
+        const s = sprites[key];
+        if (s) { ctx.drawImage(s, x, y, w, h); return true; }
+        return false;
+    }
+
     // ── Design Constants ──
     const GAME_W = 360, GAME_H = 640;
     const GRAVITY = 0.35;
@@ -15,7 +73,7 @@ window.SkyJump = (() => {
     const STAR_R = 10;
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DEAD = 2;
 
     // Game state
     let canvas, ctx, W, H, SCALE, animFrame, gameActive = false;
@@ -870,6 +928,18 @@ window.SkyJump = (() => {
                 default:          col = '#4ADE80'; topCol = '#6EE7A0'; botCol = '#2D8A4E';
             }
 
+            // Try sprite tile for platform
+            const platSprMap = { 'normal': 'grassHalfMid', 'moving': 'snowHalfMid', 'breakable': 'sandHalfMid', 'spring': 'stoneHalfMid', 'vanishing': 'snowHalfMid', 'conveyor': 'planetHalfMid', 'rocket': 'stoneHalfMid' };
+            const platSpr = platSprMap[p.type] || 'grassHalfMid';
+            let spriteDrawn = false;
+            if (sprites[platSpr]) {
+                spriteDrawn = true;
+                const tileW = ph;
+                for (let tx = 0; tx < pw; tx += tileW) {
+                    drawSprite(platSpr, px + tx, py, Math.min(tileW, pw - tx), ph);
+                }
+            }
+            if (!spriteDrawn) {
             // 3D effect: body
             const radius = gs(4);
             drawRoundRect(px, py, pw, ph, radius, col);
@@ -879,6 +949,7 @@ window.SkyJump = (() => {
             // Bottom shadow
             ctx.fillStyle = botCol;
             ctx.fillRect(px + radius, py + ph - gs(3), pw - radius * 2, gs(3));
+            }
 
             // Spring icon
             if (p.type === 'spring') {
@@ -951,6 +1022,33 @@ window.SkyJump = (() => {
     function drawCharacter() {
         const cx = gx(charX), cy = gy(charY);
         if (cy < -gs(40) || cy > H + gs(40)) return;
+
+        // Try sprite rendering
+        let sprKey = 'playerStand';
+        if (charVY < -2) sprKey = 'playerJump';
+        else if (charVY > 2) sprKey = 'playerHit';
+        else sprKey = frameCount % 20 < 10 ? 'playerWalk1' : 'playerWalk2';
+
+        if (sprites[sprKey]) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            const sx = 1 - charSquash * 0.5;
+            const sy2 = 1 + charSquash;
+            ctx.scale(sx, sy2);
+            const sprW = gs(CHAR_W * 1.5);
+            const sprH = gs(CHAR_H * 1.5);
+            ctx.drawImage(sprites[sprKey], -sprW / 2, -sprH / 2, sprW, sprH);
+            // Shield glow
+            if (shieldActive) {
+                ctx.strokeStyle = `rgba(59,130,246,${0.4 + Math.sin(frameCount * 0.1) * 0.2})`;
+                ctx.lineWidth = gs(2);
+                ctx.beginPath();
+                ctx.arc(0, 0, sprW * 0.6, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+            return;
+        }
 
         ctx.save();
         ctx.translate(cx, cy);
@@ -1302,22 +1400,17 @@ window.SkyJump = (() => {
             ctx.translate(cx, cy);
 
             if (c.type === 'coin') {
-                // Gold coin
-                ctx.fillStyle = '#FBBF24';
-                ctx.beginPath();
-                ctx.arc(0, 0, gs(COIN_R), 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#D97706';
-                ctx.lineWidth = gs(1);
-                ctx.stroke();
-                // Shine
-                ctx.fillStyle = '#FDE68A';
-                ctx.beginPath();
-                ctx.arc(-gs(1.5), -gs(1.5), gs(2), 0, Math.PI * 2);
-                ctx.fill();
+                const csz = gs(COIN_R * 2);
+                if (!drawSprite('coinGold', -csz / 2, -csz / 2, csz, csz)) {
+                    ctx.fillStyle = '#FBBF24';
+                    ctx.beginPath(); ctx.arc(0, 0, gs(COIN_R), 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = '#D97706'; ctx.lineWidth = gs(1); ctx.stroke();
+                }
             } else {
-                // Star
-                drawStar(0, 0, gs(STAR_R), 5, '#FFD700', '#F59E0B');
+                const ssz = gs(STAR_R * 2.2);
+                if (!drawSprite('star', -ssz / 2, -ssz / 2, ssz, ssz)) {
+                    drawStar(0, 0, gs(STAR_R), 5, '#FFD700', '#F59E0B');
+                }
                 // Glow
                 ctx.beginPath();
                 ctx.arc(0, 0, gs(STAR_R + 3), 0, Math.PI * 2);
@@ -1597,6 +1690,25 @@ window.SkyJump = (() => {
     // ── Game Loop ──
     function gameLoop(ts) {
         if (!gameActive) return;
+        if (state === ST_LOADING) {
+            // Loading screen
+            if (ctx) {
+                const grad = ctx.createLinearGradient(0, 0, 0, H);
+                grad.addColorStop(0, '#87CEEB'); grad.addColorStop(1, '#E0F0FF');
+                ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = '#06B6D4'; ctx.font = `bold ${gs(36)}px sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('SKY JUMP', W / 2, H * 0.35);
+                const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+                const barW = gs(160), barH = gs(8);
+                ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect((W - barW) / 2, H * 0.5, barW, barH);
+                ctx.fillStyle = '#06B6D4'; ctx.fillRect((W - barW) / 2, H * 0.5, barW * pct, barH);
+                ctx.fillStyle = '#666'; ctx.font = `${gs(10)}px sans-serif`;
+                ctx.fillText(`Loading... ${spritesLoaded}/${spritesTotal}`, W / 2, H * 0.58);
+            }
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         if (!lastTime) lastTime = ts;
         dt = Math.min((ts - lastTime) / 16.67, 3);
         lastTime = ts;
@@ -1622,7 +1734,7 @@ window.SkyJump = (() => {
 
         playerColorDark = darken(playerColor);
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         lastTime = 0;
         bestScore = parseInt(localStorage.getItem('ywa_skyjump_best') || '0', 10);
@@ -1653,6 +1765,8 @@ window.SkyJump = (() => {
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        loadSprites(null, () => { state = ST_TITLE; });
 
         animFrame = requestAnimationFrame(gameLoop);
     }

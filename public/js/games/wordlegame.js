@@ -1,7 +1,70 @@
-/* WordleGame — Theme-aware Wordle-style word guessing game
+/* WordleGame — Kenney CC0 sprite rendering — Wordle-style word guessing for Your World Arcade
  * Canvas 2D, zero dependencies. Daily & Free Play modes.
  * IIFE pattern matching Your World Arcade originals. */
 window.WordleGame = (() => {
+
+    // ══════════════════════════════════════════
+    //  SPRITE SYSTEM — Kenney tiles for letter tiles
+    // ══════════════════════════════════════════
+    const WG_SPRITES = {};
+    let wgSpritesLoaded = false;
+    let wgSpriteLoadTotal = 0, wgSpriteLoadDone = 0;
+    const WG_SPRITE_OK = {};
+    const WG_SPRITE_MANIFEST = {
+        'tileGreen':  '/img/game-assets/kenney-tiles/tileGreen_01.png',
+        'tileYellow': '/img/game-assets/kenney-tiles/tileYellow_01.png',
+        'tileGrey':   '/img/game-assets/kenney-tiles/tileBlue_03.png',
+        'tileEmpty':  '/img/game-assets/kenney-tiles/tileBlue_05.png',
+        'tilePink':   '/img/game-assets/kenney-tiles/tilePink_01.png',
+        'star':       '/img/game-assets/kenney-ui/star.png',
+    };
+
+    function wgPreloadSprites(onProgress, onDone) {
+        const keys = Object.keys(WG_SPRITE_MANIFEST);
+        wgSpriteLoadTotal = keys.length;
+        wgSpriteLoadDone = 0;
+        if (keys.length === 0) { wgSpritesLoaded = true; onDone(); return; }
+        for (const key of keys) {
+            const img = new Image();
+            img.onload = () => { WG_SPRITE_OK[key] = true; wgSpriteLoadDone++; onProgress(wgSpriteLoadDone / wgSpriteLoadTotal); if (wgSpriteLoadDone >= wgSpriteLoadTotal) { wgSpritesLoaded = true; onDone(); } };
+            img.onerror = () => { WG_SPRITE_OK[key] = false; wgSpriteLoadDone++; onProgress(wgSpriteLoadDone / wgSpriteLoadTotal); if (wgSpriteLoadDone >= wgSpriteLoadTotal) { wgSpritesLoaded = true; onDone(); } };
+            img.src = WG_SPRITE_MANIFEST[key];
+            WG_SPRITES[key] = img;
+        }
+    }
+
+    function wgSpr(key) { return WG_SPRITE_OK[key] ? WG_SPRITES[key] : null; }
+
+    // Map tile state -> sprite key
+    function getStateSpriteKey(state) {
+        if (state === 'correct') return 'tileGreen';
+        if (state === 'present') return 'tileYellow';
+        if (state === 'absent') return 'tileGrey';
+        return 'tileEmpty';
+    }
+
+    let wgLoadingProgress = 0;
+    let wgIsLoading = true;
+
+    function wgDrawLoadingScreen() {
+        if (!canvas || !ctx) return;
+        ctx.fillStyle = '#121213';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+        ctx.fillStyle = '#538D4E';
+        ctx.font = 'bold 28px "Segoe UI", system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('WORDLE', GAME_W / 2, GAME_H / 2 - 40);
+        const barW = GAME_W * 0.5, barH = 12;
+        const barX = (GAME_W - barW) / 2, barY = GAME_H / 2;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#538D4E';
+        ctx.fillRect(barX, barY, barW * wgLoadingProgress, barH);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+        ctx.fillText('Loading sprites...', GAME_W / 2, barY + barH + 20);
+    }
+
     // ── Constants ──
     const GAME_W = 480, GAME_H = 640;
     const WORD_LEN = 5, MAX_GUESSES = 6;
@@ -545,12 +608,32 @@ window.WordleGame = (() => {
                         borderColor = '#9CA3AF';
                     }
 
-                    roundRect(x, y, w, h, 4);
-                    ctx.fillStyle = bgColor;
-                    ctx.fill();
-                    ctx.strokeStyle = borderColor;
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
+                    // TRY SPRITE for tile background
+                    const sprKey = isRevealed ? getStateSpriteKey(result) : 'tileEmpty';
+                    const tileSpr = wgSpr(sprKey);
+                    if (tileSpr && (isRevealed || letter)) {
+                        ctx.drawImage(tileSpr, x, y, w, h);
+                        // Color overlay for revealed tiles
+                        if (isRevealed) {
+                            ctx.globalAlpha = 0.3;
+                            ctx.fillStyle = bgColor;
+                            roundRect(x, y, w, h, 4);
+                            ctx.fill();
+                            ctx.globalAlpha = 1;
+                        }
+                        ctx.strokeStyle = borderColor;
+                        ctx.lineWidth = 1;
+                        roundRect(x, y, w, h, 4);
+                        ctx.stroke();
+                    } else {
+                        // FALLBACK
+                        roundRect(x, y, w, h, 4);
+                        ctx.fillStyle = bgColor;
+                        ctx.fill();
+                        ctx.strokeStyle = borderColor;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
 
                     // Letter
                     if (letter) {
@@ -558,7 +641,10 @@ window.WordleGame = (() => {
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillStyle = '#FFFFFF';
+                        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                        ctx.shadowBlur = 3;
                         ctx.fillText(letter, x + w / 2, y + h / 2);
+                        ctx.shadowBlur = 0;
                     }
                 }
 
@@ -995,24 +1081,36 @@ window.WordleGame = (() => {
 
         loadTheme();
         loadStats();
-        resetGame(true); // Start with daily mode
 
-        gameActive = true;
-
+        // Show loading screen and preload sprites
+        wgIsLoading = true;
+        wgLoadingProgress = 0;
         fitCanvas();
-        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+        wgDrawLoadingScreen();
 
-        // Bind events
-        canvas._wg_keydown = handleKeyDown;
-        canvas._wg_click = handleClick;
-        canvas._wg_touch = handleTouch;
-        canvas._wg_resize = fitCanvas;
-        document.addEventListener('keydown', canvas._wg_keydown);
-        canvas.addEventListener('click', canvas._wg_click);
-        canvas.addEventListener('touchstart', canvas._wg_touch, { passive: false });
-        window.addEventListener('resize', canvas._wg_resize);
+        wgPreloadSprites(
+            (progress) => { wgLoadingProgress = progress; if (wgIsLoading) wgDrawLoadingScreen(); },
+            () => {
+                wgIsLoading = false;
+                resetGame(true); // Start with daily mode
+                gameActive = true;
 
-        animFrame = requestAnimationFrame(gameLoop);
+                fitCanvas();
+                requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+                // Bind events
+                canvas._wg_keydown = handleKeyDown;
+                canvas._wg_click = handleClick;
+                canvas._wg_touch = handleTouch;
+                canvas._wg_resize = fitCanvas;
+                document.addEventListener('keydown', canvas._wg_keydown);
+                canvas.addEventListener('click', canvas._wg_click);
+                canvas.addEventListener('touchstart', canvas._wg_touch, { passive: false });
+                window.addEventListener('resize', canvas._wg_resize);
+
+                animFrame = requestAnimationFrame(gameLoop);
+            }
+        );
     }
 
     function destroy() {

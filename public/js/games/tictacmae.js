@@ -1,7 +1,39 @@
-/* Tic Tac — Theme-aware Tic Tac Toe for Your World Arcade
+/* Tic Tac — Kenney CC0 sprite rendering — Tic Tac Toe for Your World Arcade
  * O = Themed circle + emoji   X = Themed crossed bars
  * Player vs AI with best-of-5 rounds. Canvas 2D, zero dependencies. */
 window.TicTacMae = (() => {
+
+    // ══════════════════════════════════════════
+    //  SPRITE SYSTEM — Kenney tiles + items
+    // ══════════════════════════════════════════
+    const TTM_SPRITES = {};
+    let ttmSpritesLoaded = false;
+    let ttmSpriteLoadTotal = 0, ttmSpriteLoadDone = 0;
+    const TTM_SPRITE_OK = {};
+    const TTM_SPRITE_MANIFEST = {
+        'cellTile':    '/img/game-assets/kenney-tiles/tilePink_05.png',
+        'cellHover':   '/img/game-assets/kenney-tiles/tilePink_02.png',
+        'xMark':       '/img/game-assets/kenney-platform/hud/hudX.png',
+        'oPiece':      '/img/game-assets/kenney-platform/items/coinGold.png',
+        'star':        '/img/game-assets/kenney-ui/star.png',
+    };
+
+    function ttmPreloadSprites(onProgress, onDone) {
+        const keys = Object.keys(TTM_SPRITE_MANIFEST);
+        ttmSpriteLoadTotal = keys.length;
+        ttmSpriteLoadDone = 0;
+        if (keys.length === 0) { ttmSpritesLoaded = true; onDone(); return; }
+        for (const key of keys) {
+            const img = new Image();
+            img.onload = () => { TTM_SPRITE_OK[key] = true; ttmSpriteLoadDone++; onProgress(ttmSpriteLoadDone / ttmSpriteLoadTotal); if (ttmSpriteLoadDone >= ttmSpriteLoadTotal) { ttmSpritesLoaded = true; onDone(); } };
+            img.onerror = () => { TTM_SPRITE_OK[key] = false; ttmSpriteLoadDone++; onProgress(ttmSpriteLoadDone / ttmSpriteLoadTotal); if (ttmSpriteLoadDone >= ttmSpriteLoadTotal) { ttmSpritesLoaded = true; onDone(); } };
+            img.src = TTM_SPRITE_MANIFEST[key];
+            TTM_SPRITES[key] = img;
+        }
+    }
+
+    function ttmSpr(key) { return TTM_SPRITE_OK[key] ? TTM_SPRITES[key] : null; }
+
     // High score tracking
     const LS_KEY = 'tictacmae_highscore';
     function loadHighScore() { try { return parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { return 0; } }
@@ -525,16 +557,25 @@ window.TicTacMae = (() => {
             for (let r = 0; r < 3; r++) {
                 for (let c = 0; c < 3; c++) {
                     if (board[r][c] === 0) {
-                        const cx = gridX + c * cellSize + cellSize / 2;
-                        const cy = gridY + r * cellSize + cellSize / 2;
-                        const pulse = 0.025 + 0.02 * Math.sin(frameCount * 0.06 + r * 2 + c);
-                        ctx.save();
-                        const hGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cellSize * 0.4);
-                        hGrad.addColorStop(0, `rgba(${bR}, ${bG}, ${bB}, ${pulse * 1.5})`);
-                        hGrad.addColorStop(1, `rgba(${bR}, ${bG}, ${bB}, 0)`);
-                        ctx.fillStyle = hGrad;
-                        ctx.fillRect(gridX + c * cellSize, gridY + r * cellSize, cellSize, cellSize);
-                        ctx.restore();
+                        const cellSpr = ttmSpr('cellTile');
+                        if (cellSpr) {
+                            const pad = cellSize * 0.08;
+                            ctx.save();
+                            ctx.globalAlpha = 0.25 + 0.1 * Math.sin(frameCount * 0.06 + r * 2 + c);
+                            ctx.drawImage(cellSpr, gridX + c * cellSize + pad, gridY + r * cellSize + pad, cellSize - pad * 2, cellSize - pad * 2);
+                            ctx.restore();
+                        } else {
+                            const cx = gridX + c * cellSize + cellSize / 2;
+                            const cy = gridY + r * cellSize + cellSize / 2;
+                            const pulse = 0.025 + 0.02 * Math.sin(frameCount * 0.06 + r * 2 + c);
+                            ctx.save();
+                            const hGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cellSize * 0.4);
+                            hGrad.addColorStop(0, `rgba(${bR}, ${bG}, ${bB}, ${pulse * 1.5})`);
+                            hGrad.addColorStop(1, `rgba(${bR}, ${bG}, ${bB}, 0)`);
+                            ctx.fillStyle = hGrad;
+                            ctx.fillRect(gridX + c * cellSize, gridY + r * cellSize, cellSize, cellSize);
+                            ctx.restore();
+                        }
                     }
                 }
             }
@@ -747,9 +788,31 @@ window.TicTacMae = (() => {
             const cy = gridY + piece.row * cellSize + cellSize / 2;
 
             if (piece.who === 1) {
-                drawLollipop(cx, cy, cellSize, piece);
+                // O piece — try coin sprite first
+                const oSpr = ttmSpr('oPiece');
+                if (oSpr) {
+                    const sz = cellSize * 0.55 * piece.scale;
+                    ctx.save();
+                    ctx.shadowColor = LOLLI_COLORS[0];
+                    ctx.shadowBlur = 8;
+                    ctx.drawImage(oSpr, cx - sz/2, cy - sz/2, sz, sz);
+                    ctx.restore();
+                } else {
+                    drawLollipop(cx, cy, cellSize, piece);
+                }
             } else {
-                drawCrossedSticks(cx, cy, cellSize, piece);
+                // X piece — try hudX sprite first
+                const xSpr = ttmSpr('xMark');
+                if (xSpr) {
+                    const sz = cellSize * 0.5 * piece.scale;
+                    ctx.save();
+                    ctx.shadowColor = STICK_COLORS[0];
+                    ctx.shadowBlur = 8;
+                    ctx.drawImage(xSpr, cx - sz/2, cy - sz/2, sz, sz);
+                    ctx.restore();
+                } else {
+                    drawCrossedSticks(cx, cy, cellSize, piece);
+                }
             }
         }
     }
@@ -1309,30 +1372,37 @@ window.TicTacMae = (() => {
         THEME_ICON = theme?.icon || '🎮';
 
         fitCanvas();
-        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        highScore = loadHighScore();
-        score = 0; playerWins = 0; aiWins = 0; draws = 0;
-        roundNum = 0; matchOver = false; matchTimer = 0;
-        gameActive = true;
-        frameCount = 0; lastTime = 0;
-        startTime = Date.now();
-        particles = [];
+        // Preload sprites then start
+        ttmPreloadSprites(
+            () => {},
+            () => {
+                requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        initBgStars();
-        resetBoard();
+                highScore = loadHighScore();
+                score = 0; playerWins = 0; aiWins = 0; draws = 0;
+                roundNum = 0; matchOver = false; matchTimer = 0;
+                gameActive = true;
+                frameCount = 0; lastTime = 0;
+                startTime = Date.now();
+                particles = [];
 
-        // Bind events
-        canvas.addEventListener('click', handleClick);
-        canvas.addEventListener('touchstart', handleTouch, { passive: false });
-        document.addEventListener('keydown', handleKeyDown, true);
-        window.addEventListener('resize', fitCanvas);
+                initBgStars();
+                resetBoard();
 
-        canvas.setAttribute('tabindex', '0');
-        canvas.style.outline = 'none';
-        canvas.focus();
+                // Bind events
+                canvas.addEventListener('click', handleClick);
+                canvas.addEventListener('touchstart', handleTouch, { passive: false });
+                document.addEventListener('keydown', handleKeyDown, true);
+                window.addEventListener('resize', fitCanvas);
 
-        render();
+                canvas.setAttribute('tabindex', '0');
+                canvas.style.outline = 'none';
+                canvas.focus();
+
+                render();
+            }
+        );
     }
 
     function destroy() {

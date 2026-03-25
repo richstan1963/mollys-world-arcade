@@ -1,5 +1,57 @@
-/* MollyControl — Theme-aware Missile Command for Your World Arcade */
+/* MollyControl — Theme-aware Missile Command with Kenney CC0 sprites for Your World Arcade */
 window.MollyControl = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        missile: '/img/game-assets/kenney-space/Missiles/spaceMissiles_001.png',
+        missileEnemy: '/img/game-assets/kenney-space/Missiles/spaceMissiles_004.png',
+        explosion1: '/img/game-assets/kenney-space/effects/fire00.png',
+        explosion2: '/img/game-assets/kenney-space/effects/fire05.png',
+        explosion3: '/img/game-assets/kenney-space/effects/fire10.png',
+        explosion4: '/img/game-assets/kenney-space/effects/fire15.png',
+        cityTile: '/img/game-assets/kenney-platform/tiles/boxCrate.png',
+        cityTile2: '/img/game-assets/kenney-platform/tiles/brickBrown.png',
+        bomber: '/img/game-assets/kenney-space/enemies/enemyRed1.png',
+        satellite: '/img/game-assets/kenney-space/enemies/enemyBlue3.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
     // ── Constants ──
     const W = 480, H = 640;
     const GROUND_H = 60;
@@ -1066,6 +1118,16 @@ window.MollyControl = (() => {
 
     function drawEnemyMissiles() {
         enemyMissiles.forEach(m => {
+            // Sprite enemy missile tip
+            if (__sprites.missileEnemy) {
+                const msz = 16;
+                const mAngle = Math.atan2(m.y - m.sy, m.x - m.sx) + Math.PI / 2;
+                ctx.save();
+                ctx.translate(m.x, m.y);
+                ctx.rotate(mAngle);
+                ctx.drawImage(__sprites.missileEnemy, -msz/2, -msz, msz, msz * 2);
+                ctx.restore();
+            }
             const isSmrt = m.smart;
             const baseR = isSmrt ? 251 : 239, baseG = isSmrt ? 191 : 68, baseB = isSmrt ? 36 : 68;
             // Trail — gradient widening with glow
@@ -1190,6 +1252,16 @@ window.MollyControl = (() => {
     function drawExplosions() {
         explosions.forEach(e => {
             if (e.r <= 0) return;
+            // Sprite explosions
+            const _expFrames = ['explosion1','explosion2','explosion3','explosion4'];
+            const _efi = Math.min(e.phase, _expFrames.length - 1);
+            if (__sprites[_expFrames[_efi]]) {
+                const sz = e.r * 2.5;
+                ctx.save();
+                ctx.globalAlpha = e.phase === 2 ? Math.max(0, 1 - e.timer / EXP_SHRINK_MS) : 1;
+                ctx.drawImage(__sprites[_expFrames[_efi]], e.x - sz/2, e.y - sz/2, sz, sz);
+                ctx.restore();
+            }
             const pulse = 0.75 + 0.25 * Math.sin(Date.now() * 0.02);
             const phaseAlpha = e.phase === 2 ? Math.max(0, 1 - e.timer / EXP_SHRINK_MS) : 1;
 
@@ -1247,6 +1319,15 @@ window.MollyControl = (() => {
     function drawBombers(list) {
         bombers.forEach(b => {
             if (!b.alive) return;
+            if (__sprites.bomber) {
+                const bsz = 26;
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                if (b.dx < 0) ctx.scale(-1, 1);
+                ctx.drawImage(__sprites.bomber, -bsz/2, -bsz/2, bsz, bsz);
+                ctx.restore();
+                return;
+            }
             ctx.fillStyle = '#F97316';
             // Simple plane shape
             ctx.beginPath();
@@ -1275,6 +1356,11 @@ window.MollyControl = (() => {
     function drawSatellites() {
         satellites.forEach(s => {
             if (!s.alive) return;
+            if (__sprites.satellite) {
+                const ssz = 22;
+                ctx.drawImage(__sprites.satellite, s.x - ssz/2, s.y - ssz/2, ssz, ssz);
+                return;
+            }
             ctx.fillStyle = '#A855F7';
             ctx.fillRect(s.x - 5, s.y - 3, 10, 6);
             // Solar panels
@@ -1677,6 +1763,11 @@ window.MollyControl = (() => {
     // ── Game Loop ──
     function gameLoop(timestamp) {
         if (!frameId && frameId !== 0) return; // destroyed
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'MOLLY CONTROL', '#F43F5E');
+            frameId = requestAnimationFrame(gameLoop);
+            return;
+        }
         const dt = lastTime ? Math.min(timestamp - lastTime, 50) : 16;
         lastTime = timestamp;
         update(dt);
@@ -1822,6 +1913,7 @@ window.MollyControl = (() => {
         window.addEventListener('resize', boundResize);
 
         canvas.style.cursor = 'none';
+        __loadSprites(null);
         frameId = requestAnimationFrame(gameLoop);
     }
 

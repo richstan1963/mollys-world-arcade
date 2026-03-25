@@ -47,25 +47,30 @@ window.MiniStroke = (() => {
         { x: GAME_W - RAIL_W - 2, y: GAME_H - RAIL_W - 2 }
     ];
 
-    // Ball colors (numbered)
+    // Ball colors (standard 8-ball: solids 1-7, 8=black, stripes 9-15)
     const BALL_COLORS = [
         '#FFFFFF', // 0 = cue
-        '#FFD700', // 1
-        '#1E90FF', // 2
-        '#FF4444', // 3
-        '#6B21A8', // 4
-        '#FF8C00', // 5
-        '#228B22', // 6
-        '#8B0000', // 7
-        '#222222', // 8
-        '#FFD700', // 9 striped
-        '#1E90FF', // 10 striped
+        '#FFD700', // 1 - yellow (solid)
+        '#1E90FF', // 2 - blue (solid)
+        '#FF4444', // 3 - red (solid)
+        '#6B21A8', // 4 - purple (solid)
+        '#FF8C00', // 5 - orange (solid)
+        '#228B22', // 6 - green (solid)
+        '#8B0000', // 7 - maroon (solid)
+        '#222222', // 8 - black (8-ball)
+        '#FFD700', // 9 - yellow (stripe)
+        '#1E90FF', // 10 - blue (stripe)
+        '#FF4444', // 11 - red (stripe)
+        '#6B21A8', // 12 - purple (stripe)
+        '#FF8C00', // 13 - orange (stripe)
+        '#228B22', // 14 - green (stripe)
+        '#8B0000', // 15 - maroon (stripe)
     ];
 
     // ── Course definitions ──
     const COURSES = [
         {
-            name: 'Tutorial', par: 8, balls: 6,
+            name: 'Tutorial', par: 8, balls: 15,
             desc: 'Just bumpers. Learn the ropes!',
             obstacles: [
                 { type: 'bumper', x: 200, y: 150, r: 15 },
@@ -74,7 +79,7 @@ window.MiniStroke = (() => {
             ]
         },
         {
-            name: 'The Windmill', par: 10, balls: 7,
+            name: 'The Windmill', par: 10, balls: 15,
             desc: 'A spinning windmill guards the center.',
             obstacles: [
                 { type: 'windmill', x: 320, y: 200, armLen: 55, speed: 0.015 },
@@ -83,7 +88,7 @@ window.MiniStroke = (() => {
             ]
         },
         {
-            name: 'Pinball', par: 12, balls: 8,
+            name: 'Pinball', par: 12, balls: 15,
             desc: 'Bumpers everywhere!',
             obstacles: [
                 { type: 'bumper', x: 160, y: 100, r: 14 },
@@ -97,7 +102,7 @@ window.MiniStroke = (() => {
             ]
         },
         {
-            name: 'The Maze', par: 14, balls: 7,
+            name: 'The Maze', par: 14, balls: 15,
             desc: 'Navigate the wall channels.',
             obstacles: [
                 { type: 'wall', x: 200, y: 80, w: 12, h: 120 },
@@ -109,7 +114,7 @@ window.MiniStroke = (() => {
             ]
         },
         {
-            name: 'Slip & Slide', par: 11, balls: 7,
+            name: 'Slip & Slide', par: 11, balls: 15,
             desc: 'Ice and sand patches change the game.',
             obstacles: [
                 { type: 'sand', x: 140, y: 100, w: 100, h: 70 },
@@ -120,7 +125,7 @@ window.MiniStroke = (() => {
             ]
         },
         {
-            name: 'Double Trouble', par: 14, balls: 8,
+            name: 'Double Trouble', par: 14, balls: 15,
             desc: 'Two windmills make life hard.',
             obstacles: [
                 { type: 'windmill', x: 210, y: 160, armLen: 45, speed: 0.018 },
@@ -131,7 +136,7 @@ window.MiniStroke = (() => {
             ]
         },
         {
-            name: 'The Gauntlet', par: 16, balls: 9,
+            name: 'The Gauntlet', par: 16, balls: 15,
             desc: 'Moving walls and bumpers!',
             obstacles: [
                 { type: 'movingWall', x: 200, y: 100, w: 60, h: 12, axis: 'y', range: 100, speed: 0.8 },
@@ -143,7 +148,7 @@ window.MiniStroke = (() => {
             ]
         },
         {
-            name: 'Warp Zone', par: 14, balls: 8,
+            name: 'Warp Zone', par: 14, balls: 15,
             desc: 'Tunnels warp balls across the table!',
             obstacles: [
                 { type: 'tunnel', x1: 140, y1: 120, x2: 500, y2: 300, color: '#FF6B6B' },
@@ -154,7 +159,7 @@ window.MiniStroke = (() => {
             ]
         },
         {
-            name: 'The Final Stroke', par: 20, balls: 10,
+            name: 'The Final Stroke', par: 20, balls: 15,
             desc: 'EVERYTHING at once. Good luck!',
             obstacles: [
                 { type: 'windmill', x: 320, y: 200, armLen: 50, speed: 0.012 },
@@ -721,7 +726,7 @@ window.MiniStroke = (() => {
         };
     }
 
-    // ── Ball setup ──
+    // ── Ball setup (standard 8-ball rack: 15 balls, 8 in center) ──
     function setupBalls(count) {
         balls = [];
         cueBall = { x: 160, y: GAME_H / 2, vx: 0, vy: 0, r: CUE_BALL_R, color: BALL_COLORS[0], number: 0, active: true, pocketed: false };
@@ -730,42 +735,63 @@ window.MiniStroke = (() => {
         const startX = GAME_W * 0.65;
         const startY = GAME_H / 2;
         const spacing = BALL_R * 2.3;
-        let placed = 0;
-        let row = 0;
-        while (placed < count) {
+
+        // Build standard 8-ball rack order (8-ball at center of row 3)
+        const solids = [1, 2, 3, 4, 5, 6, 7];
+        const stripes = [9, 10, 11, 12, 13, 14, 15];
+        for (let i = solids.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [solids[i], solids[j]] = [solids[j], solids[i]];
+        }
+        for (let i = stripes.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [stripes[i], stripes[j]] = [stripes[j], stripes[i]];
+        }
+        const rackOrder = [];
+        rackOrder.push(solids.pop());           // row 1
+        rackOrder.push(stripes.pop());          // row 2
+        rackOrder.push(solids.pop());           // row 2
+        rackOrder.push(solids.pop());           // row 3
+        rackOrder.push(8);                       // row 3 CENTER
+        rackOrder.push(stripes.pop());          // row 3
+        rackOrder.push(stripes.pop());          // row 4
+        rackOrder.push(solids.pop());           // row 4
+        rackOrder.push(stripes.pop());          // row 4
+        rackOrder.push(solids.pop());           // row 4
+        rackOrder.push(solids.pop());           // row 5 corner
+        rackOrder.push(stripes.pop());          // row 5
+        rackOrder.push(solids.pop());           // row 5
+        rackOrder.push(stripes.pop());          // row 5
+        rackOrder.push(stripes.pop());          // row 5 corner
+
+        let idx = 0;
+        for (let row = 0; row < 5; row++) {
             const cols = row + 1;
-            for (let c = 0; c < cols && placed < count; c++) {
+            for (let c = 0; c < cols; c++) {
                 const bx = startX + row * spacing * 0.866;
                 const by = startY + (c - (cols - 1) / 2) * spacing;
-                let valid = true;
+                // Nudge balls that overlap obstacles
+                let fx = bx, fy = by;
                 for (const obs of obstacles) {
-                    if (obs.type === 'bumper' && dist(bx, by, obs.x, obs.y) < obs.r + BALL_R + 5) valid = false;
-                    if (obs.type === 'windmill' && dist(bx, by, obs.x, obs.y) < obs.armLen + BALL_R + 5) valid = false;
+                    if (obs.type === 'bumper' && dist(fx, fy, obs.x, obs.y) < obs.r + BALL_R + 5) {
+                        const angle = Math.atan2(fy - obs.y, fx - obs.x);
+                        fx = obs.x + Math.cos(angle) * (obs.r + BALL_R + 6);
+                        fy = obs.y + Math.sin(angle) * (obs.r + BALL_R + 6);
+                    }
+                    if (obs.type === 'windmill' && dist(fx, fy, obs.x, obs.y) < obs.armLen + BALL_R + 5) {
+                        const angle = Math.atan2(fy - obs.y, fx - obs.x);
+                        fx = obs.x + Math.cos(angle) * (obs.armLen + BALL_R + 6);
+                        fy = obs.y + Math.sin(angle) * (obs.armLen + BALL_R + 6);
+                    }
                 }
-                if (valid) {
-                    const num = placed + 1;
-                    balls.push({
-                        x: bx, y: by, vx: 0, vy: 0, r: BALL_R,
-                        color: BALL_COLORS[num % BALL_COLORS.length],
-                        number: num, active: true, pocketed: false,
-                        striped: num >= 9
-                    });
-                    placed++;
-                }
+                const num = rackOrder[idx++];
+                balls.push({
+                    x: fx, y: fy, vx: 0, vy: 0, r: BALL_R,
+                    color: BALL_COLORS[num],
+                    number: num, active: true, pocketed: false,
+                    striped: num >= 9 && num <= 15
+                });
             }
-            row++;
-            if (row > 10) break;
-        }
-        while (balls.length - 1 < count) {
-            const num = balls.length;
-            balls.push({
-                x: 100 + Math.random() * 400,
-                y: 60 + Math.random() * 280,
-                vx: 0, vy: 0, r: BALL_R,
-                color: BALL_COLORS[num % BALL_COLORS.length],
-                number: num, active: true, pocketed: false,
-                striped: num >= 9
-            });
         }
     }
 

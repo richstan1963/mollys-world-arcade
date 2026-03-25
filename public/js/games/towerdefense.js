@@ -1,6 +1,60 @@
-/* TowerDefense — Classic tower defense for Your World Arcade
+/* TowerDefense — Classic tower defense with Kenney CC0 sprites for Your World Arcade
  * Self-contained, no dependencies, canvas-rendered, theme-aware */
 window.TowerDefense = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        pathTile: '/img/game-assets/kenney-tiles/tileYellow_02.png',
+        grassTile: '/img/game-assets/kenney-tiles/tileGreen_05.png',
+        towerArrow: '/img/game-assets/kenney-platform/tiles/boxCoin.png',
+        towerCannon: '/img/game-assets/kenney-platform/tiles/boxExplosive.png',
+        towerIce: '/img/game-assets/kenney-platform/tiles/boxItem.png',
+        towerLightning: '/img/game-assets/kenney-platform/tiles/boxCrate_warning.png',
+        enemySoldier: '/img/game-assets/kenney-platform/enemies/slimeGreen.png',
+        enemyRunner: '/img/game-assets/kenney-platform/enemies/bee.png',
+        enemyTank: '/img/game-assets/kenney-platform/enemies/slimePurple.png',
+        enemyFlyer: '/img/game-assets/kenney-platform/enemies/fly.png',
+        projArrow: '/img/game-assets/kenney-particles/particleWhite_4.png',
+        projCannon: '/img/game-assets/kenney-particles/particleWhite_6.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
 
     // -- roundRect polyfill (Safari <16, older browsers) --
     if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -509,6 +563,22 @@ window.TowerDefense = (() => {
     }
 
     function drawEnemy(e) {
+        // Sprite enemies
+        const _eNames = ['enemySoldier','enemyRunner','enemyTank','enemyFlyer'];
+        const _ek = _eNames[e.type] || 'enemySoldier';
+        const _esz = CELL * (ENEMY_DEFS[e.type]?.size || 0.3) * 2.5;
+        if (__sprites[_ek]) {
+            ctx.drawImage(__sprites[_ek], e.drawX - _esz/2, e.drawY - _esz/2, _esz, _esz);
+            // Health bar
+            if (e.hp < e.maxHp) {
+                const barW = _esz * 0.8, barH = 3;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(e.drawX - barW/2, e.drawY - _esz/2 - 5, barW, barH);
+                ctx.fillStyle = '#22C55E';
+                ctx.fillRect(e.drawX - barW/2, e.drawY - _esz/2 - 5, barW * (e.hp / e.maxHp), barH);
+            }
+            return;
+        }
         const ed = ENEMY_DEFS[e.type];
         const sz = CELL * ed.size;
 
@@ -1309,6 +1379,10 @@ window.TowerDefense = (() => {
     function loop(time) {
         if (!canvas) return;
         animFrame = requestAnimationFrame(loop);
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'TOWER DEFENSE', '#22C55E');
+            return;
+        }
 
         const delta = Math.min(time - (lastTime || time), 50);
         lastTime = time;
@@ -1479,6 +1553,7 @@ window.TowerDefense = (() => {
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: true });
 
+        __loadSprites(null);
         animFrame = requestAnimationFrame(loop);
     }
 

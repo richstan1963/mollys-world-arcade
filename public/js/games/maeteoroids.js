@@ -1,5 +1,68 @@
-/* Maeteoroids — Theme-aware Asteroids for Your World Arcade */
+/* Maeteoroids — Theme-aware Asteroids with Kenney CC0 space sprites */
 window.Maeteoroids = (() => {
+
+    // ── Sprite Atlas ──
+    const SPRITE_BASE = '/img/game-assets/kenney-space';
+    const _sprites = {};
+    let _spritesLoaded = 0, _spritesTotal = 0, _allSpritesReady = false;
+    let _spriteExplosions = [];
+
+    const _SPRITE_MANIFEST = {
+        playerBlue:   `${SPRITE_BASE}/ships/playerShip3_blue.png`,
+        playerGreen:  `${SPRITE_BASE}/ships/playerShip3_green.png`,
+        playerOrange: `${SPRITE_BASE}/ships/playerShip3_orange.png`,
+        playerRed:    `${SPRITE_BASE}/ships/playerShip3_red.png`,
+        // Meteors
+        meteorBig1:   `${SPRITE_BASE}/meteors/meteorBrown_big1.png`,
+        meteorBig2:   `${SPRITE_BASE}/meteors/meteorBrown_big2.png`,
+        meteorBig3:   `${SPRITE_BASE}/meteors/meteorBrown_big3.png`,
+        meteorMed1:   `${SPRITE_BASE}/meteors/meteorBrown_med1.png`,
+        meteorMed2:   `${SPRITE_BASE}/meteors/meteorGrey_med1.png`,
+        meteorSmall1: `${SPRITE_BASE}/meteors/meteorBrown_small1.png`,
+        meteorSmall2: `${SPRITE_BASE}/meteors/meteorGrey_small1.png`,
+        meteorGBig1:  `${SPRITE_BASE}/meteors/meteorGrey_big1.png`,
+        meteorGBig2:  `${SPRITE_BASE}/meteors/meteorGrey_big2.png`,
+        // Lasers
+        laserBlue:    `${SPRITE_BASE}/lasers/laserBlue01.png`,
+        laserGreen:   `${SPRITE_BASE}/lasers/laserGreen01.png`,
+    };
+
+    const _EXPLOSION_FRAME_IDS = [];
+    const _EXPLOSION_FRAME_COUNT = 8;
+    for (let i = 0; i < 20; i += Math.floor(20 / _EXPLOSION_FRAME_COUNT)) {
+        const id = `fire${String(i).padStart(2, '0')}`;
+        _SPRITE_MANIFEST[id] = `${SPRITE_BASE}/effects/fire${String(i).padStart(2, '0')}.png`;
+        _EXPLOSION_FRAME_IDS.push(id);
+        if (_EXPLOSION_FRAME_IDS.length >= _EXPLOSION_FRAME_COUNT) break;
+    }
+
+    function _loadSprites(onDone) {
+        const keys = Object.keys(_SPRITE_MANIFEST);
+        _spritesTotal = keys.length;
+        _spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { _sprites[key] = img; done++; _spritesLoaded = done; if (done === _spritesTotal) { _allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { _sprites[key] = null; done++; _spritesLoaded = done; if (done === _spritesTotal) { _allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = _SPRITE_MANIFEST[key];
+        });
+    }
+
+    function _meteorSpriteKey(size) {
+        if (size === 'large') return ['meteorBig1', 'meteorBig2', 'meteorBig3', 'meteorGBig1', 'meteorGBig2'][Math.floor(Math.random() * 5)];
+        if (size === 'medium') return ['meteorMed1', 'meteorMed2'][Math.floor(Math.random() * 2)];
+        return ['meteorSmall1', 'meteorSmall2'][Math.floor(Math.random() * 2)];
+    }
+
+    function _playerSpriteKey(color) {
+        const c = (color || '').toLowerCase();
+        if (c.includes('22c5') || c.includes('34d3') || c.includes('10b9')) return 'playerGreen';
+        if (c.includes('f43f') || c.includes('ef44') || c.includes('e11d')) return 'playerRed';
+        if (c.includes('f59e') || c.includes('f97') || c.includes('fbb')) return 'playerOrange';
+        return 'playerBlue';
+    }
+
     // ── Colors (theme-overridable) ──
     let BG_COLOR        = '#0a0515';
     let SHIP_COLOR      = '#06B6D4';
@@ -264,6 +327,36 @@ window.Maeteoroids = (() => {
         ctx.translate(x, y);
         ctx.rotate(ship.rot);
 
+        // ── Sprite-based ship rendering ──
+        const shipSprite = _sprites[_playerSpriteKey(SHIP_COLOR)];
+        if (shipSprite && _allSpritesReady) {
+            // Rotate -90deg because sprite faces up but ship.rot has 0=right
+            ctx.rotate(-Math.PI / 2);
+            ctx.drawImage(shipSprite, -S * 0.8, -S * 0.7, S * 1.6, S * 1.4);
+            ctx.rotate(Math.PI / 2); // restore rotation for flame
+
+            // Engine glow when thrusting — still canvas for animation
+            if (ship.thrusting) {
+                ctx.shadowColor = '#F59E0B';
+                ctx.shadowBlur = Math.round(22 * SCALE);
+                const t = ship.flameTime;
+                const flicker1 = 0.7 + Math.sin(t * 15) * 0.15 + Math.sin(t * 23) * 0.15;
+                const outerGrad = ctx.createRadialGradient(-S * 0.8, 0, 0, -S * 0.8, 0, S * flicker1 * 0.8);
+                outerGrad.addColorStop(0, 'rgba(239,68,68,0.8)');
+                outerGrad.addColorStop(0.6, 'rgba(245,158,11,0.4)');
+                outerGrad.addColorStop(1, 'rgba(239,68,68,0)');
+                ctx.fillStyle = outerGrad;
+                ctx.beginPath();
+                ctx.moveTo(-S * 0.6, -S * 0.35);
+                ctx.quadraticCurveTo(-S * (1.1 + flicker1 * 0.5), 0, -S * 0.6, S * 0.35);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+            return;
+        }
+
+        // ── Canvas fallback ──
         // Engine glow halo (behind ship)
         if (ship.thrusting && opacity > 0.5) {
             const haloGrad = ctx.createRadialGradient(-S * 0.5, 0, 0, -S * 0.5, 0, S * 1.5);
@@ -426,6 +519,27 @@ window.Maeteoroids = (() => {
 
     function drawBullets() {
         for (const b of bullets) {
+            // ── Sprite-based bullet ──
+            const bSprite = _sprites['laserBlue'];
+            if (bSprite && _allSpritesReady) {
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                const bAngle = Math.atan2(b.vy, b.vx);
+                ctx.rotate(bAngle + Math.PI / 2); // laser sprite is vertical
+                ctx.drawImage(bSprite, -3 * SCALE, -8 * SCALE, 6 * SCALE, 16 * SCALE);
+                ctx.restore();
+                // Trail glow (simplified)
+                for (let i = 0; i < b.trail.length; i++) {
+                    const t = i / b.trail.length;
+                    ctx.fillStyle = `rgba(245,158,11,${t * 0.3})`;
+                    ctx.beginPath();
+                    ctx.arc(b.trail[i].x, b.trail[i].y, (0.5 + t * 1.5) * SCALE, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                continue;
+            }
+
+            // ── Canvas fallback ──
             // Elongated glow trail
             ctx.shadowColor = BULLET_COLOR;
             ctx.shadowBlur = Math.round(10 * SCALE);
@@ -519,7 +633,8 @@ window.Maeteoroids = (() => {
             size: size, radius: radius,
             color: ASTEROID_COLORS[Math.floor(rand(0, ASTEROID_COLORS.length))],
             shape: makeAsteroidShape(radius),
-            detail: makeAsteroidDetail(radius, size)
+            detail: makeAsteroidDetail(radius, size),
+            spriteKey: _meteorSpriteKey(size)
         });
     }
 
@@ -556,6 +671,16 @@ window.Maeteoroids = (() => {
             ctx.rotate(a.rot);
 
             const rad = a.radius;
+
+            // ── Sprite-based asteroid rendering ──
+            const mSprite = a.spriteKey ? _sprites[a.spriteKey] : null;
+            if (mSprite && _allSpritesReady) {
+                ctx.drawImage(mSprite, -rad, -rad, rad * 2, rad * 2);
+                ctx.restore();
+                continue;
+            }
+
+            // ── Canvas fallback ──
             const rgb = hexToRgb(a.color);
 
             // Outer glow
@@ -637,6 +762,11 @@ window.Maeteoroids = (() => {
 
     // ── Particles ──
     function spawnExplosion(x, y, color, count) {
+        // Sprite explosion
+        if (_allSpritesReady && _EXPLOSION_FRAME_IDS.length > 0) {
+            const eSize = (count || PARTICLE_COUNT) > 15 ? 80 * SCALE : 50 * SCALE;
+            _spriteExplosions.push({ x, y, frame: 0, timer: 0, size: eSize, totalFrames: _EXPLOSION_FRAME_IDS.length, frameDur: 60 });
+        }
         const rgb = hexToRgb(color);
         const cnt = count || PARTICLE_COUNT;
         for (let i = 0; i < cnt; i++) {
@@ -1114,6 +1244,12 @@ window.Maeteoroids = (() => {
             updateBullets(dt);
             updateAsteroids(dt);
             updateParticles(dt);
+            // Update sprite explosions
+            for (let i = _spriteExplosions.length - 1; i >= 0; i--) {
+                const se = _spriteExplosions[i];
+                se.timer += dt;
+                if (se.timer >= se.frameDur) { se.timer -= se.frameDur; se.frame++; if (se.frame >= se.totalFrames) _spriteExplosions.splice(i, 1); }
+            }
             updateScorePopups(dt);
             updateScreenShake(dt);
             checkBulletHits();
@@ -1170,6 +1306,15 @@ window.Maeteoroids = (() => {
         drawAsteroids();
         drawBullets();
         drawParticles();
+        // Sprite explosions
+        for (const se of _spriteExplosions) {
+            const fid = _EXPLOSION_FRAME_IDS[se.frame];
+            const fSprite = fid ? _sprites[fid] : null;
+            if (fSprite) {
+                const half = se.size / 2;
+                ctx.drawImage(fSprite, se.x - half, se.y - half, se.size, se.size);
+            }
+        }
         drawShip();
         drawScorePopups();
         drawHUD();
@@ -1296,6 +1441,10 @@ window.Maeteoroids = (() => {
         createStars();
         createVignette();
         spawnWave();
+        _spriteExplosions = [];
+
+        // Load sprites (non-blocking — fallback to canvas if they fail)
+        _loadSprites(null);
 
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
@@ -1340,6 +1489,7 @@ window.Maeteoroids = (() => {
         bullets = []; asteroids = []; particles = []; stars = [];
         scorePopups = [];
         vignetteGrad = null;
+        _spriteExplosions = [];
     }
 
     return {

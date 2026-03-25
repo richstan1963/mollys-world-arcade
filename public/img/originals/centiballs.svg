@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 180" width="400" height="180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgb(5,15,5)"/>
+      <stop offset="50%" stop-color="rgb(8,25,8)"/>
+      <stop offset="100%" stop-color="rgb(3,10,3)"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="45%" r="40%">
+      <stop offset="0%" stop-color="#22C55E" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#22C55E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="180" fill="url(#bg)" rx="8"/>
+  <rect width="400" height="180" fill="url(#glow)" rx="8"/>
+  <text x="200" y="58" text-anchor="middle" font-size="48" fill="white" opacity="0.9">🎱</text>
+  <text x="200" y="105" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="24" fill="#22C55E">CENTIBALLS</text>
+  <text x="200" y="130" text-anchor="middle" font-family="monospace" font-size="10" fill="white" opacity="0.5">YOUR WORLD ARCADE</text>
+  <rect x="140" y="142" width="120" height="2" rx="1" fill="#22C55E" opacity="0.4"/>
+</svg>

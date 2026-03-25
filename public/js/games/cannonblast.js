@@ -1,5 +1,59 @@
-/* Cannon Blast — Carnival shooting gallery for Your World Arcade */
+/* Cannon Blast — Carnival shooting gallery with Kenney CC0 sprites for Your World Arcade */
 window.CannonBlast = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        cannonBase: '/img/game-assets/kenney-physics/wood/elementWood010.png',
+        cannonBarrel: '/img/game-assets/kenney-physics/metal/elementMetal010.png',
+        ball: '/img/game-assets/kenney-physics/aliens/alienBeige_round.png',
+        duck: '/img/game-assets/kenney-platform/enemies/bee.png',
+        duckMove: '/img/game-assets/kenney-platform/enemies/bee_move.png',
+        balloon: '/img/game-assets/kenney-physics/aliens/alienPink_round.png',
+        can: '/img/game-assets/kenney-physics/metal/elementMetal000.png',
+        plate: '/img/game-assets/kenney-physics/glass/elementGlass000.png',
+        bullseye: '/img/game-assets/kenney-platform/items/star.png',
+        golden: '/img/game-assets/kenney-coins/coin_02.png',
+        bomb: '/img/game-assets/kenney-platform/tiles/bomb.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+        particle2: '/img/game-assets/kenney-particles/particleWhite_3.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
     // ── Design Constants ──
     const GAME_W = 640, GAME_H = 480;
     const CANNON_Y = GAME_H - 50;
@@ -831,6 +885,13 @@ window.CannonBlast = (() => {
     function drawDuck(t) {
         const s = t.sizeScale;
         const wob = Math.sin(t.wobble * 3) * 2;
+        // Sprite duck
+        const _dk = (frameCount % 30 < 15 && __sprites.duckMove) ? __sprites.duckMove : __sprites.duck;
+        if (_dk) {
+            const sz = gs(28 * s);
+            ctx.drawImage(_dk, -sz/2, -sz/2 + gs(wob), sz, sz);
+            return;
+        }
         // Body
         ctx.fillStyle = t.col;
         ctx.beginPath();
@@ -863,6 +924,7 @@ window.CannonBlast = (() => {
 
     function drawBalloon(t) {
         const s = t.sizeScale;
+        if (__sprites.balloon) { const sz = gs(22 * s); ctx.drawImage(__sprites.balloon, -sz/2, -sz/2, sz, sz); return; }
         // String
         ctx.strokeStyle = '#999';
         ctx.lineWidth = gs(1);
@@ -895,6 +957,7 @@ window.CannonBlast = (() => {
 
     function drawCan(t) {
         const s = t.sizeScale;
+        if (__sprites.can) { const sz = gs(20 * s); ctx.drawImage(__sprites.can, -sz/2, -sz/2, sz, sz); return; }
         ctx.fillStyle = '#AAA';
         ctx.fillRect(gs(-7 * s), gs(-10 * s), gs(14 * s), gs(20 * s));
         // Label
@@ -908,6 +971,7 @@ window.CannonBlast = (() => {
 
     function drawPlate(t) {
         const s = t.sizeScale;
+        if (__sprites.plate) { const sz = gs(24 * s); ctx.drawImage(__sprites.plate, -sz/2, -sz/2, sz, sz); return; }
         const spin = Math.sin(t.wobble * 4);
         ctx.fillStyle = '#E0F2FE';
         ctx.beginPath();
@@ -921,6 +985,7 @@ window.CannonBlast = (() => {
     }
 
     function drawBullseye(t) {
+        if (__sprites.bullseye) { const sz = gs(28 * (t.sizeScale || 1)); ctx.drawImage(__sprites.bullseye, -sz/2, -sz/2, sz, sz); return; }
         const s = t.sizeScale;
         const rings = [['#FFF', 14], ['#EF4444', 11], ['#FFF', 8], ['#EF4444', 5], ['#FBBF24', 2]];
         for (const [col, r] of rings) {
@@ -933,6 +998,7 @@ window.CannonBlast = (() => {
 
     function drawGolden(t) {
         const s = t.sizeScale;
+        if (__sprites.golden) { const sz = gs(24 * s); ctx.drawImage(__sprites.golden, -sz/2, -sz/2, sz, sz); return; }
         // Sparkle aura
         const sparkle = 0.5 + 0.5 * Math.sin(frameCount * 0.1);
         ctx.fillStyle = hexAlpha('#FFD700', sparkle * 0.3);
@@ -960,6 +1026,7 @@ window.CannonBlast = (() => {
     }
 
     function drawBomb(t) {
+        if (__sprites.bomb) { const sz = gs(22 * (t.sizeScale || 1)); ctx.drawImage(__sprites.bomb, -sz/2, -sz/2, sz, sz); return; }
         const s = t.sizeScale;
         const pulse = 0.8 + 0.2 * Math.sin(frameCount * 0.15);
         // Body
@@ -1668,6 +1735,10 @@ window.CannonBlast = (() => {
     function gameLoop(ts) {
         if (!gameActive && state !== ST_DEAD && state !== ST_OVER) return;
         animFrame = requestAnimationFrame(gameLoop);
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'CANNON BLAST', '#F97316');
+            return;
+        }
         const dt = lastTime ? Math.min(ts - lastTime, 50) : 16;
         lastTime = ts;
         frameCount++;
@@ -1855,6 +1926,7 @@ window.CannonBlast = (() => {
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
+        __loadSprites(null);
         animFrame = requestAnimationFrame(gameLoop);
     }
 

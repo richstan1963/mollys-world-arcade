@@ -1,7 +1,62 @@
-/* PixelFighter — 2D Fighting Game for Your World Arcade
+/* PixelFighter — 2D Fighting Game with Kenney CC0 sprites for Your World Arcade
  * Self-contained, no dependencies, canvas-rendered
  * IIFE pattern with init(canvas, player, onGameOver) and destroy() */
 window.PixelFighter = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        playerStand: '/img/game-assets/kenney-platform/players/Blue/alienBlue_stand.png',
+        playerWalk1: '/img/game-assets/kenney-platform/players/Blue/alienBlue_walk1.png',
+        playerJump: '/img/game-assets/kenney-platform/players/Blue/alienBlue_jump.png',
+        playerHit: '/img/game-assets/kenney-platform/players/Blue/alienBlue_hit.png',
+        playerDuck: '/img/game-assets/kenney-platform/players/Blue/alienBlue_duck.png',
+        aiStand: '/img/game-assets/kenney-platform/players/Yellow/alienYellow_stand.png',
+        aiWalk1: '/img/game-assets/kenney-platform/players/Yellow/alienYellow_walk1.png',
+        aiJump: '/img/game-assets/kenney-platform/players/Yellow/alienYellow_jump.png',
+        aiHit: '/img/game-assets/kenney-platform/players/Yellow/alienYellow_hit.png',
+        aiDuck: '/img/game-assets/kenney-platform/players/Yellow/alienYellow_duck.png',
+        fireball: '/img/game-assets/kenney-platform/particles/fireball.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+        particle2: '/img/game-assets/kenney-particles/particleWhite_3.png',
+        groundTile: '/img/game-assets/kenney-tiles/tileOrange_06.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
 
     // -- roundRect polyfill (Safari <16, older browsers) --
     if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -753,6 +808,23 @@ window.PixelFighter = (() => {
     //  FIGHTER DRAWING
     // ══════════════════════════════════════════════════════════
     function drawFighter(f, color1, color2) {
+        // Sprite fighters
+        const _isP1 = (f === fighters[0]);
+        const _prefix = _isP1 ? 'player' : 'ai';
+        let _fk = _prefix + 'Stand';
+        if (f.state === 'jumping') _fk = _prefix + 'Jump';
+        else if (f.state === 'hit' || f.state === 'blocking') _fk = _prefix + 'Hit';
+        else if (f.state === 'ducking') _fk = _prefix + 'Duck';
+        else if (Math.abs(f.vx) > 1) _fk = _prefix + 'Walk1';
+        if (__sprites[_fk]) {
+            const _fw = BODY_W * 2.5, _fh = (BODY_H + HEAD_R) * 2;
+            ctx.save();
+            ctx.translate(gs(f.x), gs(f.y - _fh/2));
+            if (f.facing === -1) { ctx.scale(-1, 1); ctx.drawImage(__sprites[_fk], -gs(_fw/2), -gs(_fh/2), gs(_fw), gs(_fh)); }
+            else ctx.drawImage(__sprites[_fk], -gs(_fw/2), -gs(_fh/2), gs(_fw), gs(_fh));
+            ctx.restore();
+            return;
+        }
         ctx.save();
         ctx.translate(f.x, f.y);
         if (f.facing === -1) ctx.scale(-1, 1);
@@ -1646,6 +1718,11 @@ window.PixelFighter = (() => {
 
     function loop() {
         if (!canvas) return;
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'PIXEL FIGHTER', '#3B82F6');
+            animFrame = requestAnimationFrame(loop);
+            return;
+        }
 
         // Slow-mo: skip frames
         if (slowMoFrames > 0 && frameCount % 3 !== 0) {
@@ -1733,6 +1810,7 @@ window.PixelFighter = (() => {
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: true });
 
+        __loadSprites(null);
         animFrame = requestAnimationFrame(loop);
     }
 

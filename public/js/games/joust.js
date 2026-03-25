@@ -51,9 +51,108 @@ window.Joust = (() => {
     const PLAT_H = 12;
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_WAVE_SPLASH = 3, ST_GAMEOVER = 4;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_WAVE_SPLASH = 3, ST_GAMEOVER = 4;
     const LS_KEY = 'ywa_joust_hiscore';
     let hiScore = 0;
+
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Player knight (blue)
+        playerStand:  `${SPRITE_BASE}/players/Blue/alienBlue_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Blue/alienBlue_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Blue/alienBlue_walk2.png`,
+        playerJump:   `${SPRITE_BASE}/players/Blue/alienBlue_jump.png`,
+        playerHit:    `${SPRITE_BASE}/players/Blue/alienBlue_hit.png`,
+        // Enemy knights
+        enemyRed:     `${SPRITE_BASE}/players/Pink/alienPink_stand.png`,
+        enemyRedW:    `${SPRITE_BASE}/players/Pink/alienPink_walk1.png`,
+        enemyRedJ:    `${SPRITE_BASE}/players/Pink/alienPink_jump.png`,
+        enemyGrey:    `${SPRITE_BASE}/players/Beige/alienBeige_stand.png`,
+        enemyGreyJ:   `${SPRITE_BASE}/players/Beige/alienBeige_jump.png`,
+        enemyShadow:  `${SPRITE_BASE}/players/Green/alienGreen_stand.png`,
+        enemyShadowJ: `${SPRITE_BASE}/players/Green/alienGreen_jump.png`,
+        // Platforms
+        stoneMid:     `${SPRITE_BASE}/ground/Stone/stoneMid.png`,
+        stoneLeft:    `${SPRITE_BASE}/ground/Stone/stoneLeft.png`,
+        stoneRight:   `${SPRITE_BASE}/ground/Stone/stoneRight.png`,
+        // Lava
+        lava:         `${SPRITE_BASE}/tiles/lava.png`,
+        lavaTop:      `${SPRITE_BASE}/tiles/lavaTop_high.png`,
+        // Items (eggs)
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        gemYellow:    `${SPRITE_BASE}/items/gemYellow.png`,
+        // Pterodactyl
+        enemyBee:     `${SPRITE_BASE}/enemies/bee.png`,
+        enemyBeeM:    `${SPRITE_BASE}/enemies/bee_move.png`,
+        // HUD
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        // Misc
+        spikes:       `${SPRITE_BASE}/tiles/spikes.png`,
+        fireball:     `${SPRITE_BASE}/particles/fireball.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(img, x, y, w, h, flipX) {
+        if (!img) return false;
+        ctx.save();
+        if (flipX) {
+            ctx.translate(gx(x + w), gy(y));
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, gs(w), gs(h));
+        } else {
+            ctx.drawImage(img, gx(x), gy(y), gs(w), gs(h));
+        }
+        ctx.restore();
+        return true;
+    }
+
+    function drawLoading() {
+        ctx.fillStyle = '#0a0010';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#F59E0B';
+        ctx.shadowColor = '#F59E0B'; ctx.shadowBlur = gs(10);
+        ctx.font = `bold ${gs(40)}px monospace`;
+        ctx.fillText('JOUST', gs(GAME_W / 2), gs(GAME_H / 2 - 50));
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#E0E7FF'; ctx.font = `${gs(13)}px monospace`;
+        ctx.fillText('LOADING SPRITES...', gs(GAME_W / 2), gs(GAME_H / 2));
+        const barW = 200, barH = 8;
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW), gs(barH));
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW * pct), gs(barH));
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = `${gs(10)}px monospace`;
+        ctx.fillText(`${spritesLoaded} / ${spritesTotal}`, gs(GAME_W / 2), gs(GAME_H / 2 + 45));
+    }
 
     // ── Mutable State ──
     let canvas, ctx, audioCtx;
@@ -212,6 +311,13 @@ window.Joust = (() => {
         const dt = Math.min((ts - (lastTime || ts)) / 1000, 0.05);
         lastTime = ts;
         frameCount++;
+
+        if (state === ST_LOADING) {
+            drawLoading();
+            if (allSpritesReady) state = ST_TITLE;
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
 
         switch (state) {
             case ST_TITLE:    updateTitle(dt); break;
@@ -885,7 +991,17 @@ window.Joust = (() => {
         for (const p of PLATFORMS) {
             const px = gx(p.x), py = gy(p.y), pw = gs(p.w), ph = gs(PLAT_H);
 
-            // Platform body — stone texture
+            // Try sprite platform
+            if (allSpritesReady && sprites['stoneMid']) {
+                const tileW = gs(40);
+                for (let tx = 0; tx < pw; tx += tileW) {
+                    const drawW = Math.min(tileW, pw - tx);
+                    ctx.drawImage(sprites['stoneMid'], px + tx, py, drawW, ph + gs(4));
+                }
+                continue;
+            }
+
+            // Platform body — stone texture fallback
             const grad = ctx.createLinearGradient(px, py, px, py + ph);
             grad.addColorStop(0, '#5C534A');
             grad.addColorStop(0.5, '#3E362E');
@@ -943,6 +1059,23 @@ window.Joust = (() => {
     }
 
     function drawLava() {
+        // Try sprite lava tiles
+        if (allSpritesReady && sprites['lava'] && sprites['lavaTop']) {
+            const ly = gy(LAVA_Y);
+            const tileW = gs(40), tileH = gs(LAVA_H);
+            // Top row
+            for (let tx = 0; tx < W; tx += tileW) {
+                ctx.drawImage(sprites['lavaTop'], tx, ly - gs(4), tileW, gs(20));
+            }
+            // Fill
+            for (let tx = 0; tx < W; tx += tileW) {
+                ctx.drawImage(sprites['lava'], tx, ly + gs(14), tileW, tileH);
+            }
+            // Glow effect
+            ctx.fillStyle = 'rgba(255,69,0,0.15)';
+            ctx.fillRect(0, ly - gs(20), W, gs(20));
+            return;
+        }
         const ly = gy(LAVA_Y), lh = gs(LAVA_H);
 
         // Lava glow
@@ -1070,6 +1203,20 @@ window.Joust = (() => {
         const f = player.facing;
         const blink = invulnTimer > 0 && Math.floor(frameCount / 3) % 2 === 0;
         if (blink) return;
+
+        // Try sprite player
+        if (allSpritesReady) {
+            const flapping = player.vy < -1;
+            let sprKey;
+            if (flapping) sprKey = 'playerJump';
+            else if (Math.abs(player.vx) > 0.5) sprKey = (Math.floor(frameCount / 8) % 2 === 0) ? 'playerWalk1' : 'playerWalk2';
+            else sprKey = 'playerStand';
+            const spr = sprites[sprKey];
+            if (spr) {
+                drawSprite(spr, player.x - PLAYER_W / 2 - 4, player.y - PLAYER_H / 2 - 6, PLAYER_W + 8, PLAYER_H + 10, f < 0);
+                return;
+            }
+        }
 
         ctx.save();
         ctx.translate(px, py);
@@ -1218,6 +1365,20 @@ window.Joust = (() => {
             if (!e.alive) continue;
             const ex = gx(e.x), ey = gy(e.y);
             const f = e.facing;
+
+            // Try sprite enemy
+            if (allSpritesReady) {
+                const flapping = e.vy < -0.5;
+                let sprKey;
+                if (e.type === ET_BOUNDER) sprKey = flapping ? 'enemyRedJ' : 'enemyRed';
+                else if (e.type === ET_HUNTER) sprKey = flapping ? 'enemyGreyJ' : 'enemyGrey';
+                else sprKey = flapping ? 'enemyShadowJ' : 'enemyShadow';
+                const spr = sprites[sprKey];
+                if (spr) {
+                    drawSprite(spr, e.x - PLAYER_W / 2 - 2, e.y - PLAYER_H / 2 - 4, PLAYER_W + 4, PLAYER_H + 6, f < 0);
+                    continue;
+                }
+            }
 
             ctx.save();
             ctx.translate(ex, ey);
@@ -1414,7 +1575,13 @@ window.Joust = (() => {
             ctx.save();
             ctx.translate(ex, ey);
 
-            // Egg body
+            // Try sprite egg
+            if (allSpritesReady && sprites['coinGold']) {
+                ctx.drawImage(sprites['coinGold'], -gs(EGG_W / 2), -gs(EGG_H / 2), gs(EGG_W), gs(EGG_H));
+                ctx.restore();
+                continue;
+            }
+            // Egg body fallback
             ctx.fillStyle = hatchProgress > 0.7 ? '#FFCCCC' : '#FFFFF0';
             ctx.beginPath();
             ctx.ellipse(0, 0, gs(EGG_W / 2), gs(EGG_H / 2), 0, 0, Math.PI * 2);
@@ -1790,7 +1957,8 @@ window.Joust = (() => {
         gameActive = true;
         frameCount = 0;
         lastTime = 0;
-        state = ST_TITLE;
+        state = ST_LOADING;
+        if (!allSpritesReady) loadSprites();
         score = 0; lives = INITIAL_LIVES; wave = 0;
         keys = {};
         particles = []; scorePopups = []; eggs = [];

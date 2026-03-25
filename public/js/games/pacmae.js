@@ -1,5 +1,50 @@
-/* Pac — Theme-aware Pac-Man for Your World Arcade */
+/* Pac — Theme-aware Pac-Man with Kenney CC0 sprites for Your World Arcade */
 window.PacMae = (() => {
+    // ── Sprite Atlas ──
+    const SPRITE_BASE_PLATFORM = '/img/game-assets/kenney-platform';
+    const SPRITE_BASE_COINS = '/img/game-assets/kenney-coins';
+    const SPRITE_BASE_TILES = '/img/game-assets/kenney-tiles';
+    const SPRITE_BASE_PARTICLES = '/img/game-assets/kenney-particles';
+    const _sprites = {};
+    let _spritesLoaded = 0, _spritesTotal = 0, _allSpritesReady = false;
+    const _ST_LOADING = -1;
+
+    const _SPRITE_MANIFEST = {
+        // Ghosts (platform enemies)
+        ghostRed:    `${SPRITE_BASE_PLATFORM}/enemies/slimeGreen.png`,
+        ghostPink:   `${SPRITE_BASE_PLATFORM}/enemies/slimePurple.png`,
+        ghostCyan:   `${SPRITE_BASE_PLATFORM}/enemies/slimeBlue.png`,
+        ghostOrange: `${SPRITE_BASE_PLATFORM}/enemies/fly.png`,
+        ghostFright:  `${SPRITE_BASE_PLATFORM}/enemies/snail_shell.png`,
+        ghostEyes:   `${SPRITE_BASE_PLATFORM}/enemies/snail.png`,
+        // Dots (coins)
+        dot:         `${SPRITE_BASE_COINS}/coin_01.png`,
+        powerDot:    `${SPRITE_BASE_COINS}/coin_02.png`,
+        // Fruit items
+        cherry:      `${SPRITE_BASE_PLATFORM}/items/gemRed.png`,
+        strawberry:  `${SPRITE_BASE_PLATFORM}/items/gemGreen.png`,
+        orange:      `${SPRITE_BASE_PLATFORM}/items/gemYellow.png`,
+        apple:       `${SPRITE_BASE_PLATFORM}/items/gemBlue.png`,
+        // Wall tiles
+        wallTile:    `${SPRITE_BASE_TILES}/tileBlue_04.png`,
+        // Particles
+        particle1:   `${SPRITE_BASE_PARTICLES}/particleWhite_1.png`,
+        particle2:   `${SPRITE_BASE_PARTICLES}/particleWhite_2.png`,
+    };
+
+    function _loadSprites(onDone) {
+        const keys = Object.keys(_SPRITE_MANIFEST);
+        _spritesTotal = keys.length;
+        _spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { _sprites[key] = img; done++; _spritesLoaded = done; if (done === _spritesTotal) { _allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { _sprites[key] = null; done++; _spritesLoaded = done; if (done === _spritesTotal) { _allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = _SPRITE_MANIFEST[key];
+        });
+    }
+
     // ── Constants ──
     const TILE_WALL = 1, TILE_DOT = 2, TILE_POWER = 3, TILE_EMPTY = 0;
     const TILE_TUNNEL = 4, TILE_GHOST_HOUSE = 5, TILE_GHOST_DOOR = 6;
@@ -68,7 +113,7 @@ window.PacMae = (() => {
     let maze = [];
     let score = 0, level = 1, lives = START_LIVES, hiScore = 0;
     let totalDots = 0, dotsEaten = 0;
-    let gameState = ST_TITLE;
+    let gameState = _ST_LOADING;
     let gameActive = false;
     let animFrame = null;
     let player = null;
@@ -745,27 +790,33 @@ window.PacMae = (() => {
                 const py = offsetY + r * tileSize + tileSize / 2;
 
                 if (t === TILE_DOT) {
-                    const cIdx = (r * COLS + c) % CANDY_COLORS.length;
-                    const dotR = tileSize * 0.14;
-                    const dotColor = CANDY_COLORS[cIdx];
-
-                    // Subtle glow around dot
-                    ctx.save();
-                    ctx.shadowColor = dotColor;
-                    ctx.shadowBlur = tileSize * 0.25;
-                    ctx.fillStyle = dotColor;
-                    ctx.beginPath();
-                    ctx.arc(px, py, dotR, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
-
-                    // Bright inner shine
-                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                    ctx.beginPath();
-                    ctx.arc(px - dotR * 0.25, py - dotR * 0.25, dotR * 0.35, 0, Math.PI * 2);
-                    ctx.fill();
+                    const dotSz = tileSize * 0.35;
+                    if (_sprites.dot) {
+                        ctx.drawImage(_sprites.dot, px - dotSz / 2, py - dotSz / 2, dotSz, dotSz);
+                    } else {
+                        const cIdx = (r * COLS + c) % CANDY_COLORS.length;
+                        const dotR = tileSize * 0.14;
+                        const dotColor = CANDY_COLORS[cIdx];
+                        ctx.save();
+                        ctx.shadowColor = dotColor;
+                        ctx.shadowBlur = tileSize * 0.25;
+                        ctx.fillStyle = dotColor;
+                        ctx.beginPath();
+                        ctx.arc(px, py, dotR, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                        ctx.beginPath();
+                        ctx.arc(px - dotR * 0.25, py - dotR * 0.25, dotR * 0.35, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 } else if (t === TILE_POWER) {
-                    // Pulsing power pellet with enhanced glow
+                    // Sprite power pellet
+                    if (_sprites.powerDot) {
+                        const psz = tileSize * 0.65 + Math.sin(pelletPulse) * tileSize * 0.08;
+                        ctx.drawImage(_sprites.powerDot, px - psz / 2, py - psz / 2, psz, psz);
+                    } else {
+                    // Fallback: Pulsing power pellet with enhanced glow
                     const pulseScale = 0.3 + Math.sin(pelletPulse) * 0.08;
                     const pr = tileSize * pulseScale;
                     const pelletColor = CANDY_COLORS[0] || '#FF69B4';
@@ -816,6 +867,7 @@ window.PacMae = (() => {
                         ctx.stroke();
                     }
                     ctx.restore();
+                    } // end fallback power pellet
                 } else if (t === TILE_GHOST_DOOR) {
                     // Glowing ghost door
                     ctx.save();
@@ -1077,10 +1129,23 @@ window.PacMae = (() => {
     function drawGhostShape(px, py, color, wobble, frightened, name) {
         const r = tileSize * 0.42;
         const bodyBot = py + r * 0.7;
+        const sz = tileSize * 0.85;
+
+        // Try sprite ghost
+        if (frightened && _sprites.ghostFright) {
+            ctx.drawImage(_sprites.ghostFright, px - sz / 2, py - sz / 2, sz, sz);
+            return;
+        }
+        const ghostMap = { blinky: 'ghostRed', pinky: 'ghostPink', inky: 'ghostCyan', clyde: 'ghostOrange' };
+        const sprKey = ghostMap[name] || 'ghostRed';
+        if (_sprites[sprKey] && !frightened) {
+            ctx.drawImage(_sprites[sprKey], px - sz / 2, py - sz / 2, sz, sz);
+            return;
+        }
 
         ctx.save();
 
-        // Ghost body glow
+        // Fallback: Ghost body glow
         ctx.shadowColor = color;
         ctx.shadowBlur = frightened ? tileSize * 0.3 : tileSize * 0.2;
 
@@ -1748,6 +1813,26 @@ window.PacMae = (() => {
         }
     }
 
+    function drawLoadingScreen() {
+        const w = canvas.width, h = canvas.height;
+        ctx.fillStyle = '#0a0515';
+        ctx.fillRect(0, 0, w, h);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#FBBF24';
+        ctx.shadowColor = '#FDE68A'; ctx.shadowBlur = 10;
+        ctx.font = `bold ${Math.round(w * 0.07)}px monospace`;
+        ctx.fillText('PAC-MAE', w / 2, h / 2 - w * 0.08);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#E0E7FF'; ctx.font = `${Math.round(w * 0.03)}px monospace`;
+        ctx.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.4, barH = w * 0.015;
+        const pct = _spritesTotal > 0 ? _spritesLoaded / _spritesTotal : 0;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(w / 2 - barW / 2, h / 2 + w * 0.03, barW, barH);
+        ctx.fillStyle = '#FBBF24';
+        ctx.fillRect(w / 2 - barW / 2, h / 2 + w * 0.03, barW * pct, barH);
+    }
+
     function render() {
         if (!canvas || !ctx) return;
         animFrame = requestAnimationFrame(render);
@@ -1758,6 +1843,13 @@ window.PacMae = (() => {
         frameCount++;
 
         const w = canvas.width, h = canvas.height;
+
+        // Loading screen
+        if (gameState === _ST_LOADING) {
+            drawLoadingScreen();
+            if (_allSpritesReady) gameState = ST_TITLE;
+            return;
+        }
 
         // Title screen
         if (gameState === ST_TITLE) {
@@ -1917,8 +2009,8 @@ window.PacMae = (() => {
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        // Init state for title screen
-        gameState = ST_TITLE;
+        // Init state — start in loading
+        gameState = _ST_LOADING;
         gameActive = false;
         frameCount = 0; lastTime = 0;
         keys = {};
@@ -1928,6 +2020,7 @@ window.PacMae = (() => {
         initPacMae();
         initGhosts();
         prerenderMaze();
+        _loadSprites(null);
 
         // Bind events — use document level for keyboard reliability
         document.addEventListener('keydown', handleKeyDown, true);

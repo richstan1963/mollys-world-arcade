@@ -1,4 +1,5 @@
-/* Mini Golf — 9-hole physics mini golf for Your World Arcade */
+/* Mini Golf — 9-hole physics mini golf for Your World Arcade
+ * Kenney Physics + Platform sprite edition */
 window.MiniGolf = (() => {
 
     // -- roundRect polyfill (Safari <16, older browsers) --
@@ -17,6 +18,115 @@ window.MiniGolf = (() => {
         };
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  SPRITE PRELOADER — Kenney Physics + Platform Packs
+    // ══════════════════════════════════════════════════════════
+    const PHYS_BASE = '/img/game-assets/kenney-physics';
+    const PLAT_BASE = '/img/game-assets/kenney-platform';
+    const spriteCache = {};
+    let spritesLoaded = 0;
+    let spritesTotal  = 0;
+    let allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Grass/sand/water tiles for surfaces (kenney-platform)
+        grassMid:       `${PLAT_BASE}/ground/Grass/grassMid.png`,
+        grassCenter:    `${PLAT_BASE}/ground/Grass/grassCenter.png`,
+        grassLeft:      `${PLAT_BASE}/ground/Grass/grassLeft.png`,
+        grassRight:     `${PLAT_BASE}/ground/Grass/grassRight.png`,
+        sandMid:        `${PLAT_BASE}/ground/Sand/sandMid.png`,
+        sandCenter:     `${PLAT_BASE}/ground/Sand/sandCenter.png`,
+        stoneMid:       `${PLAT_BASE}/ground/Stone/stoneMid.png`,
+        stoneCenter:    `${PLAT_BASE}/ground/Stone/stoneCenter.png`,
+        // Wood sprites for walls (kenney-physics)
+        woodPlankH:     `${PHYS_BASE}/wood/elementWood011.png`,
+        woodPlankV:     `${PHYS_BASE}/wood/elementWood012.png`,
+        woodBlock:      `${PHYS_BASE}/wood/elementWood010.png`,
+        woodThin:       `${PHYS_BASE}/wood/elementWood018.png`,
+        woodDark:       `${PHYS_BASE}/wood/elementWood042.png`,
+        // Metal sprites for bumpers/windmill hub (kenney-physics)
+        metalCircle:    `${PHYS_BASE}/metal/elementMetal000.png`,
+        metalRing:      `${PHYS_BASE}/metal/elementMetal004.png`,
+        metalBolt:      `${PHYS_BASE}/metal/elementMetal029.png`,
+        metalPlate:     `${PHYS_BASE}/metal/elementMetal010.png`,
+        // Stone for windmill arms
+        stoneThin:      `${PHYS_BASE}/stone/elementStone017.png`,
+        stoneBlock:     `${PHYS_BASE}/stone/elementStone010.png`,
+        // Backgrounds
+        bgGrass:        `${PHYS_BASE}/backgrounds/colored_grass.png`,
+        bgLand:         `${PHYS_BASE}/backgrounds/colored_land.png`,
+        // Flag sprites (kenney-platform)
+        flagRed1:       `${PLAT_BASE}/items/flagRed1.png`,
+        flagRed2:       `${PLAT_BASE}/items/flagRed2.png`,
+        // Debris for effects
+        debrisWood1:    `${PHYS_BASE}/debris/debrisWood_1.png`,
+        debrisWood2:    `${PHYS_BASE}/debris/debrisWood_2.png`,
+        debrisStone1:   `${PHYS_BASE}/debris/debrisStone_1.png`,
+        // Stars
+        starGold:       `${PHYS_BASE}/other/starGold.png`,
+        coinGold:       `${PLAT_BASE}/items/coinGold.png`,
+        // Water tile
+        waterTile:      `${PLAT_BASE}/tiles/boxCrate.png`,
+    };
+
+    function preloadSprites(onComplete) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        if (spritesTotal === 0) { allSpritesReady = true; onComplete(); return; }
+
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                spriteCache[key] = img;
+                spritesLoaded++;
+                if (spritesLoaded >= spritesTotal) {
+                    allSpritesReady = true;
+                    if (onComplete) onComplete();
+                }
+            };
+            img.onerror = () => {
+                spriteCache[key] = null;
+                spritesLoaded++;
+                if (spritesLoaded >= spritesTotal) {
+                    allSpritesReady = true;
+                    if (onComplete) onComplete();
+                }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function spr(name) { return spriteCache[name] || null; }
+
+    function drawSprite(ctx, name, x, y, w, h, fallbackColor) {
+        const img = spr(name);
+        if (img) {
+            ctx.drawImage(img, x, y, w, h);
+        } else if (fallbackColor) {
+            ctx.fillStyle = fallbackColor;
+            ctx.fillRect(x, y, w, h);
+        }
+    }
+
+    function drawTiledSprite(ctx, name, rx, ry, rw, rh, tileW, tileH, fallbackColor) {
+        const img = spr(name);
+        if (!img) {
+            if (fallbackColor) { ctx.fillStyle = fallbackColor; ctx.fillRect(rx, ry, rw, rh); }
+            return;
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(rx, ry, rw, rh);
+        ctx.clip();
+        for (let tx = rx; tx < rx + rw; tx += tileW) {
+            for (let ty = ry; ty < ry + rh; ty += tileH) {
+                ctx.drawImage(img, tx, ty, tileW, tileH);
+            }
+        }
+        ctx.restore();
+    }
+
     // ── Constants ──────────────────────────────────────────────
     const GAME_W = 480, GAME_H = 640;
     const BALL_R = 6;
@@ -29,6 +139,7 @@ window.MiniGolf = (() => {
     const HOLE_CAPTURE_SPEED = 3.0;  // ball must be this slow to fall in
 
     // Game states
+    const ST_LOADING  = -1;
     const ST_TITLE    = 0;
     const ST_AIMING   = 1;
     const ST_POWER    = 2;
@@ -744,15 +855,16 @@ window.MiniGolf = (() => {
 
     // ── Drawing ─────────────────────────────────────────────────
     function drawCourse() {
-        // Background
-        ctx.fillStyle = BG_CLR;
-        ctx.fillRect(0, 0, GAME_W, GAME_H);
-
-        // Course grass background
-        const grassGrad = ctx.createRadialGradient(GAME_W / 2, GAME_H / 2, 20, GAME_W / 2, GAME_H / 2, 400);
-        grassGrad.addColorStop(0, GRASS_CLR);
-        grassGrad.addColorStop(1, GRASS_CLR2);
-        ctx.fillStyle = grassGrad;
+        // Background - use sprite bg or fallback
+        const bgImg = spr('bgGrass');
+        if (bgImg) {
+            ctx.drawImage(bgImg, 0, 0, GAME_W, GAME_H);
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.fillRect(0, 0, GAME_W, GAME_H);
+        } else {
+            ctx.fillStyle = BG_CLR;
+            ctx.fillRect(0, 0, GAME_W, GAME_H);
+        }
 
         // Find bounding box of course
         let minX = 1000, minY = 1000, maxX = 0, maxY = 0;
@@ -763,52 +875,33 @@ window.MiniGolf = (() => {
             maxY = Math.max(maxY, w.y + w.h);
         }
 
+        // Course grass surface - tiled sprite
+        drawTiledSprite(ctx, 'grassCenter', minX, minY, maxX - minX, maxY - minY, 48, 48, GRASS_CLR);
+        // Slight darkening overlay for depth
+        ctx.fillStyle = 'rgba(0,40,0,0.15)';
         ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
 
-        // Grass texture
-        ctx.fillStyle = 'rgba(0,60,0,0.06)';
-        for (let i = 0; i < 60; i++) {
-            const gx = minX + Math.random() * (maxX - minX);
-            const gy = minY + Math.random() * (maxY - minY);
-            ctx.beginPath();
-            ctx.arc(gx, gy, 0.8, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Sand traps
+        // Sand traps - tiled sand sprite
         for (const s of sandTraps) {
-            ctx.fillStyle = '#D4A437';
-            ctx.beginPath();
-            ctx.roundRect(s.x, s.y, s.w, s.h, 8);
-            ctx.fill();
-            // Sand texture
-            ctx.fillStyle = 'rgba(180,140,50,0.3)';
-            for (let i = 0; i < 15; i++) {
-                const sx = s.x + Math.random() * s.w;
-                const sy = s.y + Math.random() * s.h;
-                ctx.beginPath();
-                ctx.arc(sx, sy, 1, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            drawTiledSprite(ctx, 'sandCenter', s.x, s.y, s.w, s.h, 40, 40, '#D4A437');
+            // Sand border
             ctx.strokeStyle = '#B8922A';
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.roundRect(s.x, s.y, s.w, s.h, 8);
+            ctx.roundRect(s.x, s.y, s.w, s.h, 4);
             ctx.stroke();
         }
 
-        // Water hazards
+        // Water hazards - tiled blue with shimmer
         for (const w of waterHazards) {
-            // Water gradient
-            const waterGrad = ctx.createLinearGradient(w.x, w.y, w.x, w.y + w.h);
-            waterGrad.addColorStop(0, '#1E6CB0');
-            waterGrad.addColorStop(1, '#0E4A7A');
-            ctx.fillStyle = waterGrad;
+            drawTiledSprite(ctx, 'stoneCenter', w.x, w.y, w.w, w.h, 40, 40, '#1E6CB0');
+            // Blue tint overlay
+            ctx.fillStyle = 'rgba(30,108,176,0.6)';
             ctx.beginPath();
             ctx.roundRect(w.x, w.y, w.w, w.h, 6);
             ctx.fill();
             // Water shimmer
-            ctx.fillStyle = 'rgba(100,180,255,0.15)';
+            ctx.fillStyle = 'rgba(100,180,255,0.2)';
             const shimTime = Date.now() * 0.002;
             for (let i = 0; i < 5; i++) {
                 const sx = w.x + (Math.sin(shimTime + i) * 0.5 + 0.5) * w.w;
@@ -824,26 +917,25 @@ window.MiniGolf = (() => {
             ctx.stroke();
         }
 
-        // Walls
+        // Walls - wood sprite tiled
         for (const w of walls) {
             // Wall shadow
             ctx.fillStyle = 'rgba(0,0,0,0.2)';
             ctx.fillRect(w.x + 2, w.y + 2, w.w, w.h);
 
-            // Wall body
-            const wallGrad = ctx.createLinearGradient(w.x, w.y, w.x, w.y + w.h);
-            wallGrad.addColorStop(0, '#6B4423');
-            wallGrad.addColorStop(0.5, '#8B5A2B');
-            wallGrad.addColorStop(1, '#5C3A1E');
-            ctx.fillStyle = wallGrad;
-            ctx.fillRect(w.x, w.y, w.w, w.h);
+            // Use horizontal or vertical wood plank based on wall orientation
+            const isHorizontal = w.w > w.h;
+            const woodSprite = isHorizontal ? 'woodPlankH' : 'woodPlankV';
+            const tileW = isHorizontal ? 40 : Math.max(w.w, 10);
+            const tileH = isHorizontal ? Math.max(w.h, 10) : 40;
+            drawTiledSprite(ctx, woodSprite, w.x, w.y, w.w, w.h, tileW, tileH, '#8B5A2B');
 
-            // Wall highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            // Highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
             ctx.fillRect(w.x, w.y, w.w, Math.min(2, w.h));
         }
 
-        // Bumpers
+        // Bumpers - metal circle sprites
         for (const b of bumpers) {
             // Bumper shadow
             ctx.fillStyle = 'rgba(0,0,0,0.2)';
@@ -851,67 +943,62 @@ window.MiniGolf = (() => {
             ctx.arc(b.x + 1, b.y + 1, b.r + 1, 0, Math.PI * 2);
             ctx.fill();
 
-            // Bumper body
-            const bGrad = ctx.createRadialGradient(b.x - b.r * 0.2, b.y - b.r * 0.2, 1, b.x, b.y, b.r);
-            bGrad.addColorStop(0, '#FF8888');
-            bGrad.addColorStop(0.7, '#CC3333');
-            bGrad.addColorStop(1, '#991111');
-            ctx.fillStyle = bGrad;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-            ctx.fill();
+            // Metal sprite or fallback
+            const metalImg = spr('metalCircle');
+            if (metalImg) {
+                ctx.drawImage(metalImg, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+            } else {
+                const bGrad = ctx.createRadialGradient(b.x - b.r * 0.2, b.y - b.r * 0.2, 1, b.x, b.y, b.r);
+                bGrad.addColorStop(0, '#FF8888');
+                bGrad.addColorStop(0.7, '#CC3333');
+                bGrad.addColorStop(1, '#991111');
+                ctx.fillStyle = bGrad;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
             // Highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
             ctx.beginPath();
             ctx.arc(b.x - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.3, 0, Math.PI * 2);
             ctx.fill();
-
-            ctx.strokeStyle = '#880000';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-            ctx.stroke();
         }
 
-        // Windmills
+        // Windmills - metal hub + stone arms
         for (const wm of windmills) {
-            // Center hub
-            ctx.fillStyle = '#8B7355';
-            ctx.beginPath();
-            ctx.arc(wm.x, wm.y, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#5C4A32';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.arc(wm.x, wm.y, 8, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // Arms (2 opposite arms)
             const armW = 5;
             ctx.save();
             ctx.translate(wm.x, wm.y);
             ctx.rotate(wm.angle);
 
-            // Arm 1
-            ctx.fillStyle = '#A0522D';
-            ctx.fillRect(-armW / 2, -wm.armLen, armW, wm.armLen);
-            ctx.fillStyle = '#CD853F';
-            ctx.fillRect(-armW / 2 + 1, -wm.armLen, 1, wm.armLen);
-
-            // Arm 2
-            ctx.fillStyle = '#A0522D';
-            ctx.fillRect(-armW / 2, 0, armW, wm.armLen);
-            ctx.fillStyle = '#CD853F';
-            ctx.fillRect(-armW / 2 + 1, 0, 1, wm.armLen);
+            // Arms with stone sprite or fallback
+            const stoneImg = spr('stoneThin');
+            if (stoneImg) {
+                ctx.drawImage(stoneImg, -armW / 2, -wm.armLen, armW, wm.armLen);
+                ctx.drawImage(stoneImg, -armW / 2, 0, armW, wm.armLen);
+            } else {
+                ctx.fillStyle = '#A0522D';
+                ctx.fillRect(-armW / 2, -wm.armLen, armW, wm.armLen);
+                ctx.fillRect(-armW / 2, 0, armW, wm.armLen);
+            }
 
             ctx.restore();
 
-            // Center bolt
-            ctx.fillStyle = '#666';
-            ctx.beginPath();
-            ctx.arc(wm.x, wm.y, 3, 0, Math.PI * 2);
-            ctx.fill();
+            // Center hub with metal sprite
+            const metalBoltImg = spr('metalBolt');
+            if (metalBoltImg) {
+                ctx.drawImage(metalBoltImg, wm.x - 8, wm.y - 8, 16, 16);
+            } else {
+                ctx.fillStyle = '#8B7355';
+                ctx.beginPath();
+                ctx.arc(wm.x, wm.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#666';
+                ctx.beginPath();
+                ctx.arc(wm.x, wm.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
         // Hole
@@ -927,25 +1014,29 @@ window.MiniGolf = (() => {
         ctx.arc(holePos.x, holePos.y, HOLE_R, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Flag
+        // Flag - sprite or fallback
         if (!ballSunk) {
-            ctx.strokeStyle = '#888';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(holePos.x, holePos.y);
-            ctx.lineTo(holePos.x, holePos.y - 35);
-            ctx.stroke();
+            const flagImg = spr('flagRed1');
+            if (flagImg) {
+                ctx.drawImage(flagImg, holePos.x - 5, holePos.y - 42, 28, 42);
+            } else {
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(holePos.x, holePos.y);
+                ctx.lineTo(holePos.x, holePos.y - 35);
+                ctx.stroke();
 
-            // Flag triangle
-            ctx.fillStyle = '#F43F5E';
-            ctx.beginPath();
-            ctx.moveTo(holePos.x, holePos.y - 35);
-            ctx.lineTo(holePos.x + 18, holePos.y - 28);
-            ctx.lineTo(holePos.x, holePos.y - 21);
-            ctx.closePath();
-            ctx.fill();
+                ctx.fillStyle = '#F43F5E';
+                ctx.beginPath();
+                ctx.moveTo(holePos.x, holePos.y - 35);
+                ctx.lineTo(holePos.x + 18, holePos.y - 28);
+                ctx.lineTo(holePos.x, holePos.y - 21);
+                ctx.closePath();
+                ctx.fill();
+            }
 
-            // Hole number on flag
+            // Hole number
             ctx.fillStyle = '#FFF';
             ctx.font = 'bold 8px sans-serif';
             ctx.textAlign = 'center';
@@ -1333,6 +1424,8 @@ window.MiniGolf = (() => {
 
     // ── Update ──────────────────────────────────────────────────
     function update(time) {
+        if (state === ST_LOADING) return;
+
         updateParticles();
         updateMessages();
 
@@ -1383,6 +1476,8 @@ window.MiniGolf = (() => {
     // ── Draw ────────────────────────────────────────────────────
     function draw(time) {
         ctx.clearRect(0, 0, GAME_W, GAME_H);
+
+        if (state === ST_LOADING) { drawLoadingScreen(); return; }
 
         if (state !== ST_TITLE && state !== ST_OVER) {
             drawCourse();
@@ -1612,6 +1707,27 @@ window.MiniGolf = (() => {
     // ══════════════════════════════════════════════════════════
     //  PUBLIC API
     // ══════════════════════════════════════════════════════════
+    function drawLoadingScreen() {
+        ctx.fillStyle = '#1A1A2E';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 28px "Segoe UI", system-ui, sans-serif';
+        ctx.fillStyle = '#34D399';
+        ctx.fillText('MINI GOLF', GAME_W / 2, GAME_H * 0.35);
+        ctx.font = '14px "Segoe UI", system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        const pct = spritesTotal > 0 ? Math.floor((spritesLoaded / spritesTotal) * 100) : 0;
+        ctx.fillText(`Loading sprites... ${pct}%`, GAME_W / 2, GAME_H * 0.48);
+        // Progress bar
+        const barW = 200, barH = 6;
+        const barX = (GAME_W - barW) / 2, barY = GAME_H * 0.55;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#34D399';
+        ctx.fillRect(barX, barY, barW * (spritesLoaded / Math.max(1, spritesTotal)), barH);
+    }
+
     function init(canvasEl, activePlayer, gameOverCallback) {
         canvas     = canvasEl;
         ctx        = canvas.getContext('2d');
@@ -1629,7 +1745,7 @@ window.MiniGolf = (() => {
         particles = [];
         messages = [];
         gameActive = false;
-        state = ST_TITLE;
+        state = ST_LOADING;
         holeScores = [];
         currentHole = 0;
 
@@ -1647,6 +1763,11 @@ window.MiniGolf = (() => {
         canvas.addEventListener('touchstart', onTouchStart, { passive: true });
         canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
         canvas.addEventListener('touchend',   onTouchEnd,   { passive: true });
+
+        // Preload sprites, then show title
+        preloadSprites(() => {
+            state = ST_TITLE;
+        });
 
         animFrame = requestAnimationFrame(loop);
     }

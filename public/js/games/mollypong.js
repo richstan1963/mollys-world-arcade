@@ -1,5 +1,52 @@
-/* MollyPong — Theme-aware Pong for Your World Arcade */
+/* MollyPong — Theme-aware Pong with Kenney CC0 sprites for Your World Arcade */
 window.MollyPong = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        paddle: '/img/game-assets/kenney-tiles/tileBlue_03.png',
+        paddleAI: '/img/game-assets/kenney-tiles/tilePink_03.png',
+        ball: '/img/game-assets/kenney-physics/aliens/alienBeige_round.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+        particle2: '/img/game-assets/kenney-particles/particleWhite_3.png',
+        star: '/img/game-assets/kenney-platform/items/star.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
 
     // -- roundRect polyfill (Safari <16, older browsers) --
     if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -265,6 +312,18 @@ window.MollyPong = (() => {
         ctx.restore();
     }
 
+    function drawPaddle_sprite(x, y, w, h, color, isAI) {
+        const sprKey = isAI ? 'paddleAI' : 'paddle';
+        if (__sprites[sprKey]) {
+            const tilesNeeded = Math.ceil(w / h);
+            for (let i = 0; i < tilesNeeded; i++) {
+                const tileW = Math.min(h, w - i * h);
+                ctx.drawImage(__sprites[sprKey], x + i * h, y, tileW, h);
+            }
+            return true;
+        }
+        return false;
+    }
     function drawPaddle(cx, cy, color) {
         const x = cx - PADDLE_W / 2;
         const y = cy - PADDLE_H / 2;
@@ -903,6 +962,11 @@ window.MollyPong = (() => {
     // ── Main loop ─────────────────────────────────────────────
     function loop(time) {
         if (!canvas) return;
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'MOLLY PONG', '#F472B6');
+            animFrame = requestAnimationFrame(loop);
+            return;
+        }
         update(time);
         draw(time);
         animFrame = requestAnimationFrame(loop);
@@ -1084,6 +1148,7 @@ window.MollyPong = (() => {
         canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
         canvas.addEventListener('touchend',   onTouchEnd,   { passive: true });
 
+        __loadSprites(null);
         animFrame = requestAnimationFrame(loop);
     }
 

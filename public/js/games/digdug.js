@@ -40,9 +40,95 @@ window.DigDug = (() => {
     const DEPTH_SCORE_MULTIPLIER = [1.0, 1.2, 1.5, 2.0]; // multiplier per depth layer
 
     // States
-    const ST_TITLE = 0, ST_PLAYING = 1, ST_DYING = 2, ST_LEVEL_SPLASH = 3, ST_GAMEOVER = 4;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAYING = 1, ST_DYING = 2, ST_LEVEL_SPLASH = 3, ST_GAMEOVER = 4;
     const LS_KEY = 'ywa_digdug_hiscore';
     let hiScore = 0;
+
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Player (dig dug character with helmet)
+        playerStand:  `${SPRITE_BASE}/players/Yellow/alienYellow_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Yellow/alienYellow_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Yellow/alienYellow_walk2.png`,
+        playerFront:  `${SPRITE_BASE}/players/Yellow/alienYellow_front.png`,
+        playerHit:    `${SPRITE_BASE}/players/Yellow/alienYellow_hit.png`,
+        playerDuck:   `${SPRITE_BASE}/players/Yellow/alienYellow_duck.png`,
+        // Enemies (Pooka = slime, Fygar = ladybug/fly)
+        enemySlime:   `${SPRITE_BASE}/enemies/slimeGreen.png`,
+        enemySlimeM:  `${SPRITE_BASE}/enemies/slimeGreen_move.png`,
+        enemySlimeH:  `${SPRITE_BASE}/enemies/slimeGreen_hit.png`,
+        enemyLadybug: `${SPRITE_BASE}/enemies/ladybug.png`,
+        enemyLadybugM:`${SPRITE_BASE}/enemies/ladybug_move.png`,
+        enemyLadybugF:`${SPRITE_BASE}/enemies/ladybug_fly.png`,
+        // Dirt tiles
+        dirtMid:      `${SPRITE_BASE}/ground/Dirt/dirtMid.png`,
+        dirtCenter:   `${SPRITE_BASE}/ground/Dirt/dirtCenter.png`,
+        // Surface
+        grassMid:     `${SPRITE_BASE}/ground/Grass/grassMid.png`,
+        grassCenter:  `${SPRITE_BASE}/ground/Grass/grassCenter.png`,
+        // Items
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        mushroomRed:  `${SPRITE_BASE}/tiles/mushroomRed.png`,
+        mushroomBrown:`${SPRITE_BASE}/tiles/mushroomBrown.png`,
+        // Rock
+        rock:         `${SPRITE_BASE}/tiles/rock.png`,
+        // Fireball
+        fireball:     `${SPRITE_BASE}/particles/fireball.png`,
+        // HUD
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        // Background
+        bgDesert:     `${SPRITE_BASE}/backgrounds/colored_desert.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawLoading() {
+        ctx.fillStyle = '#1a0a00';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#F59E0B';
+        ctx.shadowColor = '#F59E0B'; ctx.shadowBlur = gs(10);
+        ctx.font = `bold ${gs(36)}px monospace`;
+        ctx.fillText('DIG DUG', gs(GAME_W / 2), gs(GAME_H / 2 - 50));
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#E0E7FF'; ctx.font = `${gs(13)}px monospace`;
+        ctx.fillText('LOADING SPRITES...', gs(GAME_W / 2), gs(GAME_H / 2));
+        const barW = 200, barH = 8;
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW), gs(barH));
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW * pct), gs(barH));
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = `${gs(10)}px monospace`;
+        ctx.fillText(`${spritesLoaded} / ${spritesTotal}`, gs(GAME_W / 2), gs(GAME_H / 2 + 45));
+    }
     const DIR_NONE = -1, DIR_UP = 0, DIR_RIGHT = 1, DIR_DOWN = 2, DIR_LEFT = 3;
     const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 
@@ -877,7 +963,11 @@ window.DigDug = (() => {
                 const w = gs(CELL), h = gs(CELL);
 
                 if (!isDug(c, r)) {
-                    // Solid dirt
+                    // Try sprite dirt
+                    if (allSpritesReady && sprites['dirtCenter']) {
+                        ctx.drawImage(sprites['dirtCenter'], x, y, w + 1, h + 1);
+                    } else {
+                    // Solid dirt fallback
                     ctx.fillStyle = DIRT_COLORS[dl];
                     ctx.fillRect(x, y, w + 1, h + 1);
                     // Dirt texture (speckles)
@@ -925,6 +1015,7 @@ window.DigDug = (() => {
                             }
                         }
                     }
+                    } // end else (fallback dirt)
                 } else if (r >= SURFACE_ROWS) {
                     // Dug tunnel - darker background
                     ctx.fillStyle = '#1A1008';
@@ -968,8 +1059,29 @@ window.DigDug = (() => {
         // Enemies
         for (const e of enemies) {
             if (e.dead || e.escaped) continue;
-            if (e.type === 'pooka') drawPooka(e);
-            else drawFygar(e);
+            // Try sprite enemy
+            let enemySpriteDrawn = false;
+            if (allSpritesReady) {
+                const anim = Math.floor(frameCount / 10) % 2 === 0;
+                let spr = null;
+                const sw = gs(CELL * 0.85), sh = gs(CELL * 0.9);
+                if (e.type === 'pooka') {
+                    if (e.inflateStage > 0) spr = sprites['enemySlimeH'];
+                    else spr = sprites[anim ? 'enemySlime' : 'enemySlimeM'];
+                } else {
+                    if (e.ghosting) spr = sprites['enemyLadybugF'];
+                    else spr = sprites[anim ? 'enemyLadybug' : 'enemyLadybugM'];
+                }
+                if (spr) {
+                    const inflate = 1 + (e.inflateStage || 0) * 0.15;
+                    ctx.drawImage(spr, gs(e.x) - sw * inflate / 2, gs(e.y) - sh * inflate / 2, sw * inflate, sh * inflate);
+                    enemySpriteDrawn = true;
+                }
+            }
+            if (!enemySpriteDrawn) {
+                if (e.type === 'pooka') drawPooka(e);
+                else drawFygar(e);
+            }
         }
 
         // Veggie
@@ -1072,6 +1184,30 @@ window.DigDug = (() => {
         const px = gs(player.x), py = gs(player.y);
         const s = gs(CELL * 0.42);
         const flip = player.dir === DIR_LEFT ? -1 : 1;
+
+        // Try sprite player
+        if (allSpritesReady) {
+            const moving = player.moveDir !== DIR_NONE;
+            let sprKey;
+            if (state === ST_DYING) sprKey = 'playerHit';
+            else if (player.pumping) sprKey = 'playerDuck';
+            else if (moving) sprKey = (Math.floor(frameCount / 8) % 2 === 0) ? 'playerWalk1' : 'playerWalk2';
+            else sprKey = 'playerStand';
+            const spr = sprites[sprKey];
+            if (spr) {
+                const sw = gs(CELL * 0.9), sh = gs(CELL * 0.95);
+                ctx.save();
+                if (player.dir === DIR_LEFT) {
+                    ctx.translate(px + sw / 2, py - sh / 2);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(spr, 0, 0, sw, sh);
+                } else {
+                    ctx.drawImage(spr, px - sw / 2, py - sh / 2, sw, sh);
+                }
+                ctx.restore();
+                return;
+            }
+        }
 
         ctx.save();
         ctx.translate(px, py);
@@ -1333,7 +1469,18 @@ window.DigDug = (() => {
         ctx.restore();
     }
 
-    function drawRock(rock) {
+    function drawRock(rock_) {
+        const rock = rock_;
+        // Try sprite rock
+        if (allSpritesReady && sprites['rock']) {
+            const rx = gs(rock.col * CELL), ry = gs(rock.y || rock.row * CELL);
+            ctx.drawImage(sprites['rock'], rx, ry, gs(CELL), gs(CELL));
+            return;
+        }
+        // Original drawRock follows as fallback
+        drawRockFallback(rock);
+    }
+    function drawRockFallback(rock) {
         const rx = gs(rock.col * CELL + rock.shakeAnim);
         const ry = gs(rock.y);
         const rw = gs(CELL - 2);
@@ -1627,6 +1774,11 @@ window.DigDug = (() => {
         frameCount++;
 
         switch (state) {
+            case ST_LOADING:
+                drawLoading();
+                if (allSpritesReady) state = ST_TITLE;
+                return;
+
             case ST_TITLE:
                 break;
 
@@ -1688,7 +1840,8 @@ window.DigDug = (() => {
         playerTheme = playerData?.theme || 'retro';
         try { hiScore = parseInt(localStorage.getItem(LS_KEY)) || 0; } catch { hiScore = 0; }
         gameActive = true;
-        state = ST_TITLE;
+        state = ST_LOADING;
+        if (!allSpritesReady) loadSprites();
         frameCount = 0;
         lastTime = 0;
         keys = {};

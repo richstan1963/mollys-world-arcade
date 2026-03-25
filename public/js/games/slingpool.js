@@ -409,34 +409,63 @@ window.SlingPool = (() => {
         cueRestX = midX;
         cueRestY = tableB - 10;
 
-        // Place target balls in a rough triangle in upper half of table
-        const numBalls = Math.min(3 + lvl, 15);
+        // Standard 8-ball rack: 15 balls in triangle, 8-ball in center
         const startX = midX;
         const startY = midY - 40;
         const spacing = BALL_R * 2.5;
 
-        let placed = 0;
-        let row = 0;
-        while (placed < numBalls) {
+        // Build standard 8-ball rack order (8-ball at position 5 = center of row 3)
+        // Row layout: 1, 2, 3, 4-5, 6-7-8, 9-10-11, 12-13-14-15
+        const solids = [1, 2, 3, 4, 5, 6, 7];
+        const stripes = [9, 10, 11, 12, 13, 14, 15];
+        // Shuffle solids and stripes
+        for (let i = solids.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [solids[i], solids[j]] = [solids[j], solids[i]];
+        }
+        for (let i = stripes.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [stripes[i], stripes[j]] = [stripes[j], stripes[i]];
+        }
+        // Standard triangle: 5 rows (1-2-3-4-5), 8-ball at position 5 (center of row 3)
+        // Corners of last row must be one solid + one stripe
+        const rackOrder = [];
+        rackOrder.push(solids.pop());           // pos 0: row 1 apex
+        rackOrder.push(stripes.pop());          // pos 1: row 2
+        rackOrder.push(solids.pop());           // pos 2: row 2
+        rackOrder.push(solids.pop());           // pos 3: row 3
+        rackOrder.push(8);                       // pos 4: row 3 CENTER (8-ball)
+        rackOrder.push(stripes.pop());          // pos 5: row 3
+        rackOrder.push(stripes.pop());          // pos 6: row 4
+        rackOrder.push(solids.pop());           // pos 7: row 4
+        rackOrder.push(stripes.pop());          // pos 8: row 4
+        rackOrder.push(solids.pop());           // pos 9: row 4
+        rackOrder.push(solids.pop());           // pos 10: row 5 (corner - solid)
+        rackOrder.push(stripes.pop());          // pos 11: row 5
+        rackOrder.push(solids.pop());           // pos 12: row 5
+        rackOrder.push(stripes.pop());          // pos 13: row 5
+        rackOrder.push(stripes.pop());          // pos 14: row 5 (corner - stripe)
+
+        let idx = 0;
+        for (let row = 0; row < 5; row++) {
             const inRow = row + 1;
-            for (let c = 0; c < inRow && placed < numBalls; c++) {
+            for (let c = 0; c < inRow; c++) {
                 const bx = startX + row * spacing * 0.866;
                 const by = startY + (c - (inRow - 1) / 2) * spacing;
+                const num = rackOrder[idx++];
                 balls.push({
                     x: bx, y: by,
                     vx: 0, vy: 0,
-                    num: placed + 1,
-                    color: BALL_COLORS[placed % BALL_COLORS.length],
-                    stripe: placed >= 8,
+                    num: num,
+                    color: BALL_COLORS[(num - 1) % BALL_COLORS.length],
+                    stripe: num >= 9 && num <= 15,
                     active: true,
                     potting: false,
                     pottingTimer: 0,
                     pocketTarget: null,
                     flashTimer: 0,
                 });
-                placed++;
             }
-            row++;
         }
 
         // Cue ball

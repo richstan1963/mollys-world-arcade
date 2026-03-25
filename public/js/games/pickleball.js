@@ -1,5 +1,80 @@
-/* Pickleball — Side-view pickleball game for Your World Arcade */
+/* Pickleball — Side-view pickleball game for Your World Arcade
+ * Kenney Platform + Physics sprite edition */
 window.Pickleball = (() => {
+
+    // ══════════════════════════════════════════════════════════
+    //  SPRITE PRELOADER — Kenney Platform + Physics Packs
+    // ══════════════════════════════════════════════════════════
+    const PHYS_BASE = '/img/game-assets/kenney-physics';
+    const PLAT_BASE = '/img/game-assets/kenney-platform';
+    const spriteCache = {};
+    let spritesLoaded = 0;
+    let spritesTotal  = 0;
+    let allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Court surface tiles
+        grassMid:       `${PLAT_BASE}/ground/Grass/grassMid.png`,
+        grassCenter:    `${PLAT_BASE}/ground/Grass/grassCenter.png`,
+        stoneMid:       `${PLAT_BASE}/ground/Stone/stoneMid.png`,
+        stoneCenter:    `${PLAT_BASE}/ground/Stone/stoneCenter.png`,
+        // Net/fence sprites
+        fence:          `${PLAT_BASE}/tiles/fence.png`,
+        fenceBroken:    `${PLAT_BASE}/tiles/fenceBroken.png`,
+        chain:          `${PLAT_BASE}/tiles/chain.png`,
+        // Background
+        bgGrass:        `${PLAT_BASE}/backgrounds/colored_grass.png`,
+        bgLand:         `${PLAT_BASE}/backgrounds/blue_land.png`,
+        // Metal for net post
+        metalPlate:     `${PHYS_BASE}/metal/elementMetal010.png`,
+        metalBolt:      `${PHYS_BASE}/metal/elementMetal029.png`,
+        // Wood for fence/posts
+        woodBlock:      `${PHYS_BASE}/wood/elementWood010.png`,
+        woodThin:       `${PHYS_BASE}/wood/elementWood018.png`,
+    };
+
+    function preloadSprites(onComplete) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        if (spritesTotal === 0) { allSpritesReady = true; onComplete(); return; }
+
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                spriteCache[key] = img;
+                spritesLoaded++;
+                if (spritesLoaded >= spritesTotal) { allSpritesReady = true; if (onComplete) onComplete(); }
+            };
+            img.onerror = () => {
+                spriteCache[key] = null;
+                spritesLoaded++;
+                if (spritesLoaded >= spritesTotal) { allSpritesReady = true; if (onComplete) onComplete(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function spr(name) { return spriteCache[name] || null; }
+
+    function drawTiledSprite(name, rx, ry, rw, rh, tileW, tileH, fallbackColor) {
+        const img = spr(name);
+        if (!img) {
+            if (fallbackColor) { ctx.fillStyle = fallbackColor; ctx.fillRect(rx, ry, rw, rh); }
+            return;
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(rx, ry, rw, rh);
+        ctx.clip();
+        for (let tx = rx; tx < rx + rw; tx += tileW) {
+            for (let ty = ry; ty < ry + rh; ty += tileH) {
+                ctx.drawImage(img, tx, ty, tileW, tileH);
+            }
+        }
+        ctx.restore();
+    }
+
     // ── Constants ──
     const GAME_W = 640, GAME_H = 400;
     const GRAVITY = 0.28;
@@ -23,7 +98,7 @@ window.Pickleball = (() => {
     const SWING_DURATION = 22;
 
     // States
-    const ST_TITLE = 0, ST_SERVE = 1, ST_PLAY = 2, ST_POINT = 3, ST_GAMEOVER = 4;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_SERVE = 1, ST_PLAY = 2, ST_POINT = 3, ST_GAMEOVER = 4;
 
     // ── State ──
     let canvas, ctx, animFrame, gameActive = false;
@@ -679,22 +754,26 @@ window.Pickleball = (() => {
 
     // ── Drawing ──
     function drawCourt() {
-        // Sky gradient
-        const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_H);
-        skyGrad.addColorStop(0, '#87CEEB');
-        skyGrad.addColorStop(0.6, '#B0E0E6');
-        skyGrad.addColorStop(1, '#E0F0FF');
-        ctx.fillStyle = skyGrad;
-        ctx.fillRect(0, 0, GAME_W, GAME_H);
+        // Sky - use sprite background or gradient fallback
+        const bgImg = spr('bgLand');
+        if (bgImg) {
+            ctx.drawImage(bgImg, 0, 0, GAME_W, GAME_H);
+        } else {
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_H);
+            skyGrad.addColorStop(0, '#87CEEB');
+            skyGrad.addColorStop(0.6, '#B0E0E6');
+            skyGrad.addColorStop(1, '#E0F0FF');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, GAME_W, GAME_H);
+        }
 
         // Crowd silhouettes in background
         drawCrowd();
 
-        // Court surface
-        const courtGrad = ctx.createLinearGradient(0, COURT_Y - 5, 0, GAME_H);
-        courtGrad.addColorStop(0, '#2D8B57');
-        courtGrad.addColorStop(1, '#1F6B42');
-        ctx.fillStyle = courtGrad;
+        // Court surface - tiled stone sprite or gradient fallback
+        drawTiledSprite('stoneCenter', 30, COURT_Y, GAME_W - 60, GAME_H - COURT_Y, 48, 48, '#2D8B57');
+        // Green tint overlay for court color
+        ctx.fillStyle = 'rgba(45,139,87,0.35)';
         ctx.fillRect(30, COURT_Y, GAME_W - 60, GAME_H - COURT_Y);
 
         // Court outline
@@ -756,30 +835,45 @@ window.Pickleball = (() => {
     }
 
     function drawNet() {
-        const netLeft = NET_X - 2;
-        const netRight = NET_X + 2;
+        // Net post - use metal sprite or fallback
+        const metalImg = spr('metalPlate');
+        if (metalImg) {
+            ctx.drawImage(metalImg, NET_X - 4, NET_TOP - 4, 8, COURT_Y - NET_TOP + 4);
+        } else {
+            ctx.fillStyle = '#888';
+            ctx.fillRect(NET_X - 2, NET_TOP - 4, 4, COURT_Y - NET_TOP + 4);
+        }
 
-        // Post
-        ctx.fillStyle = '#888';
-        ctx.fillRect(NET_X - 2, NET_TOP - 4, 4, COURT_Y - NET_TOP + 4);
-
-        // Net cord (top)
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(NET_X - 2, NET_TOP);
-        // Slight sag
-        ctx.quadraticCurveTo(NET_X, NET_TOP + 3, NET_X + 2, NET_TOP);
-        ctx.stroke();
-
-        // Mesh lines (vertical)
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 0.5;
-        for (let y = NET_TOP + 6; y < COURT_Y; y += 8) {
+        // Net mesh - use fence sprite tiled vertically or fallback
+        const fenceImg = spr('fence');
+        if (fenceImg) {
+            ctx.save();
+            ctx.globalAlpha = 0.7;
+            const fenceH = 28;
+            for (let y = NET_TOP; y < COURT_Y; y += fenceH) {
+                const h = Math.min(fenceH, COURT_Y - y);
+                ctx.drawImage(fenceImg, NET_X - 10, y, 20, h);
+            }
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        } else {
+            // Net cord (top)
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(NET_X - 1.5, y);
-            ctx.lineTo(NET_X + 1.5, y);
+            ctx.moveTo(NET_X - 2, NET_TOP);
+            ctx.quadraticCurveTo(NET_X, NET_TOP + 3, NET_X + 2, NET_TOP);
             ctx.stroke();
+
+            // Mesh lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 0.5;
+            for (let y = NET_TOP + 6; y < COURT_Y; y += 8) {
+                ctx.beginPath();
+                ctx.moveTo(NET_X - 1.5, y);
+                ctx.lineTo(NET_X + 1.5, y);
+                ctx.stroke();
+            }
         }
     }
 
@@ -1224,7 +1318,7 @@ window.Pickleball = (() => {
     function update() {
         frameCount++;
 
-        if (state === ST_TITLE) return;
+        if (state === ST_LOADING || state === ST_TITLE) return;
 
         if (state === ST_POINT) {
             updateParticles();
@@ -1248,6 +1342,8 @@ window.Pickleball = (() => {
     }
 
     function draw() {
+        if (state === ST_LOADING) { drawLoadingScreen(); return; }
+
         ctx.save();
         ctx.scale(canvas.width / GAME_W, canvas.height / GAME_H);
 
@@ -1297,6 +1393,29 @@ window.Pickleball = (() => {
     }
 
     // ── Init / Destroy ──
+    function drawLoadingScreen() {
+        ctx.save();
+        ctx.scale(canvas.width / GAME_W, canvas.height / GAME_H);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 28px monospace';
+        ctx.fillStyle = '#CDDC39';
+        ctx.fillText('PICKLEBALL', GAME_W / 2, GAME_H * 0.35);
+        ctx.font = '14px monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        const pct = spritesTotal > 0 ? Math.floor((spritesLoaded / spritesTotal) * 100) : 0;
+        ctx.fillText(`Loading sprites... ${pct}%`, GAME_W / 2, GAME_H * 0.48);
+        const barW = 200, barH = 6;
+        const barX = (GAME_W - barW) / 2, barY = GAME_H * 0.55;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#CDDC39';
+        ctx.fillRect(barX, barY, barW * (spritesLoaded / Math.max(1, spritesTotal)), barH);
+        ctx.restore();
+    }
+
     function init(cvs, playerData, onGameOver) {
         canvas = cvs;
         ctx = canvas.getContext('2d');
@@ -1309,7 +1428,7 @@ window.Pickleball = (() => {
         const _t = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(playerTheme) : null;
         if (_t) playerColor = _t.colors[0] || playerColor;
 
-        state = ST_TITLE;
+        state = ST_LOADING;
         frameCount = 0;
         lastTime = 0;
         keys = {};
@@ -1353,6 +1472,11 @@ window.Pickleball = (() => {
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        // Preload sprites then show title
+        preloadSprites(() => {
+            state = ST_TITLE;
+        });
 
         animFrame = requestAnimationFrame(gameLoop);
     }

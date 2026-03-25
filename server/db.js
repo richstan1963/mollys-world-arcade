@@ -1037,6 +1037,7 @@ function seedOriginalGames(database) {
         ['memorymatch',  'Memory Match',   'Flip cards and find pairs! 10 levels from 4x3 to 8x6 grids. Test your memory with 24 unique icons.', '🃏', '#06B6D4'],
         ['pixelfighter', 'Pixel Fighter',  '1v1 fighting! Punch, kick, block, and unleash special moves. 3 rounds, 3 stages, scaling AI.', '🥊', '#EF4444'],
         ['aquarium',     'Aquarium',       'Zen fish tank! Feed fish, watch them swim, unlock new species. Day/night cycle. No game over — just vibes.', '🐠', '#3B82F6'],
+        ['centiballs',   'CentiBalls',     'Centipede meets Billiards! A chain of billiard balls descends — shoot the cue ball to knock segments into pockets!', '🎱', '#22C55E'],
     ];
     // Remove deleted games
     const deleted = ['blockwars','crossfire','snakeqix','climbstack','paddlewar','bombdig','mazebomber','haines2048','splitarcade','splitdefend'];

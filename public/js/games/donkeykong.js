@@ -1,4 +1,4 @@
-/* YWA Donkey Kong — Classic barrel-dodging platformer for Your World Arcade */
+/* YWA Donkey Kong — Classic barrel-dodging platformer — Kenney Platform CC0 sprites */
 window.DonkeyKong = (() => {
 
     // -- roundRect polyfill (Safari <16, older browsers) --
@@ -32,8 +32,111 @@ window.DonkeyKong = (() => {
     const SPRING_BOUNCE_VEL = -10;
 
     // States
-    const ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_GAMEOVER = 3, ST_WIN = 4, ST_LEVEL_INTRO = 5;
+    const ST_LOADING = -1, ST_TITLE = 0, ST_PLAY = 1, ST_DYING = 2, ST_GAMEOVER = 3, ST_WIN = 4, ST_LEVEL_INTRO = 5;
     const LS_KEY = 'ywa_donkeykong_hiscore';
+
+    // ── Sprite Atlas (Kenney Platform CC0) ──
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
+    const sprites = {};
+    let spritesLoaded = 0, spritesTotal = 0, allSpritesReady = false;
+
+    const SPRITE_MANIFEST = {
+        // Player (Mario equivalent)
+        playerStand:  `${SPRITE_BASE}/players/Pink/alienPink_stand.png`,
+        playerWalk1:  `${SPRITE_BASE}/players/Pink/alienPink_walk1.png`,
+        playerWalk2:  `${SPRITE_BASE}/players/Pink/alienPink_walk2.png`,
+        playerJump:   `${SPRITE_BASE}/players/Pink/alienPink_jump.png`,
+        playerClimb1: `${SPRITE_BASE}/players/Pink/alienPink_climb1.png`,
+        playerClimb2: `${SPRITE_BASE}/players/Pink/alienPink_climb2.png`,
+        playerHit:    `${SPRITE_BASE}/players/Pink/alienPink_hit.png`,
+        // DK (large enemy)
+        enemySlimeB:  `${SPRITE_BASE}/enemies/slimeBlock.png`,
+        enemySlimeBM: `${SPRITE_BASE}/enemies/slimeBlock_move.png`,
+        // Barrels
+        boxCrate:     `${SPRITE_BASE}/tiles/boxCrate.png`,
+        boxCrateD:    `${SPRITE_BASE}/tiles/boxCrate_double.png`,
+        // Girders
+        stoneMid:     `${SPRITE_BASE}/ground/Stone/stoneMid.png`,
+        stoneLeft:    `${SPRITE_BASE}/ground/Stone/stoneLeft.png`,
+        stoneRight:   `${SPRITE_BASE}/ground/Stone/stoneRight.png`,
+        // Ladder
+        ladderMid:    `${SPRITE_BASE}/tiles/ladderMid.png`,
+        ladderTop:    `${SPRITE_BASE}/tiles/ladderTop.png`,
+        // Items
+        coinGold:     `${SPRITE_BASE}/items/coinGold.png`,
+        star:         `${SPRITE_BASE}/items/star.png`,
+        gemRed:       `${SPRITE_BASE}/items/gemRed.png`,
+        keyRed:       `${SPRITE_BASE}/items/keyRed.png`,
+        // HUD
+        hudHeart:     `${SPRITE_BASE}/hud/hudHeart_full.png`,
+        hudCoin:      `${SPRITE_BASE}/hud/hudCoin.png`,
+        // Fire
+        fireball:     `${SPRITE_BASE}/particles/fireball.png`,
+        // Pauline
+        playerYStand: `${SPRITE_BASE}/players/Yellow/alienYellow_stand.png`,
+        playerYFront: `${SPRITE_BASE}/players/Yellow/alienYellow_front.png`,
+        // Spring
+        spring:       `${SPRITE_BASE}/tiles/spring.png`,
+        sprung:       `${SPRITE_BASE}/tiles/sprung.png`,
+    };
+
+    function loadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spritesTotal = keys.length;
+        spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => {
+                sprites[key] = img;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.onerror = () => {
+                sprites[key] = null;
+                done++; spritesLoaded = done;
+                if (onProgress) onProgress(done, spritesTotal);
+                if (done === spritesTotal) { allSpritesReady = true; if (onDone) onDone(); }
+            };
+            img.src = SPRITE_MANIFEST[key];
+        });
+    }
+
+    function drawSprite(img, x, y, w, h, flipX) {
+        if (!img) return false;
+        ctx.save();
+        if (flipX) {
+            ctx.translate(gx(x + w), gy(y));
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, gs(w), gs(h));
+        } else {
+            ctx.drawImage(img, gx(x), gy(y), gs(w), gs(h));
+        }
+        ctx.restore();
+        return true;
+    }
+
+    function drawLoading() {
+        ctx.fillStyle = '#0a0a1e';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#F59E0B';
+        ctx.shadowColor = '#F59E0B'; ctx.shadowBlur = gs(10);
+        ctx.font = `bold ${gs(36)}px monospace`;
+        ctx.fillText('DONKEY KONG', gs(GAME_W / 2), gs(GAME_H / 2 - 50));
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#E0E7FF'; ctx.font = `${gs(13)}px monospace`;
+        ctx.fillText('LOADING SPRITES...', gs(GAME_W / 2), gs(GAME_H / 2));
+        const barW = 200, barH = 8;
+        const pct = spritesTotal > 0 ? spritesLoaded / spritesTotal : 0;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW), gs(barH));
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(gs(GAME_W / 2 - barW / 2), gs(GAME_H / 2 + 20), gs(barW * pct), gs(barH));
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = `${gs(10)}px monospace`;
+        ctx.fillText(`${spritesLoaded} / ${spritesTotal}`, gs(GAME_W / 2), gs(GAME_H / 2 + 45));
+    }
 
     // Game state
     let canvas, ctx, W, H, SCALE, DPR, animFrame, gameActive = false;
@@ -292,6 +395,11 @@ window.DonkeyKong = (() => {
     function drawGirder(p) {
         const x = gx(p.x), y = gy(p.y), w = gs(p.w), h = gs(GIRDER_H);
         const yr = gy(p.yR);
+        // Try sprite tile
+        if (allSpritesReady && sprites['stoneMid']) {
+            ctx.drawImage(sprites['stoneMid'], x, y, w, h + gs(4));
+            return;
+        }
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(x, y);
@@ -299,7 +407,6 @@ window.DonkeyKong = (() => {
         ctx.lineTo(x + w, yr + h);
         ctx.lineTo(x, y + h);
         ctx.closePath();
-        // Steel beam
         const beamGrad = ctx.createLinearGradient(x, y, x, y + h);
         beamGrad.addColorStop(0, '#C44');
         beamGrad.addColorStop(0.3, '#E66');
@@ -307,7 +414,6 @@ window.DonkeyKong = (() => {
         beamGrad.addColorStop(1, '#933');
         ctx.fillStyle = beamGrad;
         ctx.fill();
-        // Rivets
         if (Math.floor(p.x) % 40 < 2) {
             const rivetY = (y + yr) / 2 + h * 0.3;
             ctx.fillStyle = '#F88';
@@ -320,11 +426,19 @@ window.DonkeyKong = (() => {
 
     function drawLadder(l) {
         const x = gx(l.x), y = gy(l.y), w = gs(l.w), h = gs(l.h);
-        // Rails
+        // Try sprite ladder
+        if (allSpritesReady && sprites['ladderMid']) {
+            const tileH = gs(20);
+            if (sprites['ladderTop']) ctx.drawImage(sprites['ladderTop'], x - gs(1), y, w + gs(2), tileH);
+            for (let ty = y + tileH; ty < y + h; ty += tileH) {
+                ctx.drawImage(sprites['ladderMid'], x - gs(1), ty, w + gs(2), tileH);
+            }
+            return;
+        }
+        // Rails fallback
         ctx.fillStyle = '#7CF';
         ctx.fillRect(x, y, gs(2), h);
         ctx.fillRect(x + w - gs(2), y, gs(2), h);
-        // Rungs with 3D effect
         const rungCount = Math.floor(l.h / 10);
         for (let i = 0; i <= rungCount; i++) {
             const ry = y + (h / rungCount) * i;
@@ -410,7 +524,15 @@ window.DonkeyKong = (() => {
 
     function drawDK() {
         const x = gx(dk.x), y = gy(dk.y), s = gs(1);
-        // Body
+        // Try sprite DK (large enemy block)
+        if (allSpritesReady) {
+            const dkImg = sprites[frameCount % 60 < 30 ? 'enemySlimeB' : 'enemySlimeBM'];
+            if (dkImg) {
+                ctx.drawImage(dkImg, x - 5 * s, y - 5 * s, 60 * s, 55 * s);
+                return;
+            }
+        }
+        // Body fallback
         const bodyGrad = ctx.createRadialGradient(x + 25 * s, y + 20 * s, 5 * s, x + 25 * s, y + 20 * s, 30 * s);
         bodyGrad.addColorStop(0, '#A0522D');
         bodyGrad.addColorStop(0.6, '#8B4513');
@@ -606,6 +728,33 @@ window.DonkeyKong = (() => {
         const legPhase = walking ? Math.sin(frameCount * 0.3) * 4 : 0;
         const climbPhase = climbing ? Math.sin(frameCount * 0.25) * 3 : 0;
 
+        // Try sprite player
+        if (allSpritesReady) {
+            let sprKey;
+            if (climbing) sprKey = (Math.floor(frameCount / 10) % 2 === 0) ? 'playerClimb1' : 'playerClimb2';
+            else if (!player.onGround) sprKey = 'playerJump';
+            else if (walking) sprKey = (Math.floor(frameCount / 8) % 2 === 0) ? 'playerWalk1' : 'playerWalk2';
+            else sprKey = 'playerStand';
+            if (state === ST_DYING) sprKey = 'playerHit';
+            const spr = sprites[sprKey];
+            if (spr) {
+                drawSprite(spr, player.x - 4, player.y - 6, PLAYER_W + 8, PLAYER_H + 8, dir < 0);
+                // Still draw hammer overlay if active
+                if (hammerActive) {
+                    const swing = Math.sin(frameCount * 0.4) * 0.8;
+                    ctx.save();
+                    ctx.translate(gx(player.x + 8), gy(player.y + 2));
+                    ctx.rotate(swing);
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(-gs(2), -gs(12), gs(4), gs(12));
+                    ctx.fillStyle = '#666';
+                    ctx.fillRect(-gs(5), -gs(18), gs(10), gs(7));
+                    ctx.restore();
+                }
+                return;
+            }
+        }
+
         ctx.save();
         // Hammer glow
         if (hammerActive) {
@@ -664,6 +813,15 @@ window.DonkeyKong = (() => {
 
     function drawBarrel(b) {
         const cx = gx(b.x), cy = gy(b.y), r = gs(BARREL_R), s = gs(1);
+        // Try sprite barrel
+        if (allSpritesReady && sprites['boxCrate']) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(b.rotation);
+            ctx.drawImage(sprites['boxCrate'], -r, -r, r * 2, r * 2);
+            ctx.restore();
+            return;
+        }
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(b.rotation);
@@ -1625,8 +1783,13 @@ window.DonkeyKong = (() => {
         const dt = Math.min((ts - lastTime) / 1000, 0.05);
         lastTime = ts;
 
-        update(dt);
-        render();
+        if (state === ST_LOADING) {
+            drawLoading();
+            if (allSpritesReady) state = ST_TITLE;
+        } else {
+            update(dt);
+            render();
+        }
 
         animFrame = requestAnimationFrame(gameLoop);
     }
@@ -1670,7 +1833,8 @@ window.DonkeyKong = (() => {
             stars.push({ x: rand(0, GAME_W), y: rand(0, GAME_H * 0.4), size: rand(0.5, 2), speed: rand(0.5, 2), phase: rand(0, 6.28), color: ['#FFF', '#CCF', '#FFC'][randInt(0, 2)] });
         }
 
-        state = ST_TITLE;
+        state = ST_LOADING;
+        if (!allSpritesReady) loadSprites();
         buildLevel();
         resetPlayer();
 

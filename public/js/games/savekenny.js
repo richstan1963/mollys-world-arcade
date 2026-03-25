@@ -1,7 +1,65 @@
-/* Save Kenny — Missile Command defense for Your World Arcade
+/* Save Kenny — Missile Command defense with Kenney CC0 sprites for Your World Arcade
    Kenny meditates cross-legged on an auto-pilot drone.
    Player shoots down incoming threats. He always dies eventually. */
 window.SaveKenny = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        kenny: '/img/game-assets/kenney-platform/players/Beige/alienBeige_stand.png',
+        kennyHit: '/img/game-assets/kenney-platform/players/Beige/alienBeige_hit.png',
+        drone: '/img/game-assets/kenney-space/ships/playerShip3_blue.png',
+        missile: '/img/game-assets/kenney-space/Missiles/spaceMissiles_001.png',
+        enemyBird: '/img/game-assets/kenney-space/enemies/enemyRed3.png',
+        enemyBall: '/img/game-assets/kenney-space/meteors/meteorBrown_small1.png',
+        enemyPlane: '/img/game-assets/kenney-space/enemies/enemyBlue4.png',
+        enemyUFO: '/img/game-assets/kenney-space/enemies/enemyGreen4.png',
+        enemyCat: '/img/game-assets/kenney-platform/enemies/mouse.png',
+        puAmmo: '/img/game-assets/kenney-space/powerups/powerupRed_bolt.png',
+        puShield: '/img/game-assets/kenney-space/powerups/powerupBlue_shield.png',
+        puBomb: '/img/game-assets/kenney-space/powerups/powerupGreen_star.png',
+        puLife: '/img/game-assets/kenney-platform/items/gemRed.png',
+        explosion1: '/img/game-assets/kenney-space/effects/fire00.png',
+        explosion2: '/img/game-assets/kenney-space/effects/fire07.png',
+        explosion3: '/img/game-assets/kenney-space/effects/fire14.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
 
     // -- roundRect polyfill (Safari <16, older browsers) --
     if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -425,6 +483,15 @@ window.SaveKenny = (() => {
     }
 
     function drawDrone(x, y, tilt) {
+        if (__sprites.drone) {
+            const dsz = gs(DRONE_W * 1.2);
+            ctx.save();
+            ctx.translate(gs(x), gs(y));
+            ctx.rotate(tilt * 0.15);
+            ctx.drawImage(__sprites.drone, -dsz/2, -dsz * 0.4, dsz, dsz * 0.6);
+            ctx.restore();
+            return;
+        }
         ctx.save();
         ctx.translate(gs(x), gs(y));
         ctx.rotate(tilt * 0.15);
@@ -484,6 +551,17 @@ window.SaveKenny = (() => {
     }
 
     function drawKenny(x, y, angle) {
+        const _kk = (hp <= 1) ? 'kennyHit' : 'kenny';
+        if (__sprites[_kk]) {
+            const ksz = gs(KENNY_H * 1.3);
+            ctx.save();
+            ctx.translate(gs(x), gs(y));
+            ctx.rotate(angle || 0);
+            if (kennyShakeTimer > 0) ctx.translate(gs(rng(-1.5, 1.5)), gs(rng(-1, 1)));
+            ctx.drawImage(__sprites[_kk], -ksz * 0.4, -ksz * 0.8, ksz * 0.8, ksz);
+            ctx.restore();
+            return;
+        }
         ctx.save();
         ctx.translate(gs(x), gs(y));
         ctx.rotate(angle || 0);
@@ -647,6 +725,16 @@ window.SaveKenny = (() => {
             ctx.save();
             ctx.translate(gs(t.x), gs(t.y));
 
+            // Sprite threats
+            const _tMap = { [TH_BIRD]:'enemyBird', [TH_BASEBALL]:'enemyBall', [TH_AIRPLANE]:'enemyPlane', [TH_UFO]:'enemyUFO', [TH_CAT]:'enemyCat' };
+            const _tsk = _tMap[t.type];
+            if (_tsk && __sprites[_tsk]) {
+                const _tsz = gs(t.type === TH_AIRPLANE ? 30 : t.type === TH_UFO ? 28 : 18);
+                ctx.drawImage(__sprites[_tsk], -_tsz/2, -_tsz/2, _tsz, _tsz);
+                ctx.restore();
+                return;
+            }
+
             switch (t.type) {
                 case TH_BIRD:
                     ctx.fillStyle = '#333';
@@ -795,6 +883,12 @@ window.SaveKenny = (() => {
             ctx.translate(gs(m.x), gs(m.y));
             const a = Math.atan2(m.vy, m.vx);
             ctx.rotate(a);
+            if (__sprites.missile) {
+                const msz = gs(14);
+                ctx.drawImage(__sprites.missile, -msz * 0.3, -msz / 2, msz, msz);
+                ctx.restore();
+                return;
+            }
             ctx.fillStyle = '#FF4444';
             ctx.beginPath();
             ctx.moveTo(gs(6), 0);
@@ -1589,6 +1683,12 @@ window.SaveKenny = (() => {
     // ── Main Loop ──
     function gameLoop(timestamp) {
         if (!gameActive) return;
+        // Loading screen
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'SAVE KENNY', '#FBBF24');
+            animFrame = requestAnimationFrame(gameLoop);
+            return;
+        }
         const dt = timestamp - (lastTime || timestamp);
         lastTime = timestamp;
 
@@ -1775,6 +1875,7 @@ window.SaveKenny = (() => {
 
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+        __loadSprites(null);
         animFrame = requestAnimationFrame(gameLoop);
     }
 

@@ -1,5 +1,55 @@
-/* MinniePac — Minnie Mouse themed Pac-Man for Your World Arcade */
+/* MinniePac — Minnie Mouse themed Pac-Man with Kenney CC0 sprites for Your World Arcade */
 window.MinniePac = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        ghostRed: '/img/game-assets/kenney-platform/enemies/slimeGreen.png',
+        ghostPink: '/img/game-assets/kenney-platform/enemies/slimePurple.png',
+        ghostCyan: '/img/game-assets/kenney-platform/enemies/slimeBlue.png',
+        ghostOrange: '/img/game-assets/kenney-platform/enemies/fly.png',
+        ghostFright: '/img/game-assets/kenney-platform/enemies/snail_shell.png',
+        dot: '/img/game-assets/kenney-coins/coin_01.png',
+        powerDot: '/img/game-assets/kenney-coins/coin_02.png',
+        cherry: '/img/game-assets/kenney-platform/items/gemRed.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
     // ── Constants ──
     const TILE_WALL = 1, TILE_DOT = 2, TILE_POWER = 3, TILE_EMPTY = 0;
     const TILE_TUNNEL = 4, TILE_GHOST_HOUSE = 5, TILE_GHOST_DOOR = 6;
@@ -739,7 +789,9 @@ window.MinniePac = (() => {
                     ctx.shadowBlur = tileSize * 0.25;
                     ctx.fillStyle = dotColor;
                     ctx.beginPath();
-                    ctx.arc(px, py, dotR, 0, Math.PI * 2);
+                    0;
+                    const _ds = tileSize * 0.35;
+                    if (__sprites.dot) { ctx.drawImage(__sprites.dot, px - _ds/2, py - _ds/2, _ds, _ds); } else ctx.arc(px, py, dotR, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.restore();
 
@@ -1107,6 +1159,10 @@ window.MinniePac = (() => {
     }
 
     function drawGhostShape(px, py, color, wobble, frightened, name) {
+        const _gsz = tileSize * 0.85;
+        if (frightened && __sprites.ghostFright) { ctx.drawImage(__sprites.ghostFright, px - _gsz/2, py - _gsz/2, _gsz, _gsz); return; }
+        const _gm = { blinky: 'ghostRed', pinky: 'ghostPink', inky: 'ghostCyan', clyde: 'ghostOrange' };
+        if (__sprites[_gm[name] || 'ghostRed'] && !frightened) { ctx.drawImage(__sprites[_gm[name] || 'ghostRed'], px - _gsz/2, py - _gsz/2, _gsz, _gsz); return; }
         const r = tileSize * 0.42;
         const bodyBot = py + r * 0.7;
 
@@ -1760,7 +1816,13 @@ window.MinniePac = (() => {
 
     function render() {
         if (!canvas || !ctx) return;
+        __loadSprites(null);
         animFrame = requestAnimationFrame(render);
+        // Loading screen
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'MINNIE PAC', '#E91E8C');
+            return;
+        }
 
         const now = performance.now();
         const dt = Math.min((now - (lastTime || now)) / 1000, 0.05);

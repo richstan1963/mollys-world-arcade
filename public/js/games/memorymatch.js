@@ -1,7 +1,101 @@
-/* MemoryMatch — Theme-aware memory card matching game for Your World Arcade
+/* MemoryMatch — Kenney CC0 sprite rendering — memory card matching for Your World Arcade
  * Flip-two-at-a-time card matching with 10 progressive levels.
  * Canvas 2D, zero external dependencies. */
 window.MemoryMatch = (() => {
+
+    // ══════════════════════════════════════════
+    //  SPRITE SYSTEM — Kenney tiles + items
+    // ══════════════════════════════════════════
+    const SPRITES = {};
+    let spritesLoaded = false;
+    let spriteLoadTotal = 0, spriteLoadDone = 0;
+    const SPRITE_OK = {};
+    const SPRITE_MANIFEST = {};
+
+    // Card back tiles (6 colors)
+    const CARD_TILE_COLORS = ['Blue','Red','Green','Yellow','Pink','Orange'];
+    for (const color of CARD_TILE_COLORS) {
+        SPRITE_MANIFEST[`cardBack_${color}`] = `/img/game-assets/kenney-tiles/tile${color}_05.png`;
+    }
+    // Card face item sprites (platform items + enemies as icons)
+    const FACE_SPRITES = [
+        { key: 'face_coinGold',   path: '/img/game-assets/kenney-platform/items/coinGold.png' },
+        { key: 'face_coinSilver', path: '/img/game-assets/kenney-platform/items/coinSilver.png' },
+        { key: 'face_coinBronze', path: '/img/game-assets/kenney-platform/items/coinBronze.png' },
+        { key: 'face_gemBlue',    path: '/img/game-assets/kenney-platform/items/gemBlue.png' },
+        { key: 'face_gemGreen',   path: '/img/game-assets/kenney-platform/items/gemGreen.png' },
+        { key: 'face_gemRed',     path: '/img/game-assets/kenney-platform/items/gemRed.png' },
+        { key: 'face_gemYellow',  path: '/img/game-assets/kenney-platform/items/gemYellow.png' },
+        { key: 'face_keyBlue',    path: '/img/game-assets/kenney-platform/items/keyBlue.png' },
+        { key: 'face_keyGreen',   path: '/img/game-assets/kenney-platform/items/keyGreen.png' },
+        { key: 'face_keyRed',     path: '/img/game-assets/kenney-platform/items/keyRed.png' },
+        { key: 'face_keyYellow',  path: '/img/game-assets/kenney-platform/items/keyYellow.png' },
+        { key: 'face_star',       path: '/img/game-assets/kenney-platform/items/star.png' },
+        { key: 'face_flagBlue',   path: '/img/game-assets/kenney-platform/items/flagBlue1.png' },
+        { key: 'face_flagRed',    path: '/img/game-assets/kenney-platform/items/flagRed1.png' },
+        { key: 'face_flagGreen',  path: '/img/game-assets/kenney-platform/items/flagGreen1.png' },
+        { key: 'face_flagYellow', path: '/img/game-assets/kenney-platform/items/flagYellow1.png' },
+        { key: 'face_mushRed',    path: '/img/game-assets/kenney-platform/tiles/mushroomRed.png' },
+        { key: 'face_mushBrown',  path: '/img/game-assets/kenney-platform/tiles/mushroomBrown.png' },
+        { key: 'face_slimeBlue',  path: '/img/game-assets/kenney-platform/enemies/slimeBlue.png' },
+        { key: 'face_slimeGreen', path: '/img/game-assets/kenney-platform/enemies/slimeGreen.png' },
+        { key: 'face_slimePurple',path: '/img/game-assets/kenney-platform/enemies/slimePurple.png' },
+        { key: 'face_bee',        path: '/img/game-assets/kenney-platform/enemies/bee.png' },
+        { key: 'face_frog',       path: '/img/game-assets/kenney-platform/enemies/frog.png' },
+        { key: 'face_mouse',      path: '/img/game-assets/kenney-platform/enemies/mouse.png' },
+    ];
+    FACE_SPRITES.forEach(f => { SPRITE_MANIFEST[f.key] = f.path; });
+    SPRITE_MANIFEST['uiStar'] = '/img/game-assets/kenney-ui/star.png';
+
+    function getCardBackSprite() {
+        const key = 'cardBack_Blue';
+        return SPRITE_OK[key] ? SPRITES[key] : null;
+    }
+
+    function getCardFaceSprite(iconIdx) {
+        const f = FACE_SPRITES[iconIdx % FACE_SPRITES.length];
+        return f && SPRITE_OK[f.key] ? SPRITES[f.key] : null;
+    }
+
+    function preloadSprites(onProgress, onDone) {
+        const keys = Object.keys(SPRITE_MANIFEST);
+        spriteLoadTotal = keys.length;
+        spriteLoadDone = 0;
+        if (keys.length === 0) { spritesLoaded = true; onDone(); return; }
+        for (const key of keys) {
+            const img = new Image();
+            img.onload = () => { SPRITE_OK[key] = true; spriteLoadDone++; onProgress(spriteLoadDone / spriteLoadTotal); if (spriteLoadDone >= spriteLoadTotal) { spritesLoaded = true; onDone(); } };
+            img.onerror = () => { SPRITE_OK[key] = false; spriteLoadDone++; onProgress(spriteLoadDone / spriteLoadTotal); if (spriteLoadDone >= spriteLoadTotal) { spritesLoaded = true; onDone(); } };
+            img.src = SPRITE_MANIFEST[key];
+            SPRITES[key] = img;
+        }
+    }
+
+    function spr(key) { return SPRITE_OK[key] ? SPRITES[key] : null; }
+
+    let loadingProgress = 0;
+    let isLoading = true;
+
+    function drawLoadingScreen() {
+        if (!canvas || !ctx) return;
+        const cW = canvas.width / (window.devicePixelRatio || 1), cH = canvas.height / (window.devicePixelRatio || 1);
+        ctx.fillStyle = '#0A0A1A';
+        ctx.fillRect(0, 0, cW, cH);
+        ctx.fillStyle = '#E040FB';
+        ctx.font = 'bold 28px "Segoe UI", system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('MEMORY MATCH', cW / 2, cH / 2 - 40);
+        const barW = cW * 0.5, barH = 12;
+        const barX = (cW - barW) / 2, barY = cH / 2;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#E040FB';
+        ctx.fillRect(barX, barY, barW * loadingProgress, barH);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+        ctx.fillText('Loading sprites...', cW / 2, barY + barH + 20);
+    }
+
     // ── Constants ──
     const GAME_W = 480, GAME_H = 640;
     const FLIP_SPEED = 0.08;           // scaleX change per frame
@@ -659,20 +753,45 @@ window.MemoryMatch = (() => {
         ctx.translate(cx, cy);
         ctx.scale(scaleX, 1);
 
-        // Card body
+        // TRY SPRITE — Kenney blue tile as card back
+        const backSpr = getCardBackSprite();
+        if (backSpr) {
+            // Background tile
+            roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
+            ctx.save();
+            ctx.clip();
+            ctx.drawImage(backSpr, -w / 2, -h / 2, w, h);
+            // Subtle overlay pattern
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = '#000';
+            const step = Math.min(w, h) * 0.25;
+            for (let i = -w; i < w * 2; i += step) {
+                ctx.beginPath();
+                ctx.moveTo(-w / 2 + i, -h / 2);
+                ctx.lineTo(-w / 2 + i + h, h / 2);
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            ctx.restore();
+            // Border glow
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1.5;
+            roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
+            ctx.stroke();
+            ctx.restore();
+            return;
+        }
+
+        // FALLBACK — original card back
         ctx.fillStyle = CARD_BACK_COLOR;
         roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
         ctx.fill();
-
-        // Border
         ctx.strokeStyle = 'rgba(255,255,255,0.12)';
         ctx.lineWidth = 1.5;
         roundRect(ctx, -w / 2, -h / 2, w, h, CARD_RADIUS);
         ctx.stroke();
-
-        // Decorative pattern — diamond grid
         ctx.save();
-        ctx.clip(); // clip to card shape
+        ctx.clip();
         ctx.strokeStyle = CARD_BACK_PATTERN_COLOR;
         ctx.lineWidth = 1;
         const step = Math.min(w, h) * 0.2;
@@ -687,15 +806,12 @@ window.MemoryMatch = (() => {
             ctx.stroke();
         }
         ctx.restore();
-
-        // Centre accent dot
         ctx.fillStyle = ACCENT;
         ctx.globalAlpha = 0.2;
         ctx.beginPath();
         ctx.arc(0, 0, Math.min(w, h) * 0.12, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
-
         ctx.restore();
     }
 
@@ -720,8 +836,13 @@ window.MemoryMatch = (() => {
         ctx.stroke();
         ctx.globalAlpha = 1;
 
-        // Draw icon
-        if (card.icon >= 0) {
+        // TRY SPRITE for face icon
+        const faceSpr = getCardFaceSprite(card.icon);
+        if (faceSpr && card.icon >= 0) {
+            const iconSz = Math.min(w, h) * 0.6;
+            ctx.drawImage(faceSpr, -iconSz / 2, -iconSz / 2, iconSz, iconSz);
+        } else if (card.icon >= 0) {
+            // FALLBACK — original canvas-drawn icon
             drawIcon(card.icon, 0, 0, Math.min(w, h));
         }
 
@@ -1265,27 +1386,39 @@ window.MemoryMatch = (() => {
         loadTheme();
         highScore = loadHighScore();
 
-        // Reset state
-        level = 1; score = 0; moves = 0; timer = 0;
-        consecutiveMatches = 0; matches = 0;
-        confettiParticles = [];
-        phase = 'playing';
-        gameActive = true;
-        timerStart = Date.now();
-        frameCount = 0;
-
+        // Show loading screen and preload sprites
+        isLoading = true;
+        loadingProgress = 0;
         fitCanvas();
-        requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+        drawLoadingScreen();
 
-        initCards();
+        preloadSprites(
+            (progress) => { loadingProgress = progress; if (isLoading) drawLoadingScreen(); },
+            () => {
+                isLoading = false;
+                // Reset state
+                level = 1; score = 0; moves = 0; timer = 0;
+                consecutiveMatches = 0; matches = 0;
+                confettiParticles = [];
+                phase = 'playing';
+                gameActive = true;
+                timerStart = Date.now();
+                frameCount = 0;
 
-        // Bind input
-        canvas.addEventListener('click', handleClick);
-        canvas.addEventListener('touchstart', handleTouch, { passive: true });
-        document.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('resize', fitCanvas);
+                fitCanvas();
+                requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
 
-        render();
+                initCards();
+
+                // Bind input
+                canvas.addEventListener('click', handleClick);
+                canvas.addEventListener('touchstart', handleTouch, { passive: true });
+                document.addEventListener('keydown', handleKeyDown);
+                window.addEventListener('resize', fitCanvas);
+
+                render();
+            }
+        );
     }
 
     function destroy() {

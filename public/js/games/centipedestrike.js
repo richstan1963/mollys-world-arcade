@@ -1,7 +1,52 @@
-/* YWA Centipede Strike — Centipede + Missile Command mashup.
+/* YWA Centipede Strike — Centipede + Missile Command mashup with Kenney CC0 sprites.
    Centipede enemies descend through a mushroom field; you fight them with
    Missile Command–style interceptors that explode on target. */
 window.CentipedeStrike = (() => {
+
+    // ── Sprite Atlas ──
+    const SPRITE_BASE = '/img/game-assets/kenney-space';
+    const _sprites = {};
+    let _spritesLoaded = 0, _spritesTotal = 0, _allSpritesReady = false;
+    let _spriteExplosions = [];
+
+    const _SPRITE_MANIFEST = {
+        // Centipede segments (enemy sprites)
+        segHead:     `${SPRITE_BASE}/enemies/enemyRed4.png`,
+        segBody:     `${SPRITE_BASE}/enemies/enemyBlue3.png`,
+        segBoss:     `${SPRITE_BASE}/enemies/enemyGreen5.png`,
+        // Other enemies
+        spider:      `${SPRITE_BASE}/enemies/enemyBlack4.png`,
+        flea:        `${SPRITE_BASE}/enemies/enemyRed2.png`,
+        scorpion:    `${SPRITE_BASE}/enemies/enemyGreen3.png`,
+        // Power-ups
+        puMega:      `${SPRITE_BASE}/powerups/powerupRed_bolt.png`,
+        puAmmo:      `${SPRITE_BASE}/powerups/powerupBlue_bolt.png`,
+        puSlow:      `${SPRITE_BASE}/powerups/powerupGreen_star.png`,
+        puChain:     `${SPRITE_BASE}/powerups/powerupRed_shield.png`,
+    };
+
+    const _EXPLOSION_FRAME_IDS = [];
+    const _EXPLOSION_FRAME_COUNT = 8;
+    for (let i = 0; i < 20; i += Math.floor(20 / _EXPLOSION_FRAME_COUNT)) {
+        const id = `fire${String(i).padStart(2, '0')}`;
+        _SPRITE_MANIFEST[id] = `${SPRITE_BASE}/effects/fire${String(i).padStart(2, '0')}.png`;
+        _EXPLOSION_FRAME_IDS.push(id);
+        if (_EXPLOSION_FRAME_IDS.length >= _EXPLOSION_FRAME_COUNT) break;
+    }
+
+    function _loadSprites(onDone) {
+        const keys = Object.keys(_SPRITE_MANIFEST);
+        _spritesTotal = keys.length;
+        _spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { _sprites[key] = img; done++; _spritesLoaded = done; if (done === _spritesTotal) { _allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { _sprites[key] = null; done++; _spritesLoaded = done; if (done === _spritesTotal) { _allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = _SPRITE_MANIFEST[key];
+        });
+    }
+
     // ── Design Constants ──
     const GAME_W = 480, GAME_H = 640;
     const COLS = 24, ROWS = 32;
@@ -952,6 +997,24 @@ window.CentipedeStrike = (() => {
             segs.forEach(seg => {
                 const sx = gx(seg.x), sy = gy(seg.y), sr = gs(SEG_SIZE / 2);
 
+                // ── Sprite-based segment rendering ──
+                const segKey = seg.boss ? 'segBoss' : (seg.head ? 'segHead' : 'segBody');
+                const segSprite = _sprites[segKey];
+                if (segSprite && _allSpritesReady) {
+                    ctx.drawImage(segSprite, sx - sr, sy - sr, sr * 2, sr * 2);
+                    // Boss HP pips still drawn with canvas
+                    if (seg.boss) {
+                        for (let h = 0; h < (seg.bossHp || 0); h++) {
+                            ctx.fillStyle = '#FBBF24';
+                            ctx.beginPath();
+                            ctx.arc(sx + (h - 1) * gs(5), sy - sr - gs(4), gs(2), 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                    return; // skip canvas fallback
+                }
+
+                // ── Canvas fallback ──
                 // Legs
                 ctx.strokeStyle = seg.head ? CLR_HEAD : CLR_SEG;
                 ctx.lineWidth = gs(1.5);
@@ -981,7 +1044,6 @@ window.CentipedeStrike = (() => {
                     ctx.strokeStyle = '#FBBF24';
                     ctx.lineWidth = gs(2);
                     ctx.beginPath(); ctx.arc(sx, sy, sr + gs(2), 0, Math.PI * 2); ctx.stroke();
-                    // HP pips
                     for (let h = 0; h < (seg.bossHp || 0); h++) {
                         ctx.fillStyle = '#FBBF24';
                         ctx.beginPath();
@@ -1007,7 +1069,13 @@ window.CentipedeStrike = (() => {
     function drawSpiders() {
         spiders.forEach(s => {
             const sx = gx(s.x), sy = gy(s.y), sr = gs(SPIDER_SIZE / 2);
-            // Legs
+            // Sprite rendering
+            const spSprite = _sprites['spider'];
+            if (spSprite && _allSpritesReady) {
+                ctx.drawImage(spSprite, sx - sr, sy - sr, sr * 2, sr * 2);
+                return;
+            }
+            // Canvas fallback — Legs
             ctx.strokeStyle = CLR_SPIDER;
             ctx.lineWidth = gs(1.5);
             for (let i = 0; i < 4; i++) {
@@ -1038,6 +1106,14 @@ window.CentipedeStrike = (() => {
     function drawFleas() {
         fleas.forEach(f => {
             const fx = gx(f.x), fy = gy(f.y);
+            // Sprite rendering
+            const flSprite = _sprites['flea'];
+            if (flSprite && _allSpritesReady) {
+                const fs = gs(FLEA_SIZE);
+                ctx.drawImage(flSprite, fx - fs / 2, fy - fs / 2, fs, fs);
+                return;
+            }
+            // Canvas fallback
             ctx.fillStyle = CLR_FLEA;
             ctx.beginPath(); ctx.ellipse(fx, fy, gs(FLEA_SIZE / 2), gs(FLEA_SIZE / 3), 0, 0, Math.PI * 2); ctx.fill();
             // Wings
@@ -1053,7 +1129,17 @@ window.CentipedeStrike = (() => {
     function drawScorpions() {
         scorpions.forEach(sc => {
             const sx = gx(sc.x), sy = gy(sc.y), sr = gs(10);
-            // Body
+            // Sprite rendering
+            const scSprite = _sprites['scorpion'];
+            if (scSprite && _allSpritesReady) {
+                ctx.save();
+                ctx.translate(sx, sy);
+                if (sc.dx < 0) ctx.scale(-1, 1);
+                ctx.drawImage(scSprite, -sr * 1.2, -sr * 0.8, sr * 2.4, sr * 1.6);
+                ctx.restore();
+                return;
+            }
+            // Canvas fallback — Body
             ctx.fillStyle = CLR_SCORPION;
             ctx.beginPath(); ctx.ellipse(sx, sy, sr, sr * 0.5, 0, 0, Math.PI * 2); ctx.fill();
             // Tail (curved arc)
@@ -1124,22 +1210,35 @@ window.CentipedeStrike = (() => {
             const r = gs(e.r);
             const cx = gx(e.x), cy = gy(e.y);
 
-            // Outer ring
+            // Sprite fire overlay (pick frame based on explosion phase progress)
+            if (_allSpritesReady && _EXPLOSION_FRAME_IDS.length > 0 && e.phase !== 'fade') {
+                const progressPct = e.r / (e.maxR || EXPLOSION_MAX_R);
+                const frameIdx = Math.min(Math.floor(progressPct * _EXPLOSION_FRAME_IDS.length), _EXPLOSION_FRAME_IDS.length - 1);
+                const fid = _EXPLOSION_FRAME_IDS[frameIdx];
+                const fSprite = fid ? _sprites[fid] : null;
+                if (fSprite) {
+                    ctx.globalAlpha = alpha;
+                    ctx.drawImage(fSprite, cx - r, cy - r, r * 2, r * 2);
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            // Outer ring (gradient overlay)
             const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-            grad.addColorStop(0, `rgba(255,255,255,${alpha * 0.9})`);
-            grad.addColorStop(0.3, `rgba(251,191,36,${alpha * 0.7})`);
-            grad.addColorStop(0.6, `rgba(249,115,22,${alpha * 0.5})`);
-            grad.addColorStop(0.85, `rgba(239,68,68,${alpha * 0.3})`);
+            grad.addColorStop(0, `rgba(255,255,255,${alpha * 0.5})`);
+            grad.addColorStop(0.3, `rgba(251,191,36,${alpha * 0.35})`);
+            grad.addColorStop(0.6, `rgba(249,115,22,${alpha * 0.25})`);
+            grad.addColorStop(0.85, `rgba(239,68,68,${alpha * 0.15})`);
             grad.addColorStop(1, `rgba(153,27,27,0)`);
             ctx.fillStyle = grad;
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
 
             // Bright core
-            ctx.fillStyle = `rgba(255,255,255,${alpha * 0.6})`;
+            ctx.fillStyle = `rgba(255,255,255,${alpha * 0.4})`;
             ctx.beginPath(); ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2); ctx.fill();
 
             // Ring outline
-            ctx.strokeStyle = `rgba(251,191,36,${alpha * 0.5})`;
+            ctx.strokeStyle = `rgba(251,191,36,${alpha * 0.4})`;
             ctx.lineWidth = gs(2);
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
         });
@@ -1248,9 +1347,17 @@ window.CentipedeStrike = (() => {
     }
 
     function drawPowerups() {
+        const puKeyMap = ['puMega', 'puAmmo', 'puSlow', 'puChain'];
         powerups.forEach(p => {
             const px = gx(p.x), py = gy(p.y), sz = gs(POWERUP_SIZE);
             const pulse = 1 + Math.sin(frameCount * 0.15) * 0.15;
+            // Sprite rendering
+            const puSprite = _sprites[puKeyMap[p.type]];
+            if (puSprite && _allSpritesReady) {
+                ctx.drawImage(puSprite, px - sz / 2 * pulse, py - sz / 2 * pulse, sz * pulse, sz * pulse);
+                return;
+            }
+            // Canvas fallback
             ctx.save();
             ctx.shadowColor = PW_COLORS[p.type];
             ctx.shadowBlur = gs(8);
@@ -1580,11 +1687,15 @@ window.CentipedeStrike = (() => {
 
         initMushrooms();
         initBases();
+        _spriteExplosions = [];
 
         W = canvas.width || 480;
         H = canvas.height || 640;
         SCALE = W / GAME_W;
         DPR = Math.min(window.devicePixelRatio || 1, 3);
+
+        // Load sprites (non-blocking)
+        _loadSprites(null);
 
         canvas.addEventListener('mousedown', onMouseDown);
         canvas.addEventListener('mousemove', onMouseMove);

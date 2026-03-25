@@ -1,5 +1,54 @@
-/* Flappy — Theme-aware flappy bird for Your World Arcade */
+/* Flappy — Theme-aware flappy bird with Kenney CC0 sprites for Your World Arcade */
 window.FlappyMae = (() => {
+    // ── Sprite Atlas (Kenney CC0) ──
+    const __sprites = {};
+    let __spritesLoaded = 0, __spritesTotal = 0, __allSpritesReady = false;
+    const __SPRITE_MANIFEST = {
+        bird: '/img/game-assets/kenney-platform/players/Pink/alienPink_stand.png',
+        birdFlap: '/img/game-assets/kenney-platform/players/Pink/alienPink_jump.png',
+        pipeBody: '/img/game-assets/kenney-tiles/tileGreen_06.png',
+        pipeCap: '/img/game-assets/kenney-tiles/tileGreen_01.png',
+        cloud: '/img/game-assets/kenney-coins/coin_02.png',
+        coin: '/img/game-assets/kenney-coins/coin_01.png',
+        ground: '/img/game-assets/kenney-platform/tiles/brickBrown.png',
+        particle1: '/img/game-assets/kenney-particles/particleWhite_1.png',
+    };
+
+    function __loadSprites(onDone) {
+        const keys = Object.keys(__SPRITE_MANIFEST);
+        __spritesTotal = keys.length;
+        __spritesLoaded = 0;
+        let done = 0;
+        keys.forEach(key => {
+            const img = new Image();
+            img.onload = () => { __sprites[key] = img; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.onerror = () => { __sprites[key] = null; done++; __spritesLoaded = done; if (done === __spritesTotal) { __allSpritesReady = true; if (onDone) onDone(); } };
+            img.src = __SPRITE_MANIFEST[key];
+        });
+    }
+
+    function __drawLoadingScreen(cvs, context, title, color) {
+        const w = cvs.width, h = cvs.height;
+        context.fillStyle = '#0A0E1A';
+        context.fillRect(0, 0, w, h);
+        context.textAlign = 'center';
+        context.fillStyle = color;
+        context.shadowColor = color; context.shadowBlur = 10;
+        context.font = 'bold ' + Math.round(w * 0.06) + 'px monospace';
+        context.fillText(title, w / 2, h / 2 - w * 0.08);
+        context.shadowBlur = 0;
+        context.fillStyle = '#E0E7FF';
+        context.font = Math.round(w * 0.025) + 'px monospace';
+        context.fillText('LOADING SPRITES...', w / 2, h / 2);
+        const barW = w * 0.35, barH = w * 0.012;
+        const pct = __spritesTotal > 0 ? __spritesLoaded / __spritesTotal : 0;
+        context.fillStyle = '#333';
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW, barH);
+        context.fillStyle = color;
+        context.fillRect(w / 2 - barW / 2, h / 2 + w * 0.025, barW * pct, barH);
+    }
+
+
     // ── Constants ──
     const W = 320, H = 480;
     const GRAVITY = 0.22;
@@ -614,6 +663,19 @@ window.FlappyMae = (() => {
         }
     }
 
+    function drawBird_sprite() {
+        const _bsz = BIRD_R * 2.2;
+        const _bk = birdVel < -1 ? 'birdFlap' : 'bird';
+        if (__sprites[_bk]) {
+            ctx.save();
+            ctx.translate(W * 0.25, birdY);
+            ctx.rotate(Math.min(birdAngle, 0.5));
+            ctx.drawImage(__sprites[_bk], -_bsz/2, -_bsz/2, _bsz, _bsz);
+            ctx.restore();
+            return true;
+        }
+        return false;
+    }
     function drawBird(x, y, angle, wingUp, color, alive) {
         ctx.save();
         ctx.translate(x, y);
@@ -1804,8 +1866,14 @@ window.FlappyMae = (() => {
 
     function loop() {
         if (!gameActive) return;
+        if (!__allSpritesReady) {
+            __drawLoadingScreen(canvas, ctx, 'FLAPPY MAE', '#F472B6');
+            animFrame = requestAnimationFrame(loop);
+            return;
+        }
         update();
         render();
+        __loadSprites(null);
         animFrame = requestAnimationFrame(loop);
     }
 
