@@ -1373,21 +1373,28 @@ window.Slingshot = (() => {
             ctx.globalAlpha = alpha;
 
             if (p.sprite) {
-                // Draw debris sprite
-                const sz = p.r * 2;
+                // Draw debris sprite — BIGGER with motion blur glow
+                const sz = p.r * 3;
+                ctx.save();
+                ctx.shadowColor = 'rgba(255,180,50,0.5)';
+                ctx.shadowBlur = 6;
                 ctx.drawImage(p.sprite, -sz / 2, -sz / 2, sz, sz);
+                ctx.restore();
             } else if (p.isDust) {
                 ctx.fillStyle = p.color || '#C4A56E';
-                ctx.globalAlpha = alpha * 0.5;
+                ctx.globalAlpha = alpha * 0.6;
                 ctx.beginPath();
-                ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+                ctx.arc(0, 0, p.r * 1.4, 0, Math.PI * 2);
                 ctx.fill();
             } else if (p.isGlass) {
+                // Glass shards with sparkle
                 ctx.fillStyle = p.color || '#B0E0E6';
-                ctx.fillRect(-p.r / 2, -p.r, p.r, p.r * 2);
+                ctx.fillRect(-p.r / 2, -p.r * 1.3, p.r, p.r * 2.6);
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillRect(-p.r * 0.2, -p.r * 0.8, p.r * 0.3, p.r * 0.6);
             } else {
                 ctx.fillStyle = p.color || '#888';
-                ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
+                ctx.fillRect(-p.r * 1.2, -p.r * 1.2, p.r * 2.4, p.r * 2.4);
             }
             ctx.restore();
         }
@@ -1772,23 +1779,36 @@ window.Slingshot = (() => {
 
             // Overlay expression changes
             if (b.expression === 'scared') {
-                // Draw scared eyes overlay
+                // Draw scared eyes overlay — BIG expressive terrified eyes
+                const scaredPulse = 1 + Math.sin(Date.now() * 0.015) * 0.15;
                 ctx.fillStyle = '#FFF';
                 ctx.beginPath();
-                ctx.arc(-sz * 0.12, -sz * 0.08, sz * 0.1, 0, Math.PI * 2);
-                ctx.arc(sz * 0.12, -sz * 0.08, sz * 0.1, 0, Math.PI * 2);
+                ctx.arc(-sz * 0.14, -sz * 0.1, sz * 0.14 * scaredPulse, 0, Math.PI * 2);
+                ctx.arc(sz * 0.14, -sz * 0.1, sz * 0.14 * scaredPulse, 0, Math.PI * 2);
                 ctx.fill();
+                // Tiny shaking pupils
+                const shake = Math.sin(Date.now() * 0.03) * sz * 0.02;
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
-                ctx.arc(-sz * 0.12, -sz * 0.08, sz * 0.06, 0, Math.PI * 2);
-                ctx.arc(sz * 0.12, -sz * 0.08, sz * 0.06, 0, Math.PI * 2);
+                ctx.arc(-sz * 0.14 + shake, -sz * 0.1, sz * 0.055, 0, Math.PI * 2);
+                ctx.arc(sz * 0.14 + shake, -sz * 0.1, sz * 0.055, 0, Math.PI * 2);
                 ctx.fill();
-                // O mouth
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1.5;
+                // Eye shine
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
                 ctx.beginPath();
-                ctx.arc(0, sz * 0.1, sz * 0.06, 0, Math.PI * 2);
-                ctx.stroke();
+                ctx.arc(-sz * 0.16, -sz * 0.13, sz * 0.035, 0, Math.PI * 2);
+                ctx.arc(sz * 0.12, -sz * 0.13, sz * 0.035, 0, Math.PI * 2);
+                ctx.fill();
+                // Wide open O mouth (scared)
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.ellipse(0, sz * 0.12, sz * 0.06, sz * 0.08, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Sweat drop
+                ctx.fillStyle = 'rgba(100,180,255,0.6)';
+                ctx.beginPath();
+                ctx.ellipse(sz * 0.25, -sz * 0.15, sz * 0.025, sz * 0.04, 0.2, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             // Damage flash
@@ -1867,7 +1887,6 @@ window.Slingshot = (() => {
 
         ctx.save();
         ctx.translate(-camX, 0);
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
         let tx = pos.x, ty = pos.y;
         let tvx = vx, tvy = vy;
         for (let i = 0; i < 40; i++) {
@@ -1879,9 +1898,17 @@ window.Slingshot = (() => {
             if (ty > GROUND_Y) break;
             if (i % 3 === 0) {
                 const dotAlpha = 1 - i / 40;
-                ctx.globalAlpha = dotAlpha * 0.5;
+                // Outer glow
+                ctx.globalAlpha = dotAlpha * 0.2;
+                ctx.fillStyle = 'rgba(255,200,80,1)';
                 ctx.beginPath();
-                ctx.arc(tx, ty, 2, 0, Math.PI * 2);
+                ctx.arc(tx, ty, 6, 0, Math.PI * 2);
+                ctx.fill();
+                // Core dot
+                ctx.globalAlpha = dotAlpha * 0.7;
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath();
+                ctx.arc(tx, ty, 2.5, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
@@ -2044,24 +2071,40 @@ window.Slingshot = (() => {
         ctx.textAlign = 'center';
         ctx.fillText(won ? 'LEVEL COMPLETE!' : 'TRY AGAIN', GAME_W / 2, cy - 70);
 
-        // Stars using Kenney star sprites
+        // Stars using Kenney star sprites — BIGGER with glow
         if (won) {
             const starGold = getSprite('other/starGold');
             const starSilver = getSprite('other/starSilver');
+            const starSize = 52;
             for (let i = 0; i < 3; i++) {
-                const sx = GAME_W / 2 + (i - 1) * 50 - 18;
+                const sx = GAME_W / 2 + (i - 1) * 64 - starSize / 2;
                 const filled = i < stars;
-                if (filled && starGold) {
-                    ctx.drawImage(starGold, sx, cy - 42, 36, 36);
-                } else if (!filled && starSilver) {
-                    ctx.globalAlpha = 0.35;
-                    ctx.drawImage(starSilver, sx, cy - 42, 36, 36);
-                    ctx.globalAlpha = 1;
+                const starBounce = Math.sin(Date.now() * 0.003 + i * 0.8) * 3;
+                if (filled) {
+                    // Gold star glow
+                    ctx.save();
+                    ctx.shadowColor = '#FFD700';
+                    ctx.shadowBlur = 18 + Math.sin(Date.now() * 0.005 + i) * 8;
+                    if (starGold) {
+                        ctx.drawImage(starGold, sx, cy - 50 + starBounce, starSize, starSize);
+                    } else {
+                        ctx.fillStyle = '#FFD700';
+                        ctx.font = `${starSize}px serif`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText('\u2605', sx + starSize / 2, cy - 6 + starBounce);
+                    }
+                    ctx.restore();
                 } else {
-                    ctx.fillStyle = filled ? '#FFD700' : 'rgba(255,255,255,0.2)';
-                    ctx.font = '40px serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(filled ? '\u2605' : '\u2606', sx + 18, cy - 14);
+                    ctx.globalAlpha = 0.25;
+                    if (starSilver) {
+                        ctx.drawImage(starSilver, sx, cy - 50, starSize, starSize);
+                    } else {
+                        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                        ctx.font = `${starSize}px serif`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText('\u2606', sx + starSize / 2, cy - 6);
+                    }
+                    ctx.globalAlpha = 1;
                 }
             }
         }

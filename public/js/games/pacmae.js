@@ -122,6 +122,7 @@ window.PacMae = (() => {
     let lastTime = 0;
     let startTime = 0;
     let scorePopups = [];
+    let dotParticles = []; // particle burst when eating dots
     let keys = {}; // currently held keys
 
     // Pac-Mae
@@ -357,10 +358,16 @@ window.PacMae = (() => {
 
     function drawScreenFlash(w, h) {
         if (screenFlashTimer <= 0) return;
-        const alpha = (screenFlashTimer / SCREEN_FLASH_DURATION) * 0.3;
+        const progress = screenFlashTimer / SCREEN_FLASH_DURATION;
+        const alpha = progress * 0.5;
         ctx.save();
         ctx.globalAlpha = alpha;
-        ctx.fillStyle = CANDY_COLORS[0] || '#FF69B4';
+        // Radial flash from center — more satisfying
+        const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.7);
+        grad.addColorStop(0, '#FFFFFF');
+        grad.addColorStop(0.3, CANDY_COLORS[0] || '#FF69B4');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
         ctx.restore();
     }
@@ -591,10 +598,26 @@ window.PacMae = (() => {
                 score += DOT_SCORE;
                 dotsEaten++;
                 if (frameCount % 3 === 0) playWaka();
+                // Dot collection particle burst
+                const cIdx = (eatY * COLS + eatX) % CANDY_COLORS.length;
+                const dotColor = CANDY_COLORS[cIdx];
+                const { px: dpx, py: dpy } = toPixel(eatX, eatY);
+                for (let i = 0; i < 5; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 0.5 + Math.random() * 1.5;
+                    dotParticles.push({ x: dpx, y: dpy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.4, color: dotColor, size: tileSize * 0.08 });
+                }
             } else if (tile === TILE_POWER) {
                 maze[eatY][eatX] = TILE_EMPTY;
                 score += POWER_SCORE;
                 dotsEaten++;
+                // Big particle burst for power pellet
+                const { px: ppx, py: ppy } = toPixel(eatX, eatY);
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * Math.PI * 2;
+                    const speed = 1 + Math.random() * 2;
+                    dotParticles.push({ x: ppx, y: ppy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.6, color: CANDY_COLORS[i % CANDY_COLORS.length], size: tileSize * 0.12 });
+                }
                 frightenGhosts();
                 playPowerSound();
             }
@@ -714,17 +737,17 @@ window.PacMae = (() => {
         const wallRgb = hexToRgb(WALL_COLOR);
         const wallLight = lightenColor(WALL_COLOR, 80);
 
-        // Draw outer glow layer first
-        oc.strokeStyle = `rgba(${wallRgb.r},${wallRgb.g},${wallRgb.b},0.3)`;
-        oc.lineWidth = wallLineW + 4;
+        // Draw outer glow layer first — brighter neon glow
+        oc.strokeStyle = `rgba(${wallRgb.r},${wallRgb.g},${wallRgb.b},0.45)`;
+        oc.lineWidth = wallLineW + 6;
         oc.lineCap = 'round';
         oc.lineJoin = 'round';
         oc.shadowColor = WALL_COLOR;
-        oc.shadowBlur = 12;
-        drawWallLines(oc, isW, wallLineW + 4);
+        oc.shadowBlur = 20;
+        drawWallLines(oc, isW, wallLineW + 6);
 
         // Draw main wall with gradient stroke
-        oc.shadowBlur = 6;
+        oc.shadowBlur = 10;
         oc.shadowColor = wallLight;
         oc.lineWidth = wallLineW;
 
@@ -956,6 +979,24 @@ window.PacMae = (() => {
         }
     }
 
+    function drawDotParticles(dt) {
+        for (let i = dotParticles.length - 1; i >= 0; i--) {
+            const p = dotParticles[i];
+            p.x += p.vx; p.y += p.vy;
+            p.life -= dt * 2;
+            if (p.life <= 0) { dotParticles.splice(i, 1); continue; }
+            ctx.save();
+            ctx.globalAlpha = p.life * 1.5;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = tileSize * 0.3;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
     function drawPacMae() {
         if (!pacAlive) {
             // Enhanced death animation: shrink + spin + particles
@@ -1145,9 +1186,20 @@ window.PacMae = (() => {
 
         ctx.save();
 
-        // Fallback: Ghost body glow
+        // Fallback: Ghost body glow — frightened mode much more dramatic
         ctx.shadowColor = color;
-        ctx.shadowBlur = frightened ? tileSize * 0.3 : tileSize * 0.2;
+        ctx.shadowBlur = frightened ? tileSize * 0.7 : tileSize * 0.2;
+        if (frightened) {
+            // Pulsing electric aura around frightened ghost
+            const pulse = 0.6 + Math.sin(Date.now() * 0.01) * 0.4;
+            ctx.save();
+            ctx.globalAlpha = 0.3 * pulse;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(px, py, tileSize * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
 
         // Gradient body
         const bodyGrad = ctx.createLinearGradient(px - r, py - r, px + r, bodyBot);
@@ -1876,6 +1928,7 @@ window.PacMae = (() => {
         drawMaze();
         drawFruit();
         drawPacTrail();
+        drawDotParticles(dt);
         drawPacMae();
         ghosts.forEach(g => drawGhost(g));
         drawScorePopups(dt);

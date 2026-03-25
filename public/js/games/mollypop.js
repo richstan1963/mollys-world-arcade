@@ -22,7 +22,7 @@ window.MollyPop = (() => {
 
     // ── Visual upgrade constants ──
     const BG_HUE_SPEED = 0.08;        // Background gradient hue drift per frame
-    const TRAIL_LENGTH = 5;            // Particle trail history length
+    const TRAIL_LENGTH = 10;           // Particle trail history length (longer = more dramatic)
     const VIGNETTE_STRENGTH = 0.45;    // Edge darkening intensity
     let bgHueOffset = 0;              // Animated background hue shift
 
@@ -382,12 +382,12 @@ window.MollyPop = (() => {
             text: label,
             x: cx, y: cy - 10,
             opacity: 1, vy: -2.5,
-            size: cells.length >= 7 ? 34 : cells.length >= 5 ? 28 : 20,
+            size: cells.length >= 7 ? 42 : cells.length >= 5 ? 34 : combo > 2 ? 28 : 22,
             color: combo > 1 ? '#FFD700' : '#FFF',
             outline: combo > 1 ? '#FF6B00' : '#F43F5E',
-            glow: combo > 1 ? '#FFD700' : (BLOCK_COLORS[0]?.hex || '#F43F5E'),  // Glow color for score popup
-            glowSize: cells.length >= 7 ? 18 : cells.length >= 5 ? 12 : 8,
-            scale: 1.3, // Start big, shrink to 1
+            glow: combo > 1 ? '#FFD700' : (BLOCK_COLORS[0]?.hex || '#F43F5E'),
+            glowSize: cells.length >= 7 ? 25 : cells.length >= 5 ? 18 : combo > 2 ? 14 : 8,
+            scale: combo > 2 ? 1.8 : 1.4,
         });
 
         // Themed pop words for big groups
@@ -402,9 +402,9 @@ window.MollyPop = (() => {
         }
 
         // Screen effects — bigger shakes for bigger combos
-        if (cells.length >= 5) shakeAmount = Math.min(cells.length * 2.5 + combo * 2, 24);
-        else if (cells.length >= 3) shakeAmount = Math.max(shakeAmount, cells.length * 1.5);
-        if (combo >= 3) comboFlashAlpha = Math.min(0.15 + combo * 0.06, 0.45);
+        if (cells.length >= 5) shakeAmount = Math.min(cells.length * 3 + combo * 3.5, 35);
+        else if (cells.length >= 3) shakeAmount = Math.max(shakeAmount, cells.length * 2 + combo);
+        if (combo >= 3) comboFlashAlpha = Math.min(0.2 + combo * 0.08, 0.55);
         if (cells.length >= 4) boardGlow = Math.min(1 + combo * 0.15, 1.5);
 
         // Confetti

@@ -164,6 +164,7 @@ window.Maekout = (() => {
     let activePowerups = {};
     let brickArea = {};
     let lastHitColor = '#FFFFFF';
+    let paddleFlashTimer = 0;
     let levelClearAnim = 0;
     let lifeLostAnim = 0;
     let shakeAmount = 0;
@@ -455,6 +456,7 @@ window.Maekout = (() => {
             ball.dx /= mag; ball.dy /= mag;
             playPaddleHit();
             shakeAmount = 2;
+            paddleFlashTimer = 150;
         }
     }
 
@@ -578,6 +580,7 @@ window.Maekout = (() => {
         }
 
         if (shakeAmount > 0) shakeAmount *= 0.9;
+        if (paddleFlashTimer > 0) paddleFlashTimer -= dt * 1000;
         if (shakeAmount < 0.1) shakeAmount = 0;
         if (lifeLostAnim > 0) lifeLostAnim -= dt;
 
@@ -799,10 +802,10 @@ window.Maekout = (() => {
             }
         });
 
-        // Trail with glow effect
+        // Trail with glow effect — brighter
         trail.forEach((tp, i) => {
             const frac = (i + 1) / trail.length;
-            const alpha = frac * 0.45;
+            const alpha = frac * 0.6;
             const rad = BALL_RADIUS * (0.2 + 0.8 * frac);
             ctx.save();
             ctx.globalAlpha = alpha;
@@ -940,6 +943,17 @@ window.Maekout = (() => {
                 ctx.fill();
                 ctx.restore();
             }
+        }
+
+        // Paddle hit flash glow
+        if (paddleFlashTimer > 0) {
+            ctx.save();
+            ctx.globalAlpha = (paddleFlashTimer / 150) * 0.5;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.roundRect(paddle.x - 4, paddle.y - 4, paddle.w + 8, paddle.h + 8, paddle.h);
+            ctx.fill();
+            ctx.restore();
         }
 
         // Power-ups — glowing capsule design

@@ -1006,7 +1006,7 @@ window.Frogger = (() => {
             ctx.stroke();
         }
         // Layer 3: current lines (horizontal flow indicators)
-        ctx.globalAlpha = 0.07;
+        ctx.globalAlpha = 0.1;
         ctx.strokeStyle = '#BFDBFE';
         ctx.lineWidth = gs(0.5);
         for (let r = 0; r < 10; r++) {
@@ -1016,6 +1016,19 @@ window.Frogger = (() => {
             ctx.moveTo(gx(rx), gy(ry));
             ctx.lineTo(gx(rx + 25 + Math.sin(frameCount * 0.02 + r) * 5), gy(ry + Math.cos(frameCount * 0.03 + r) * 0.8));
             ctx.stroke();
+        }
+        // Layer 4: glinting highlights on water surface
+        ctx.globalAlpha = nightMode ? 0.06 : 0.15;
+        ctx.fillStyle = nightMode ? '#60A5FA' : '#FFFFFF';
+        for (let r = 0; r < 12; r++) {
+            const gx2 = ((r * 42 + waterOffset * 1.8 + 15) % (GAME_W + 40)) - 20;
+            const gy2 = y + 5 + (r % 5) * (h / 5) + 2;
+            const glintSize = gs(0.8 + Math.sin(frameCount * 0.07 + r * 3.1) * 0.5);
+            if (Math.sin(frameCount * 0.04 + r * 2.7) > 0.3) {
+                ctx.beginPath();
+                ctx.arc(gx(gx2), gy(gy2), glintSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
         ctx.restore();
     }
@@ -1213,6 +1226,11 @@ window.Frogger = (() => {
                 ctx.translate(gx(cx), gy(cy));
                 const angles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
                 ctx.rotate(angles[frog.dir]);
+                // Apply squash-stretch to sprite frog too
+                let ssx = 1, ssy = 1;
+                if (hop > 0.3) { ssx = 1 - hop * 0.2; ssy = 1 + hop * 0.3; }
+                else if (squash > 0 && hop <= 0.3) { const sq = squash * 0.7; ssx = 1 + sq * 0.35; ssy = 1 - sq * 0.3; }
+                ctx.scale(ssx, ssy);
                 ctx.drawImage(spr, gs(-frog.w / 2 - 2), gs(-frog.h / 2 - 2), gs(frog.w + 4), gs(frog.h + 4));
                 ctx.restore();
                 return;
@@ -1230,14 +1248,14 @@ window.Frogger = (() => {
         // On landing: squash flat, widen horizontally
         let sx, sy;
         if (hop > 0.3) {
-            // In air — stretch tall, narrow
-            sx = 1 - hop * 0.15;
-            sy = 1 + hop * 0.25;
+            // In air — stretch tall, narrow — more pronounced
+            sx = 1 - hop * 0.22;
+            sy = 1 + hop * 0.35;
         } else if (squash > 0 && hop <= 0.3) {
-            // Landing — squash flat, widen
-            const sq = squash * 0.6;
-            sx = 1 + sq * 0.3;
-            sy = 1 - sq * 0.25;
+            // Landing — squash flat, widen — more dramatic
+            const sq = squash * 0.8;
+            sx = 1 + sq * 0.4;
+            sy = 1 - sq * 0.35;
         } else {
             sx = 1; sy = 1;
         }
@@ -1396,12 +1414,12 @@ window.Frogger = (() => {
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // ── Night mode: headlight beams ──
+        // ── Night mode: headlight beams — brighter ──
         if (nightMode) {
             ctx.save();
-            ctx.globalAlpha = 0.12;
-            const beamLen = gs(80);
-            const beamW = gs(20);
+            ctx.globalAlpha = 0.22;
+            const beamLen = gs(100);
+            const beamW = gs(25);
             const hx = lane.dir > 0 ? cx + cw : cx;
             const hy = cy + ch * 0.5;
             const grad2 = ctx.createLinearGradient(
@@ -1474,12 +1492,12 @@ window.Frogger = (() => {
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // ── Night mode: headlight beams for trucks ──
+        // ── Night mode: headlight beams for trucks — brighter ──
         if (nightMode) {
             ctx.save();
-            ctx.globalAlpha = 0.1;
-            const beamLen = gs(100);
-            const beamW = gs(24);
+            ctx.globalAlpha = 0.2;
+            const beamLen = gs(120);
+            const beamW = gs(30);
             const hx = lane.dir > 0 ? cx + cw : cx;
             const hy = cy + ch * 0.5;
             const grad2 = ctx.createLinearGradient(hx, hy, hx + lane.dir * beamLen, hy);

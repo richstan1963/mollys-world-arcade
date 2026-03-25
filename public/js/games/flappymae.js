@@ -586,13 +586,16 @@ window.FlappyMae = (() => {
             ctx.fillStyle = bodyGrad;
             ctx.fillRect(x, y, w, h);
 
-            // Metallic sheen line
+            // Metallic sheen lines — richer reflections
             ctx.save();
-            ctx.globalAlpha = 0.25;
+            ctx.globalAlpha = 0.35;
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(x + w * 0.2, y, 3, h);
-            ctx.globalAlpha = 0.1;
-            ctx.fillRect(x + w * 0.35, y, 2, h);
+            ctx.fillRect(x + w * 0.18, y, 4, h);
+            ctx.globalAlpha = 0.15;
+            ctx.fillRect(x + w * 0.32, y, 2, h);
+            ctx.globalAlpha = 0.08;
+            ctx.fillStyle = '#FFFBE8';
+            ctx.fillRect(x + w * 0.45, y, 3, h);
             ctx.restore();
 
             // Edge highlights (left/right)
@@ -1131,10 +1134,11 @@ window.FlappyMae = (() => {
 
         // Main cloud body: radial gradient (white center -> cloud color)
         const grad = ctx.createRadialGradient(c.x - c.r * 0.2, c.y - c.r * 0.2, c.r * 0.1, c.x, c.y, c.r);
-        grad.addColorStop(0, 'rgba(255,255,255,0.95)');
-        grad.addColorStop(0.5, c.color + 'BB');
-        grad.addColorStop(1, c.color + '66');
-        ctx.globalAlpha = 0.75;
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+        grad.addColorStop(0.35, c.color + 'EE');
+        grad.addColorStop(0.7, c.color + 'CC');
+        grad.addColorStop(1, c.color + '88');
+        ctx.globalAlpha = 0.88;
         ctx.fillStyle = grad;
         ctx.beginPath();
         // Soft bumpy cloud shape
@@ -1148,12 +1152,14 @@ window.FlappyMae = (() => {
         ctx.arc(c.x - c.r * 0.4, c.y + c.r * 0.2, c.r * 0.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Outer glow
-        ctx.globalAlpha = 0.25;
+        // Outer glow — vibrant pulsing
+        const popPulse = 0.4 + Math.sin(performance.now() * 0.006 + c.x) * 0.15;
+        ctx.globalAlpha = popPulse;
         ctx.shadowColor = c.color;
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = c.color + '66';
         ctx.beginPath();
-        ctx.arc(c.x, c.y, c.r + 3, 0, Math.PI * 2);
+        ctx.arc(c.x, c.y, c.r + 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
 
@@ -1251,19 +1257,33 @@ window.FlappyMae = (() => {
     function drawPopParticles() {
         for (const p of popParticles) {
             ctx.save();
-            ctx.globalAlpha = p.life * 0.85;
+            ctx.globalAlpha = p.life * 0.95;
             if (p.ring) {
                 ctx.strokeStyle = p.color;
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 12;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.ringR, 0, Math.PI * 2);
+                ctx.stroke();
+                // Second inner ring
+                ctx.globalAlpha = p.life * 0.4;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.ringR * 0.7, 0, Math.PI * 2);
                 ctx.stroke();
             } else {
                 ctx.fillStyle = p.color;
                 ctx.shadowColor = p.color;
-                ctx.shadowBlur = 6;
+                ctx.shadowBlur = 10;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.arc(p.x, p.y, p.size * 1.2, 0, Math.PI * 2);
+                ctx.fill();
+                // Bright core
+                ctx.fillStyle = '#FFFFFF';
+                ctx.globalAlpha = p.life * 0.6;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
                 ctx.fill();
             }
             ctx.restore();
@@ -1485,22 +1505,29 @@ window.FlappyMae = (() => {
             ctx.translate(wobble, 0);
         }
 
-        // Outer glow
-        ctx.globalAlpha = 0.3 + Math.sin(performance.now() * 0.005) * 0.1;
+        // Outer glow — wider, more visible
+        ctx.globalAlpha = 0.45 + Math.sin(performance.now() * 0.005) * 0.15;
         ctx.shadowColor = color;
-        ctx.shadowBlur = 18;
-        ctx.fillStyle = color + '44';
+        ctx.shadowBlur = 28;
+        ctx.fillStyle = color + '55';
         ctx.beginPath();
-        ctx.arc(x, y, BIRD_R + 6, 0, Math.PI * 2);
+        ctx.arc(x, y, BIRD_R + 10, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner ring
-        ctx.globalAlpha = 0.5;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.shadowBlur = 8;
+        // Second glow ring
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = color + '33';
         ctx.beginPath();
-        ctx.arc(x, y, BIRD_R + 3, 0, Math.PI * 2);
+        ctx.arc(x, y, BIRD_R + 16, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner ring — brighter
+        ctx.globalAlpha = 0.65;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(x, y, BIRD_R + 4, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.restore();

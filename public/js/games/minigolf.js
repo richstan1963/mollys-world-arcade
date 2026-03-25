@@ -159,8 +159,8 @@ window.MiniGolf = (() => {
     // Theme
     let BG_CLR     = '#1A1A2E';
     let ACCENT_CLR = '#F472B6';
-    let GRASS_CLR  = '#2D8A4E';
-    let GRASS_CLR2 = '#236B3C';
+    let GRASS_CLR  = '#1E7A3A';
+    let GRASS_CLR2 = '#16602C';
 
     // Ball
     let ballX, ballY, ballVX, ballVY;
@@ -1013,46 +1013,128 @@ window.MiniGolf = (() => {
             maxY = Math.max(maxY, w.y + w.h);
         }
 
-        // Course grass surface - tiled sprite
-        drawTiledSprite(ctx, 'grassCenter', minX, minY, maxX - minX, maxY - minY, 48, 48, GRASS_CLR);
-        // Slight darkening overlay for depth
-        ctx.fillStyle = 'rgba(0,40,0,0.15)';
-        ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+        // Course grass surface — rich green with depth
+        const cW = maxX - minX, cH = maxY - minY;
+        drawTiledSprite(ctx, 'grassCenter', minX, minY, cW, cH, 48, 48, GRASS_CLR);
 
-        // Sand traps - tiled sand sprite
+        // Radial light on grass (overhead lamp feel)
+        const grassLight = ctx.createRadialGradient(
+            minX + cW / 2, minY + cH / 2, 20,
+            minX + cW / 2, minY + cH / 2, Math.max(cW, cH) * 0.6
+        );
+        grassLight.addColorStop(0, 'rgba(60,200,80,0.08)');
+        grassLight.addColorStop(0.4, 'rgba(0,0,0,0)');
+        grassLight.addColorStop(1, 'rgba(0,30,0,0.12)');
+        ctx.fillStyle = grassLight;
+        ctx.fillRect(minX, minY, cW, cH);
+
+        // Grass texture noise (mow lines + micro dots)
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(minX, minY, cW, cH);
+        ctx.clip();
+        // Horizontal mow lines
+        ctx.strokeStyle = 'rgba(0,50,0,0.06)';
+        ctx.lineWidth = 0.5;
+        for (let my = minY; my < maxY; my += 6) {
+            ctx.beginPath(); ctx.moveTo(minX, my); ctx.lineTo(maxX, my); ctx.stroke();
+        }
+        // Micro grain dots
+        for (let i = 0; i < 300; i++) {
+            const gx = minX + (i * 137.5 + 7) % cW;
+            const gy = minY + (i * 89.3 + 23) % cH;
+            ctx.fillStyle = (i % 3 !== 0) ? 'rgba(0,30,0,0.05)' : 'rgba(50,130,50,0.04)';
+            ctx.fillRect(gx, gy, 1, 1);
+        }
+        ctx.restore();
+
+        // Sand traps — warm textured sand with irregular edge
         for (const s of sandTraps) {
-            drawTiledSprite(ctx, 'sandCenter', s.x, s.y, s.w, s.h, 40, 40, '#D4A437');
-            // Sand border
-            ctx.strokeStyle = '#B8922A';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.roundRect(s.x, s.y, s.w, s.h, 4);
-            ctx.stroke();
+            // Sand base with warm gradient
+            const sandGrad = ctx.createRadialGradient(
+                s.x + s.w / 2, s.y + s.h / 2, 5,
+                s.x + s.w / 2, s.y + s.h / 2, Math.max(s.w, s.h) * 0.7
+            );
+            sandGrad.addColorStop(0, '#E8C060');
+            sandGrad.addColorStop(0.5, '#D4A840');
+            sandGrad.addColorStop(1, '#C09030');
+            ctx.fillStyle = sandGrad;
+            ctx.beginPath(); ctx.roundRect(s.x, s.y, s.w, s.h, 4); ctx.fill();
+
+            // Sand sprites overlay
+            drawTiledSprite(ctx, 'sandCenter', s.x, s.y, s.w, s.h, 40, 40, '#D4A840');
+            ctx.fillStyle = 'rgba(210,170,80,0.3)';
+            ctx.beginPath(); ctx.roundRect(s.x, s.y, s.w, s.h, 4); ctx.fill();
+
+            // Sand grain dots
+            ctx.save();
+            ctx.beginPath(); ctx.roundRect(s.x, s.y, s.w, s.h, 4); ctx.clip();
+            for (let i = 0; i < 60; i++) {
+                const dx = s.x + (i * 17.3 + 3) % s.w;
+                const dy = s.y + (i * 13.7 + 7) % s.h;
+                ctx.fillStyle = (i % 2 === 0) ? 'rgba(180,140,60,0.15)' : 'rgba(255,220,130,0.1)';
+                ctx.fillRect(dx, dy, 1, 1);
+            }
+            ctx.restore();
+
+            // Sand lip edge (darker border with subtle highlight)
+            ctx.strokeStyle = '#A07820';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.roundRect(s.x, s.y, s.w, s.h, 4); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,220,120,0.2)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.roundRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2, 3); ctx.stroke();
         }
 
-        // Water hazards - tiled blue with shimmer
+        // Water hazards — deep blue with animated ripples
         for (const w of waterHazards) {
-            drawTiledSprite(ctx, 'stoneCenter', w.x, w.y, w.w, w.h, 40, 40, '#1E6CB0');
-            // Blue tint overlay
-            ctx.fillStyle = 'rgba(30,108,176,0.6)';
-            ctx.beginPath();
-            ctx.roundRect(w.x, w.y, w.w, w.h, 6);
-            ctx.fill();
-            // Water shimmer
-            ctx.fillStyle = 'rgba(100,180,255,0.2)';
+            // Water depth gradient
+            const waterGrad = ctx.createRadialGradient(
+                w.x + w.w / 2, w.y + w.h / 2, 5,
+                w.x + w.w / 2, w.y + w.h / 2, Math.max(w.w, w.h) * 0.7
+            );
+            waterGrad.addColorStop(0, '#1A7EC0');
+            waterGrad.addColorStop(0.5, '#145E90');
+            waterGrad.addColorStop(1, '#0D4068');
+            ctx.fillStyle = waterGrad;
+            ctx.beginPath(); ctx.roundRect(w.x, w.y, w.w, w.h, 6); ctx.fill();
+
+            // Subtle wave pattern
+            ctx.save();
+            ctx.beginPath(); ctx.roundRect(w.x, w.y, w.w, w.h, 6); ctx.clip();
             const shimTime = Date.now() * 0.002;
-            for (let i = 0; i < 5; i++) {
-                const sx = w.x + (Math.sin(shimTime + i) * 0.5 + 0.5) * w.w;
-                const sy = w.y + (Math.cos(shimTime + i * 1.3) * 0.5 + 0.5) * w.h;
+            ctx.strokeStyle = 'rgba(80,170,255,0.12)';
+            ctx.lineWidth = 1;
+            for (let wy = w.y + 4; wy < w.y + w.h; wy += 8) {
                 ctx.beginPath();
-                ctx.arc(sx, sy, 3 + Math.sin(shimTime + i) * 1, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(w.x, wy);
+                for (let wx = w.x; wx < w.x + w.w; wx += 4) {
+                    ctx.lineTo(wx, wy + Math.sin(shimTime + wx * 0.08 + wy * 0.05) * 1.5);
+                }
+                ctx.stroke();
             }
-            ctx.strokeStyle = '#0D3D6B';
+
+            // Specular highlights (moving glints)
+            for (let i = 0; i < 6; i++) {
+                const sx = w.x + (Math.sin(shimTime * 0.7 + i * 1.1) * 0.5 + 0.5) * w.w;
+                const sy = w.y + (Math.cos(shimTime * 0.5 + i * 1.7) * 0.5 + 0.5) * w.h;
+                const glintR = 2 + Math.sin(shimTime + i) * 1;
+                const glintGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, glintR);
+                glintGrad.addColorStop(0, 'rgba(180,220,255,0.25)');
+                glintGrad.addColorStop(1, 'rgba(180,220,255,0)');
+                ctx.fillStyle = glintGrad;
+                ctx.beginPath(); ctx.arc(sx, sy, glintR, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+
+            // Water edge (dark border)
+            ctx.strokeStyle = '#0A3050';
             ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.roundRect(w.x, w.y, w.w, w.h, 6);
-            ctx.stroke();
+            ctx.beginPath(); ctx.roundRect(w.x, w.y, w.w, w.h, 6); ctx.stroke();
+            // Inner highlight edge
+            ctx.strokeStyle = 'rgba(100,180,240,0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.roundRect(w.x + 1, w.y + 1, w.w - 2, w.h - 2, 5); ctx.stroke();
         }
 
         // Walls - wood sprite tiled
@@ -1139,17 +1221,33 @@ window.MiniGolf = (() => {
             }
         }
 
-        // Hole
-        ctx.fillStyle = '#111';
+        // Hole shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.arc(holePos.x + 1, holePos.y + 1, HOLE_R + 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hole depth gradient
+        const holeGrad = ctx.createRadialGradient(holePos.x, holePos.y, 0, holePos.x, holePos.y, HOLE_R);
+        holeGrad.addColorStop(0, '#000');
+        holeGrad.addColorStop(0.7, '#111');
+        holeGrad.addColorStop(1, '#222');
+        ctx.fillStyle = holeGrad;
         ctx.beginPath();
         ctx.arc(holePos.x, holePos.y, HOLE_R, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hole rim
-        ctx.strokeStyle = '#333';
+        // Hole chrome rim
+        ctx.strokeStyle = '#555';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(holePos.x, holePos.y, HOLE_R, 0, Math.PI * 2);
+        ctx.stroke();
+        // Inner rim highlight
+        ctx.strokeStyle = 'rgba(200,200,200,0.15)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.arc(holePos.x, holePos.y, HOLE_R - 1, 0, Math.PI * 2);
         ctx.stroke();
 
         // Flag - sprite or fallback

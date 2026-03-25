@@ -1112,48 +1112,89 @@ window.CentiBalls = (() => {
     }
 
     function drawTable() {
+        const TW = GAME_W - RAIL_W * 2, TH = GAME_H - RAIL_W * 2;
+
+        // ── FELT SURFACE (draw first, rails overlay) ──
         const feltGrd = ctx.createRadialGradient(GAME_W / 2, GAME_H / 2, 50, GAME_W / 2, GAME_H / 2, 400);
-        feltGrd.addColorStop(0, CLR_FELT);
-        feltGrd.addColorStop(1, CLR_FELT2);
+        feltGrd.addColorStop(0, CLR_FELT); feltGrd.addColorStop(1, CLR_FELT2);
         ctx.fillStyle = feltGrd;
         ctx.fillRect(0, 0, GAME_W, GAME_H);
-
-        // Felt texture
-        ctx.fillStyle = 'rgba(0,0,0,0.03)';
-        for (let i = 0; i < 200; i++) {
-            const fx = (i * 97.3) % GAME_W;
-            const fy = (i * 143.7) % GAME_H;
+        // Felt noise
+        for (let i = 0; i < 300; i++) {
+            const fx = (i * 97.3) % GAME_W, fy = (i * 143.7) % GAME_H;
+            ctx.fillStyle = (i % 3 !== 0) ? 'rgba(0,20,0,0.04)' : 'rgba(40,100,40,0.03)';
             ctx.fillRect(fx, fy, 1, 1);
         }
 
-        // Rails
-        ctx.fillStyle = CLR_RAIL;
-        roundRect(ctx, 0, 0, GAME_W, RAIL_W, 4); ctx.fill();
-        roundRect(ctx, 0, GAME_H - RAIL_W, GAME_W, RAIL_W, 4); ctx.fill();
-        roundRect(ctx, 0, 0, RAIL_W, GAME_H, 4); ctx.fill();
-        roundRect(ctx, GAME_W - RAIL_W, 0, RAIL_W, GAME_H, 4); ctx.fill();
+        // ── RICH MAHOGANY RAILS ──
+        let rGrad = ctx.createLinearGradient(0, 0, 0, RAIL_W);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, 0, GAME_W, RAIL_W);
 
-        ctx.strokeStyle = CLR_RAIL_EDGE;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(RAIL_W, RAIL_W, GAME_W - 2 * RAIL_W, GAME_H - 2 * RAIL_W);
+        rGrad = ctx.createLinearGradient(0, GAME_H - RAIL_W, 0, GAME_H);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, GAME_H - RAIL_W, GAME_W, RAIL_W);
 
-        // Rail bevel highlights
-        ctx.strokeStyle = 'rgba(255,220,150,0.15)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(RAIL_W, 3); ctx.lineTo(GAME_W - RAIL_W, 3); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(RAIL_W, GAME_H - 3); ctx.lineTo(GAME_W - RAIL_W, GAME_H - 3); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(3, RAIL_W); ctx.lineTo(3, GAME_H - RAIL_W); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(GAME_W - 3, RAIL_W); ctx.lineTo(GAME_W - 3, GAME_H - RAIL_W); ctx.stroke();
+        rGrad = ctx.createLinearGradient(0, 0, RAIL_W, 0);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, RAIL_W, RAIL_W, TH);
 
-        // Inner cushion rubber
-        ctx.fillStyle = '#2D8B4E';
-        ctx.fillRect(RAIL_W, RAIL_W, GAME_W - 2 * RAIL_W, 3);
-        ctx.fillRect(RAIL_W, GAME_H - RAIL_W - 3, GAME_W - 2 * RAIL_W, 3);
-        ctx.fillRect(RAIL_W, RAIL_W, 3, GAME_H - 2 * RAIL_W);
-        ctx.fillRect(GAME_W - RAIL_W - 3, RAIL_W, 3, GAME_H - 2 * RAIL_W);
+        rGrad = ctx.createLinearGradient(GAME_W - RAIL_W, 0, GAME_W, 0);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(GAME_W - RAIL_W, RAIL_W, RAIL_W, TH);
+
+        // Subtle noise on rails
+        for (let i = 0; i < 500; i++) {
+            const nx = (i * 197.3 + 13) % GAME_W, ny = (i * 127.7 + 41) % GAME_H;
+            if (ny < RAIL_W || ny > GAME_H - RAIL_W || nx < RAIL_W || nx > GAME_W - RAIL_W) {
+                ctx.fillStyle = (i % 2 === 0) ? 'rgba(0,0,0,0.03)' : 'rgba(255,200,140,0.02)';
+                ctx.fillRect(nx, ny, 1, 1);
+            }
+        }
+
+        // Green cushion bumper strip
+        ctx.fillStyle = '#1B7A3D';
+        ctx.fillRect(RAIL_W - 1, RAIL_W - 3, TW + 2, 3);
+        ctx.fillRect(RAIL_W - 1, GAME_H - RAIL_W, TW + 2, 3);
+        ctx.fillRect(RAIL_W - 3, RAIL_W - 1, 3, TH + 2);
+        ctx.fillRect(GAME_W - RAIL_W, RAIL_W - 1, 3, TH + 2);
+        ctx.fillStyle = 'rgba(50,180,90,0.3)';
+        ctx.fillRect(RAIL_W, RAIL_W - 1, TW, 1);
+        ctx.fillRect(RAIL_W, GAME_H - RAIL_W, TW, 1);
+        ctx.fillRect(RAIL_W - 1, RAIL_W, 1, TH);
+        ctx.fillRect(GAME_W - RAIL_W, RAIL_W, 1, TH);
+
+        // Inner bevel highlight
+        ctx.fillStyle = 'rgba(200,170,120,0.35)';
+        ctx.fillRect(RAIL_W - 4, RAIL_W - 4, TW + 8, 1);
+        ctx.fillRect(RAIL_W - 4, RAIL_W - 4, 1, TH + 8);
+        // Outer bevel shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(0, 0, GAME_W, 1); ctx.fillRect(0, GAME_H - 1, GAME_W, 1);
+        ctx.fillRect(0, 0, 1, GAME_H); ctx.fillRect(GAME_W - 1, 0, 1, GAME_H);
+
+        // Gold corner brackets
+        ctx.fillStyle = '#C8A050';
+        ctx.fillRect(3, 3, 12, 2); ctx.fillRect(3, 3, 2, 12);
+        ctx.fillRect(GAME_W - 15, 3, 12, 2); ctx.fillRect(GAME_W - 5, 3, 2, 12);
+        ctx.fillRect(3, GAME_H - 5, 12, 2); ctx.fillRect(3, GAME_H - 15, 2, 12);
+        ctx.fillRect(GAME_W - 15, GAME_H - 5, 12, 2); ctx.fillRect(GAME_W - 5, GAME_H - 15, 2, 12);
+        ctx.fillStyle = 'rgba(255,220,120,0.4)';
+        ctx.fillRect(3, 3, 10, 1); ctx.fillRect(3, 3, 1, 10);
+        ctx.fillRect(GAME_W - 13, 3, 10, 1); ctx.fillRect(GAME_W - 4, 3, 1, 10);
+        ctx.fillRect(3, GAME_H - 4, 10, 1); ctx.fillRect(3, GAME_H - 13, 1, 10);
+        ctx.fillRect(GAME_W - 13, GAME_H - 4, 10, 1); ctx.fillRect(GAME_W - 4, GAME_H - 13, 1, 10);
 
         // Diamond sights
-        ctx.fillStyle = '#D4A54A';
+        ctx.fillStyle = '#C8A860';
         const diamonds = [0.2, 0.35, 0.5, 0.65, 0.8];
         for (const d of diamonds) {
             drawDiamond(GAME_W * d, RAIL_W / 2, 3);
@@ -1161,14 +1202,6 @@ window.CentiBalls = (() => {
             drawDiamond(RAIL_W / 2, GAME_H * d, 3);
             drawDiamond(GAME_W - RAIL_W / 2, GAME_H * d, 3);
         }
-
-        // Corner ornaments
-        ctx.fillStyle = '#D4A54A';
-        const cornerR = 5;
-        ctx.beginPath(); ctx.arc(RAIL_W + 8, RAIL_W + 8, cornerR, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(GAME_W - RAIL_W - 8, RAIL_W + 8, cornerR, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(RAIL_W + 8, GAME_H - RAIL_W - 8, cornerR, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(GAME_W - RAIL_W - 8, GAME_H - RAIL_W - 8, cornerR, 0, Math.PI * 2); ctx.fill();
     }
 
     function drawDiamond(cx, cy, s) {

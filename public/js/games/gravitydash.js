@@ -853,7 +853,7 @@ window.GravityDash = (() => {
 
     function drawGrid() {
         ctx.save();
-        ctx.strokeStyle = 'rgba(100, 140, 255, 0.07)';
+        ctx.strokeStyle = 'rgba(100, 160, 255, 0.12)';
         ctx.lineWidth = 1;
         const gridSize = 40;
         const offsetX = gridOffset * SCALE;
@@ -1004,16 +1004,21 @@ window.GravityDash = (() => {
                 }
                 ctx.restore();
             } else {
-                // Barrier
+                // Barrier — enhanced neon edge glow
                 ctx.save();
                 ctx.fillStyle = '#F97316';
                 ctx.shadowColor = '#F97316';
-                ctx.shadowBlur = gs(6);
+                ctx.shadowBlur = gs(14);
                 ctx.fillRect(ox, oy, ow, oh);
                 // Inner glow line
                 ctx.strokeStyle = '#FBBF24';
-                ctx.lineWidth = gs(1.5);
+                ctx.lineWidth = gs(2);
                 ctx.strokeRect(ox + gs(2), oy + gs(2), ow - gs(4), oh - gs(4));
+                // Hot edge glow
+                ctx.strokeStyle = '#FFF';
+                ctx.lineWidth = gs(0.5);
+                ctx.globalAlpha = 0.4;
+                ctx.strokeRect(ox + gs(3), oy + gs(3), ow - gs(6), oh - gs(6));
                 ctx.restore();
             }
         }
@@ -1190,16 +1195,51 @@ window.GravityDash = (() => {
         if (!player.trail.length) return;
         const { r, g, b } = hexToRgb(playerColor);
 
+        // Outer glow trail (wider, softer)
+        ctx.save();
         for (let i = 0; i < player.trail.length; i++) {
             const t = player.trail[i];
-            const alpha = (1 - i / player.trail.length) * 0.6;
-            const size = PLAYER_SIZE * (1 - i / player.trail.length) * 0.6;
+            const ratio = 1 - i / player.trail.length;
+            const alpha = ratio * 0.25;
+            const glowSize = PLAYER_SIZE * ratio * 1.8;
+            ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+            ctx.beginPath();
+            ctx.arc(
+                gx(t.x + PLAYER_SIZE / 2),
+                gy(t.y),
+                gs(glowSize / 2),
+                0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Core trail (brighter, sharper)
+        for (let i = 0; i < player.trail.length; i++) {
+            const t = player.trail[i];
+            const ratio = 1 - i / player.trail.length;
+            const alpha = ratio * 0.75;
+            const size = PLAYER_SIZE * ratio * 0.7;
             ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
             ctx.fillRect(
                 gx(t.x + PLAYER_SIZE / 2 - size / 2),
                 gy(t.y - size / 2),
                 gs(size),
                 gs(size)
+            );
+        }
+
+        // Hot white center trail
+        for (let i = 0; i < Math.min(6, player.trail.length); i++) {
+            const t = player.trail[i];
+            const ratio = 1 - i / 6;
+            ctx.fillStyle = `rgba(255,255,255,${ratio * 0.3})`;
+            const coreSize = PLAYER_SIZE * ratio * 0.25;
+            ctx.fillRect(
+                gx(t.x + PLAYER_SIZE / 2 - coreSize / 2),
+                gy(t.y - coreSize / 2),
+                gs(coreSize),
+                gs(coreSize)
             );
         }
     }
@@ -1211,9 +1251,9 @@ window.GravityDash = (() => {
 
         ctx.save();
 
-        // Outer glow
+        // Outer glow — more dramatic neon
         ctx.shadowColor = playerColor;
-        ctx.shadowBlur = gs(16);
+        ctx.shadowBlur = gs(24);
 
         // Body — rounded rectangle shape
         const bodyGrad = ctx.createLinearGradient(px, py, px + ps, py + ps);
@@ -1337,10 +1377,10 @@ window.GravityDash = (() => {
         if (intensity < 0.1) return;
 
         ctx.save();
-        // Lines intensify dramatically at higher speeds
+        // Lines intensify dramatically at higher speeds — MORE neon
         const alphaBoost = intensity * intensity; // quadratic scaling
-        ctx.globalAlpha = alphaBoost * 0.2 * speedBoostMult;
-        const count = Math.floor(intensity * 20); // more lines at speed
+        ctx.globalAlpha = alphaBoost * 0.35 * speedBoostMult;
+        const count = Math.floor(intensity * 30); // more lines at speed
         for (let i = 0; i < count; i++) {
             const ly = gy(rng(ceilY + 10, floorY - 10));
             const lx = rng(0, W);

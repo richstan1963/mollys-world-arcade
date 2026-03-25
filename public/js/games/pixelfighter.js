@@ -291,35 +291,53 @@ window.PixelFighter = (() => {
 
     function drawParticles() {
         for (const p of particles) {
-            ctx.globalAlpha = p.life * 0.85;
+            ctx.globalAlpha = p.life * 0.95;
             ctx.fillStyle = p.color;
             ctx.shadowColor = p.color;
-            ctx.shadowBlur = 6;
+            ctx.shadowBlur = 10;
             if (p.type === 'spark') {
                 ctx.save();
                 const angle = Math.atan2(p.vy, p.vx);
                 ctx.translate(p.x, p.y);
                 ctx.rotate(angle);
-                ctx.fillRect(-p.r * 2 * p.life, -0.5, p.r * 4 * p.life, 1);
+                ctx.fillRect(-p.r * 2.5 * p.life, -0.8, p.r * 5 * p.life, 1.6);
+                // Bright core
+                ctx.fillStyle = '#FFF';
+                ctx.globalAlpha = p.life * 0.5;
+                ctx.fillRect(-p.r * p.life, -0.3, p.r * 2 * p.life, 0.6);
                 ctx.restore();
             } else {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+                ctx.fill();
+                // Bright center
+                ctx.fillStyle = '#FFF';
+                ctx.globalAlpha = p.life * 0.4;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r * p.life * 0.3, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
         ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
 
-        // Impact stars
+        // Impact stars — brighter with glow
         for (const s of impactStars) {
+            ctx.save();
             ctx.globalAlpha = s.life;
+            ctx.shadowColor = '#FFDD44';
+            ctx.shadowBlur = 12;
             ctx.strokeStyle = '#FFF';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             const sz = s.size * (1 - s.life * 0.3);
             drawStar(s.x, s.y, 4, sz, sz * 0.3);
-            ctx.globalAlpha = 1;
+            // Filled star center
+            ctx.fillStyle = `rgba(255,255,200,${s.life * 0.5})`;
+            drawStar(s.x, s.y, 4, sz * 0.6, sz * 0.2);
+            ctx.fill();
+            ctx.restore();
         }
+        ctx.globalAlpha = 1;
     }
 
     function drawStar(cx, cy, spikes, outerR, innerR) {
@@ -425,7 +443,20 @@ window.PixelFighter = (() => {
             ctx.fill();
             ctx.globalAlpha = 1;
 
-            // City silhouette
+            // Far city silhouette (deeper parallax layer)
+            ctx.fillStyle = '#120818';
+            ctx.globalAlpha = 0.5;
+            const farBuildings = [
+                [10, 160, 80, 190], [80, 140, 60, 210], [130, 170, 70, 180],
+                [195, 150, 55, 200], [245, 175, 90, 175], [330, 145, 65, 205],
+                [390, 165, 75, 185], [460, 155, 60, 195], [515, 170, 80, 180],
+            ];
+            for (const [bx, by, bw, bh] of farBuildings) {
+                ctx.fillRect(bx, by, bw, bh);
+            }
+            ctx.globalAlpha = 1;
+
+            // City silhouette (closer layer)
             ctx.fillStyle = '#1A0A1E';
             const buildings = [
                 [0, 220, 60, 130], [55, 190, 45, 160], [95, 240, 70, 110],
@@ -1118,40 +1149,64 @@ window.PixelFighter = (() => {
     }
 
     function drawHPBar(x, y, w, h, hp, maxHP, color, leftAlign) {
-        // Background
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        // Background with depth
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, 3);
         ctx.fill();
+        // Inner dark groove
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.roundRect(x + 1, y + 1, w - 2, h - 2, 2);
+        ctx.fill();
 
-        // HP fill
+        // HP fill with gradient
         const ratio = Math.max(0, hp / maxHP);
         const fillW = w * ratio;
         const hpColor = ratio > 0.5 ? color : ratio > 0.25 ? '#F59E0B' : '#EF4444';
 
+        const barGrad = ctx.createLinearGradient(0, y, 0, y + h);
+        barGrad.addColorStop(0, hpColor);
+        barGrad.addColorStop(0.4, hpColor);
+        barGrad.addColorStop(0.5, 'rgba(255,255,255,0.25)');
+        barGrad.addColorStop(0.6, hpColor);
+        barGrad.addColorStop(1, hpColor);
+
         if (leftAlign) {
-            ctx.fillStyle = hpColor;
+            ctx.fillStyle = barGrad;
             ctx.beginPath();
             ctx.roundRect(x, y, fillW, h, 3);
             ctx.fill();
         } else {
-            ctx.fillStyle = hpColor;
+            ctx.fillStyle = barGrad;
             ctx.beginPath();
             ctx.roundRect(x + w - fillW, y, fillW, h, 3);
             ctx.fill();
         }
 
-        // HP flash on low health
-        if (ratio < 0.25 && frameCount % 20 < 10) {
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+        // Bright highlight strip across top
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        if (leftAlign) {
+            ctx.fillRect(x + 2, y + 2, fillW - 4, 3);
+        } else {
+            ctx.fillRect(x + w - fillW + 2, y + 2, fillW - 4, 3);
+        }
+
+        // HP flash on low health — more dramatic
+        if (ratio < 0.25 && frameCount % 16 < 8) {
+            ctx.save();
+            ctx.shadowColor = '#FF0000';
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
             ctx.beginPath();
             ctx.roundRect(x, y, w, h, 3);
             ctx.fill();
+            ctx.restore();
         }
 
-        // Border
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 1;
+        // Border — brighter
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, 3);
         ctx.stroke();

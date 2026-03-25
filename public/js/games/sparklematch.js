@@ -188,6 +188,12 @@ window.SparkleMatch = (() => {
     const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
     const easeOut = t => 1 - Math.pow(1 - t, 3);
     const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    // Overshoot bounce for gem swap — goes to ~1.1 then settles
+    const easeOutBounceSwap = t => {
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    };
     const HAS_TOUCH = ('ontouchstart' in window);
 
     // ── Audio ──
@@ -427,7 +433,7 @@ window.SparkleMatch = (() => {
         else if (combo >= 2) comboText = combo + 'x COMBO!';
         else comboText = '';
 
-        if (combo >= 2) sfxCombo(combo);
+        if (combo >= 2) { sfxCombo(combo); if (combo >= 3) cascadeFlashAlpha = 1; }
         else sfxMatch();
 
         // Score popup
@@ -1125,16 +1131,20 @@ window.SparkleMatch = (() => {
         ctx.globalAlpha = 1;
     }
 
+    // Cascade screen flash state
+    let cascadeFlashAlpha = 0;
+
     function drawBackground() {
         // Try to draw the bg sprite if available
         if (hasSprite('bg')) {
             ctx.drawImage(SPRITES.bg, 0, 0, W, H);
-            // Add a dark overlay for contrast
-            ctx.fillStyle = 'rgba(10,5,30,0.55)';
+            // Warm color tint that shifts with level
+            const levelHue = (level * 30) % 360;
+            ctx.fillStyle = `hsla(${levelHue}, 30%, 15%, 0.5)`;
             ctx.fillRect(0, 0, W, H);
         } else {
-            // Fallback deep purple/blue gradient
-            const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+            // Fallback rich gradient
+            const bgGrad = ctx.createLinearGradient(0, 0, W * 0.5, H);
             bgGrad.addColorStop(0, '#1a0533');
             bgGrad.addColorStop(0.5, '#0d1b3e');
             bgGrad.addColorStop(1, '#1a0533');
@@ -1172,6 +1182,13 @@ window.SparkleMatch = (() => {
         vigGrad.addColorStop(1, 'rgba(0,0,0,0.4)');
         ctx.fillStyle = vigGrad;
         ctx.fillRect(0, 0, W, H);
+
+        // Cascade screen-wide flash (triggered on combo 3+)
+        if (cascadeFlashAlpha > 0) {
+            ctx.fillStyle = `rgba(255,215,0,${cascadeFlashAlpha * 0.12})`;
+            ctx.fillRect(0, 0, W, H);
+            cascadeFlashAlpha = Math.max(0, cascadeFlashAlpha - 0.03);
+        }
     }
 
     function drawGrid() {
@@ -1219,15 +1236,17 @@ window.SparkleMatch = (() => {
                 let drawX = ox + c * cellS;
                 let drawY = oy + gs(gem.y) + gs(gem.bounceY);
 
-                // Swap animation offset
+                // Swap animation offset with overshoot bounce
                 if (swapAnim && state === ST_SWAP) {
-                    const t = easeInOut(swapAnim.progress);
+                    const raw = swapAnim.progress;
+                    // Overshoot bounce: goes to ~1.12 then settles to 1.0
+                    const t = swapAnim.reverting ? easeInOut(raw) : easeOutBounceSwap(raw);
                     if (r === swapAnim.r1 && c === swapAnim.c1) {
                         const dx = (swapAnim.c2 - swapAnim.c1) * cellS * t;
                         const dy = (swapAnim.r2 - swapAnim.r1) * cellS * t;
                         if (swapAnim.reverting) {
-                            drawX += dx * (1 - t);
-                            drawY += dy * (1 - t);
+                            drawX += dx * (1 - raw);
+                            drawY += dy * (1 - raw);
                         } else {
                             drawX += dx;
                             drawY += dy;
@@ -1236,8 +1255,8 @@ window.SparkleMatch = (() => {
                         const dx = (swapAnim.c1 - swapAnim.c2) * cellS * t;
                         const dy = (swapAnim.r1 - swapAnim.r2) * cellS * t;
                         if (swapAnim.reverting) {
-                            drawX += dx * (1 - t);
-                            drawY += dy * (1 - t);
+                            drawX += dx * (1 - raw);
+                            drawY += dy * (1 - raw);
                         } else {
                             drawX += dx;
                             drawY += dy;
@@ -1307,13 +1326,18 @@ window.SparkleMatch = (() => {
         ctx.fillText('SPARKLE MATCH', W / 2, gs(8));
         ctx.shadowBlur = 0;
 
-        // Score
+        // Score with bounce on increase
+        const sBounce = (combo > 0 && comboTimer > COMBO_DISPLAY_MS * 0.7) ? 1 + Math.sin(frameCount * 0.3) * 0.08 : 1;
+        ctx.save();
+        ctx.translate(W / 2, gs(28));
+        ctx.scale(sBounce, sBounce);
         ctx.font = 'bold ' + gs(20) + 'px "Segoe UI", sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowColor = '#FFD700';
-        ctx.shadowBlur = gs(4);
-        ctx.fillText(score.toLocaleString(), W / 2, gs(28));
+        ctx.shadowBlur = gs(6);
+        ctx.fillText(score.toLocaleString(), 0, 0);
         ctx.shadowBlur = 0;
+        ctx.restore();
 
         // Level & Target
         ctx.font = gs(11) + 'px "Segoe UI", sans-serif';
@@ -1370,16 +1394,39 @@ window.SparkleMatch = (() => {
             ctx.roundRect(mBarX, mBarY, mBarW * magicMeter, mBarH, gs(6));
             ctx.fill();
 
+            // Shimmer highlight moving across the meter
+            const shimmerX = ((frameCount * 2) % (mBarW * magicMeter + gs(40))) + mBarX - gs(20);
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(mBarX, mBarY, mBarW * magicMeter, mBarH, gs(6));
+            ctx.clip();
+            const shimGrad = ctx.createLinearGradient(shimmerX - gs(15), 0, shimmerX + gs(15), 0);
+            shimGrad.addColorStop(0, 'rgba(255,255,255,0)');
+            shimGrad.addColorStop(0.5, 'rgba(255,255,255,0.25)');
+            shimGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = shimGrad;
+            ctx.fillRect(shimmerX - gs(15), mBarY, gs(30), mBarH);
+            ctx.restore();
+
             if (magicReady) {
-                ctx.globalAlpha = Math.sin(frameCount * 0.1) * 0.3 + 0.7;
+                // Pulsing golden glow when ready
+                const glowPulse = Math.sin(frameCount * 0.12) * 0.4 + 0.6;
+                ctx.save();
                 ctx.shadowColor = '#FFD700';
-                ctx.shadowBlur = gs(8);
-                ctx.fillStyle = 'rgba(255,215,0,0.3)';
+                ctx.shadowBlur = gs(14) * glowPulse;
+                ctx.globalAlpha = glowPulse;
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = gs(2);
+                ctx.beginPath();
+                ctx.roundRect(mBarX - gs(1), mBarY - gs(1), mBarW + gs(2), mBarH + gs(2), gs(7));
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = glowPulse * 0.3;
+                ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
                 ctx.roundRect(mBarX, mBarY, mBarW, mBarH, gs(6));
                 ctx.fill();
-                ctx.shadowBlur = 0;
-                ctx.globalAlpha = 1;
+                ctx.restore();
             }
         }
 

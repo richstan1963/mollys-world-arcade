@@ -729,14 +729,24 @@ window.Defender = (() => {
             ctx.translate(sx * SCALE, sy * SCALE);
         }
 
-        // Background gradient
+        // Background gradient — deeper with more layers
         const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-        bgGrad.addColorStop(0, '#020210');
-        bgGrad.addColorStop(0.5, '#060618');
-        bgGrad.addColorStop(0.85, '#0a0820');
-        bgGrad.addColorStop(1, '#120a10');
+        bgGrad.addColorStop(0, '#010108');
+        bgGrad.addColorStop(0.3, '#030312');
+        bgGrad.addColorStop(0.55, '#060618');
+        bgGrad.addColorStop(0.75, '#0a0822');
+        bgGrad.addColorStop(0.9, '#0e0818');
+        bgGrad.addColorStop(1, '#100a0e');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
+
+        // Atmospheric haze layer above terrain
+        const hazeGrad = ctx.createLinearGradient(0, gs(GAME_H * 0.5), 0, gs(GAME_H));
+        hazeGrad.addColorStop(0, 'rgba(10,20,10,0)');
+        hazeGrad.addColorStop(0.6, 'rgba(15,30,15,0.06)');
+        hazeGrad.addColorStop(1, 'rgba(20,40,20,0.12)');
+        ctx.fillStyle = hazeGrad;
+        ctx.fillRect(0, gs(GAME_H * 0.5), W, gs(GAME_H * 0.5));
 
         // Stars (parallax)
         for (const s of stars) {
@@ -961,12 +971,26 @@ window.Defender = (() => {
             ctx.drawImage(shipSprite, gs(-SHIP_H / 2 - 2), gs(-SHIP_W / 2 - 2), gs(SHIP_H + 4), gs(SHIP_W + 4));
             ctx.restore();
 
-            // Engine thrust flame (still canvas for animation)
+            // Engine thrust flame with heat distortion
             const thrustIntensity = Math.abs(ship.vx) / MAX_VX;
             if (ship.thrust || thrustIntensity > 0.2) {
                 const intensity = Math.max(thrustIntensity, 0.3);
                 const flameLen = (6 + intensity * 14) + Math.random() * 6 * intensity;
                 const flameW = (3 + intensity * 5) + Math.random() * 2;
+                // Heat distortion haze behind engine
+                const hazeX = sx - f * (SHIP_W / 2 + flameLen + 8);
+                const hazeY = sy + SHIP_H / 2;
+                for (let hi = 0; hi < 3; hi++) {
+                    const hDist = 6 + hi * 8;
+                    const hWobble = Math.sin(frameCount * 0.3 + hi * 2) * (2 + intensity * 3);
+                    ctx.globalAlpha = 0.04 * intensity * (1 - hi * 0.3);
+                    ctx.fillStyle = '#F97316';
+                    ctx.beginPath();
+                    ctx.arc(gs(hazeX - f * hDist), gs(hazeY + hWobble), gs(8 + hi * 4), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+                // Main flame
                 ctx.fillStyle = '#F97316';
                 ctx.shadowColor = '#F97316';
                 ctx.shadowBlur = gs(6 + intensity * 10);
@@ -974,6 +998,15 @@ window.Defender = (() => {
                 ctx.moveTo(gs(sx - f * SHIP_W / 2), gs(sy + SHIP_H / 2 - flameW / 2));
                 ctx.lineTo(gs(sx - f * (SHIP_W / 2 + flameLen)), gs(sy + SHIP_H / 2));
                 ctx.lineTo(gs(sx - f * SHIP_W / 2), gs(sy + SHIP_H / 2 + flameW / 2));
+                ctx.fill();
+                // White-hot inner core
+                ctx.fillStyle = '#FEF3C7';
+                const coreLen = flameLen * 0.35;
+                const coreW = flameW * 0.35;
+                ctx.beginPath();
+                ctx.moveTo(gs(sx - f * SHIP_W / 2), gs(sy + SHIP_H / 2 - coreW / 2));
+                ctx.lineTo(gs(sx - f * (SHIP_W / 2 + coreLen)), gs(sy + SHIP_H / 2));
+                ctx.lineTo(gs(sx - f * SHIP_W / 2), gs(sy + SHIP_H / 2 + coreW / 2));
                 ctx.fill();
                 ctx.shadowBlur = 0;
             }
@@ -1216,11 +1249,14 @@ window.Defender = (() => {
     function drawTerrain() {
         if (planetExploded) return; // No terrain after explosion
         const groundY = GAME_H - TERRAIN_H;
-        // Gradient fill
-        const grad = ctx.createLinearGradient(0, gs(groundY - 10), 0, gs(GAME_H));
-        grad.addColorStop(0, '#1a3a1a');
-        grad.addColorStop(0.3, '#0d2a0d');
-        grad.addColorStop(1, '#050f05');
+        // Richer multi-stop gradient fill
+        const grad = ctx.createLinearGradient(0, gs(groundY - 15), 0, gs(GAME_H));
+        grad.addColorStop(0, '#1e4a1e');
+        grad.addColorStop(0.15, '#18381a');
+        grad.addColorStop(0.35, '#0f2a10');
+        grad.addColorStop(0.6, '#0a1e0a');
+        grad.addColorStop(0.85, '#061206');
+        grad.addColorStop(1, '#030803');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.moveTo(0, gs(GAME_H));
@@ -1314,6 +1350,13 @@ window.Defender = (() => {
     }
 
     function drawHUD() {
+        // HUD backdrop panel
+        const hudY = MINIMAP_Y + MINIMAP_H + 6;
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.roundRect(gs(4), gs(hudY), gs(200), gs(22), gs(4));
+        ctx.fill();
+
         // Score
         ctx.textAlign = 'left';
         ctx.fillStyle = '#fff';

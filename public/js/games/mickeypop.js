@@ -1106,18 +1106,38 @@ window.MickeyPop = (() => {
     // Draw bubble projectile
     function drawBubble(b) {
         const bx = gx(b.x), by = gy(b.y), r = gs(b.size);
-        // Outer bubble
+
+        // Bubble glow aura
+        ctx.save();
+        ctx.globalAlpha = 0.2;
         ctx.fillStyle = b.color;
-        ctx.globalAlpha = 0.6;
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = gs(10);
+        ctx.beginPath(); ctx.arc(bx, by, r + gs(4), 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+
+        // Outer bubble — richer gradient
+        const bubGrad = ctx.createRadialGradient(bx - r * 0.2, by - r * 0.2, r * 0.1, bx, by, r);
+        bubGrad.addColorStop(0, 'rgba(255,255,255,0.5)');
+        bubGrad.addColorStop(0.4, b.color + 'CC');
+        bubGrad.addColorStop(0.8, b.color + 'AA');
+        bubGrad.addColorStop(1, b.color + '66');
+        ctx.fillStyle = bubGrad;
+        ctx.globalAlpha = 0.75;
         ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
-        // Rainbow shimmer ring
-        ctx.strokeStyle = b.rainbow ? `hsl(${(frameCount * 8 + b.x) % 360}, 80%, 70%)` : b.color;
-        ctx.lineWidth = gs(1.5);
+
+        // Rainbow shimmer ring — thicker
+        ctx.strokeStyle = b.rainbow ? `hsl(${(frameCount * 8 + b.x) % 360}, 85%, 65%)` : b.color;
+        ctx.lineWidth = gs(2);
         ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.stroke();
-        // Shine highlight
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.beginPath(); ctx.arc(bx - r * 0.3, by - r * 0.3, r * 0.3, 0, Math.PI * 2); ctx.fill();
+
+        // Shine highlight — larger, more prominent
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.beginPath(); ctx.arc(bx - r * 0.28, by - r * 0.28, r * 0.35, 0, Math.PI * 2); ctx.fill();
+        // Secondary smaller shine
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath(); ctx.arc(bx + r * 0.2, by - r * 0.15, r * 0.12, 0, Math.PI * 2); ctx.fill();
     }
 
     // Draw collectible
@@ -1153,11 +1173,14 @@ window.MickeyPop = (() => {
             }
         }
 
-        // Sparkle
-        if (frameCount % 20 < 5) {
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.beginPath(); ctx.arc(cx + s * 4, cy + bob - s * 4, s * 2, 0, Math.PI * 2); ctx.fill();
-        }
+        // Sparkle — always visible, pulsing
+        const sparkleAlpha = 0.3 + Math.sin(frameCount * 0.15 + c.x * 0.1) * 0.35;
+        ctx.fillStyle = `rgba(255,255,255,${sparkleAlpha})`;
+        ctx.beginPath(); ctx.arc(cx + s * 4, cy + bob - s * 4, s * 2.5, 0, Math.PI * 2); ctx.fill();
+        // Second twinkle
+        const twinkle2 = 0.2 + Math.sin(frameCount * 0.2 + c.x * 0.07) * 0.25;
+        ctx.fillStyle = `rgba(255,255,255,${twinkle2})`;
+        ctx.beginPath(); ctx.arc(cx - s * 3, cy + bob + s * 2, s * 1.5, 0, Math.PI * 2); ctx.fill();
     }
 
     // Draw power-up crate

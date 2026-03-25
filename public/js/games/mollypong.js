@@ -419,12 +419,12 @@ window.MollyPong = (() => {
         for (let i = 0; i < trail.length; i++) {
             const t     = trail[i];
             const frac  = (i + 1) / trail.length;
-            const alpha = frac * 0.35;
-            const rad   = BALL_R * (0.2 + frac * 0.8);
+            const alpha = frac * 0.5;
+            const rad   = BALL_R * (0.3 + frac * 0.9);
 
-            // Comet-style colored trail
+            // Comet-style colored trail — brighter and bigger
             ctx.globalAlpha = alpha;
-            const trailGrad = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, rad * 1.5);
+            const trailGrad = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, rad * 2);
             trailGrad.addColorStop(0, playerColor());
             trailGrad.addColorStop(0.6, shadeColor(playerColor(), -30));
             trailGrad.addColorStop(1, 'rgba(0,0,0,0)');
@@ -490,25 +490,29 @@ window.MollyPong = (() => {
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
 
-        // AI score — upper half with neon glow
+        // AI score — upper half with brighter neon glow
         ctx.font      = 'bold 80px "Segoe UI", system-ui, sans-serif';
         ctx.shadowColor = AI_CLR;
-        ctx.shadowBlur = 30;
-        ctx.fillStyle = hexAlpha(AI_CLR, 0.08);
+        ctx.shadowBlur = 45;
+        ctx.fillStyle = hexAlpha(AI_CLR, 0.12);
+        ctx.fillText(String(aiScore), W / 2, H * 0.25);
+        ctx.shadowBlur = 20;
         ctx.fillText(String(aiScore), W / 2, H * 0.25);
         ctx.shadowBlur = 0;
         // Neon outline
-        ctx.strokeStyle = hexAlpha(AI_CLR, 0.12);
+        ctx.strokeStyle = hexAlpha(AI_CLR, 0.18);
         ctx.lineWidth = 2;
         ctx.strokeText(String(aiScore), W / 2, H * 0.25);
 
-        // Player score — lower half with neon glow
+        // Player score — lower half with brighter neon glow
         ctx.shadowColor = playerColor();
-        ctx.shadowBlur = 30;
-        ctx.fillStyle = hexAlpha(playerColor(), 0.08);
+        ctx.shadowBlur = 45;
+        ctx.fillStyle = hexAlpha(playerColor(), 0.12);
+        ctx.fillText(String(playerScore), W / 2, H * 0.75);
+        ctx.shadowBlur = 20;
         ctx.fillText(String(playerScore), W / 2, H * 0.75);
         ctx.shadowBlur = 0;
-        ctx.strokeStyle = hexAlpha(playerColor(), 0.12);
+        ctx.strokeStyle = hexAlpha(playerColor(), 0.18);
         ctx.lineWidth = 2;
         ctx.strokeText(String(playerScore), W / 2, H * 0.75);
 

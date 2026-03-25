@@ -947,6 +947,15 @@ window.Molliped = (() => {
                 ctx.fill();
             }
 
+            // Brighter cap spots (polka dots)
+            if (!m.poisoned) {
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                const spotR = sz * 0.08;
+                ctx.beginPath(); ctx.arc(cx - sz * 0.12, cy - sz * 0.15, spotR, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx + sz * 0.15, cy - sz * 0.1, spotR * 0.8, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx - sz * 0.05, cy + sz * 0.05, spotR * 0.6, 0, Math.PI * 2); ctx.fill();
+            }
+
             // Damage cracks overlay when hp < 3
             if (m.hp < 3 && !m.poisoned) {
                 ctx.strokeStyle = 'rgba(0,0,0,0.35)';
@@ -970,14 +979,30 @@ window.Molliped = (() => {
         for (const centi of centipedes) {
             if (!centi || centi.length === 0) continue;
 
-            // Draw connecting line between segments
+            // Draw connecting spine between segments — more visible
             if (centi.length > 1) {
-                ctx.strokeStyle = 'rgba(100,200,100,0.3)';
+                // Outer glow spine
+                ctx.save();
+                ctx.strokeStyle = 'rgba(100,255,100,0.15)';
+                ctx.lineWidth = 7;
+                ctx.shadowColor = '#66FF66';
+                ctx.shadowBlur = 6;
+                ctx.beginPath();
+                ctx.moveTo(centi[0].x, centi[0].y + Math.sin(now * 6) * 2);
+                for (let i = 1; i < centi.length; i++) {
+                    const bob = Math.sin(now * 6 + i * 0.8) * 2;
+                    ctx.lineTo(centi[i].x, centi[i].y + bob);
+                }
+                ctx.stroke();
+                ctx.restore();
+                // Inner bright spine
+                ctx.strokeStyle = 'rgba(120,255,120,0.5)';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(centi[0].x, centi[0].y);
+                ctx.moveTo(centi[0].x, centi[0].y + Math.sin(now * 6) * 2);
                 for (let i = 1; i < centi.length; i++) {
-                    ctx.lineTo(centi[i].x, centi[i].y);
+                    const bob = Math.sin(now * 6 + i * 0.8) * 2;
+                    ctx.lineTo(centi[i].x, centi[i].y + bob);
                 }
                 ctx.stroke();
             }
@@ -1166,15 +1191,15 @@ window.Molliped = (() => {
             ctx.arc(sx, drawY, CELL * 0.45, 0, Math.PI * 2);
             ctx.fillStyle = SPIDER_COLOR;
             ctx.fill();
-            // 8 legs fallback
+            // 8 legs fallback — more animated
             ctx.strokeStyle = SPIDER_COLOR;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2;
             for (let side = -1; side <= 1; side += 2) {
                 for (let li = 0; li < 4; li++) {
-                    const angle = (side === -1 ? Math.PI : 0) + (li - 1.5) * 0.35;
-                    const wobble = Math.sin(now * 10 + li * 1.8) * 0.25;
-                    const kx = sx + Math.cos(angle + wobble) * CELL * 0.5;
-                    const ky = drawY + Math.sin(angle * 0.3 + 0.5) * CELL * 0.3;
+                    const angle = (side === -1 ? Math.PI : 0) + (li - 1.5) * 0.4;
+                    const wobble = Math.sin(now * 14 + li * 2.2 + side) * 0.4;
+                    const kx = sx + Math.cos(angle + wobble) * CELL * 0.6;
+                    const ky = drawY + Math.sin(angle * 0.3 + 0.5) * CELL * 0.35;
                     ctx.beginPath();
                     ctx.moveTo(sx + side * CELL * 0.15, drawY + (li - 1.5) * 3);
                     ctx.lineTo(kx, ky);

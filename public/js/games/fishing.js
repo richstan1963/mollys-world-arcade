@@ -804,30 +804,72 @@ window.Fishing = (() => {
             ctx.setLineDash([]);
         }
 
-        // Animated wave surface
+        // Animated wave surface — multi-layer with foam
+        // Layer 1: Translucent wave body
         ctx.fillStyle = 'rgba(255,255,255,0.12)';
         ctx.beginPath();
         ctx.moveTo(0, WATER_Y);
         for (let x = 0; x <= BASE_W; x += 4) {
-            const y = WATER_Y + Math.sin(x * 0.03 + waveOffset) * 3
-                              + Math.sin(x * 0.07 + waveOffset * 1.3) * 1.5;
+            const y = WATER_Y + Math.sin(x * 0.03 + waveOffset) * 4
+                              + Math.sin(x * 0.07 + waveOffset * 1.3) * 2
+                              + Math.sin(x * 0.015 + waveOffset * 0.7) * 2.5;
             ctx.lineTo(x, y);
         }
-        ctx.lineTo(BASE_W, WATER_Y + 8);
-        ctx.lineTo(0, WATER_Y + 8);
+        ctx.lineTo(BASE_W, WATER_Y + 10);
+        ctx.lineTo(0, WATER_Y + 10);
         ctx.closePath();
         ctx.fill();
+        // Layer 2: Bright foam crests
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let x = 0; x <= BASE_W; x += 3) {
+            const y = WATER_Y + Math.sin(x * 0.03 + waveOffset) * 4
+                              + Math.sin(x * 0.07 + waveOffset * 1.3) * 2;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        // Layer 3: Second wave offset
+        ctx.strokeStyle = 'rgba(200,230,255,0.1)';
+        ctx.beginPath();
+        for (let x = 0; x <= BASE_W; x += 4) {
+            const y = WATER_Y + 5 + Math.sin(x * 0.025 + waveOffset * 0.8 + 1) * 3;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
 
-        // Light rays
+        // Deep water fish silhouettes (signature visual — shadows in the deep)
+        ctx.save();
+        for (let i = 0; i < 4; i++) {
+            const silX = ((waveOffset * 20 + i * 130) % (BASE_W + 80)) - 40;
+            const silY = WATER_Y + 100 + i * 50 + Math.sin(waveOffset * 0.5 + i) * 10;
+            const silSz = 15 + i * 5;
+            ctx.globalAlpha = 0.06 + i * 0.01;
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.ellipse(silX, silY, silSz, silSz * 0.35, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Tail
+            ctx.beginPath();
+            ctx.moveTo(silX - silSz, silY);
+            ctx.lineTo(silX - silSz - 8, silY - 5);
+            ctx.lineTo(silX - silSz - 8, silY + 5);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Light rays — brighter with animated sway
         ctx.save();
         for (let i = 0; i < 5; i++) {
-            const rx = 60 + i * 100 + Math.sin(waveOffset + i) * 15;
-            ctx.globalAlpha = 0.03;
+            const rx = 60 + i * 100 + Math.sin(waveOffset + i) * 25;
+            const rayAlpha = 0.04 + Math.sin(waveOffset * 0.5 + i * 1.5) * 0.015;
+            ctx.globalAlpha = rayAlpha;
             ctx.fillStyle = '#FFF';
             ctx.beginPath();
             ctx.moveTo(rx, WATER_Y);
-            ctx.lineTo(rx - 20, BASE_H);
-            ctx.lineTo(rx + 20, BASE_H);
+            ctx.lineTo(rx - 25 - i * 3, BASE_H);
+            ctx.lineTo(rx + 25 + i * 3, BASE_H);
             ctx.closePath();
             ctx.fill();
         }
@@ -1230,17 +1272,40 @@ window.Fishing = (() => {
         ctx.roundRect(mx, py, mw * reelProgress, 10, [5]);
         ctx.fill();
 
-        // Tension indicator
+        // Tension indicator — DRAMATIC with glow and shake at high tension
         const ty = my + mh + 12;
+        const tensionShake = reelTension > 0.7 ? Math.sin(Date.now() * 0.05) * 2 * reelTension : 0;
+        ctx.save();
+        ctx.translate(tensionShake, 0);
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.beginPath();
-        ctx.roundRect(mx, ty, mw, 6, [3]);
+        ctx.roundRect(mx, ty, mw, 10, [5]);
         ctx.fill();
         const tClr = reelTension > 0.7 ? '#F44336' : reelTension > 0.4 ? '#FF9800' : '#4CAF50';
+        // Tension bar glow
+        ctx.save();
+        ctx.shadowColor = tClr;
+        ctx.shadowBlur = reelTension > 0.6 ? 12 * reelTension : 0;
         ctx.fillStyle = tClr;
         ctx.beginPath();
-        ctx.roundRect(mx, ty, mw * reelTension, 6, [3]);
+        ctx.roundRect(mx, ty, mw * reelTension, 10, [5]);
         ctx.fill();
+        ctx.restore();
+        // Pulsing danger border at high tension
+        if (reelTension > 0.7) {
+            const dangerPulse = 0.4 + Math.sin(Date.now() * 0.01) * 0.3;
+            ctx.strokeStyle = `rgba(255,50,50,${dangerPulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(mx - 1, ty - 1, mw + 2, 12, [6]);
+            ctx.stroke();
+        }
+        // "TENSION" label
+        ctx.fillStyle = reelTension > 0.7 ? '#FF6666' : 'rgba(255,255,255,0.5)';
+        ctx.font = '6px "Press Start 2P", monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText('TENSION', mx - 4, ty + 8);
+        ctx.restore();
 
         // Labels
         ctx.fillStyle = TEXT_CLR;

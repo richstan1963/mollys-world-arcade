@@ -658,6 +658,28 @@ window.ToyCrush = (() => {
                 spriteParticle: `particle_${particleId}`,
             });
         }
+        // Confetti burst on every pop for satisfying feedback
+        spawnConfettiBurst(x, y, color, Math.min(count, 6));
+    }
+
+    function spawnConfettiBurst(x, y, color, count) {
+        const confettiColors = [color, '#FFD700', '#FF69B4', '#4ADE80', '#60A5FA', '#FBBF24'];
+        for (let i = 0; i < count; i++) {
+            const angle = rand(0, Math.PI * 2);
+            const speed = rand(2, 7);
+            particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - rand(3, 6),
+                size: rand(2, 4),
+                color: confettiColors[i % confettiColors.length],
+                life: 1, decay: rand(0.012, 0.025),
+                rotation: rand(0, Math.PI * 2),
+                rotSpeed: rand(-0.4, 0.4),
+                gravity: 0.12,
+                isConfetti: true,
+            });
+        }
     }
 
     function spawnIceParticles(x, y) {
@@ -794,33 +816,48 @@ window.ToyCrush = (() => {
     }
 
     function drawBackground() {
+        const lv = LEVELS[levelIdx];
+        const baseHue = lv ? lv.bgHue : 200;
+        // Animate hue shift slowly over time for a living background
+        const hue = (baseHue + Math.sin(frameCount * 0.001) * 15) % 360;
+
         const bgImg = spr('bg');
         if (bgImg) {
             ctx.drawImage(bgImg, 0, 0, W, H);
-            // Dark overlay for contrast
-            ctx.fillStyle = 'rgba(0,0,20,0.2)';
+            // Warm color wash that shifts per level set
+            ctx.fillStyle = `hsla(${hue}, 40%, 50%, 0.18)`;
             ctx.fillRect(0, 0, W, H);
         } else {
-            const lv = LEVELS[levelIdx];
-            const hue = lv ? lv.bgHue : 200;
-            const grad = ctx.createLinearGradient(0, 0, 0, H);
-            grad.addColorStop(0, `hsl(${hue}, 55%, 82%)`);
-            grad.addColorStop(1, `hsl(${(hue + 30) % 360}, 45%, 72%)`);
+            const grad = ctx.createLinearGradient(0, 0, W * 0.3, H);
+            grad.addColorStop(0, `hsl(${hue}, 65%, 85%)`);
+            grad.addColorStop(0.5, `hsl(${(hue + 25) % 360}, 55%, 78%)`);
+            grad.addColorStop(1, `hsl(${(hue + 50) % 360}, 50%, 72%)`);
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, W, H);
         }
 
+        // Soft radial spotlight at top center
+        const spotGrad = ctx.createRadialGradient(W / 2, gs(60), 0, W / 2, gs(60), H * 0.6);
+        spotGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+        spotGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = spotGrad;
+        ctx.fillRect(0, 0, W, H);
+
         // Subtle floating tile shapes for ambience
-        ctx.globalAlpha = 0.04;
+        ctx.globalAlpha = 0.05;
         const t = frameCount * 0.004;
-        for (let i = 0; i < 5; i++) {
-            const bx = gs(40 + i * 95 + Math.sin(t + i * 1.3) * 25);
-            const by = gs(40 + i * 100 + Math.cos(t * 0.6 + i * 1.7) * 35);
-            const sz = gs(28 + i * 4);
+        for (let i = 0; i < 7; i++) {
+            const bx = gs(40 + i * 65 + Math.sin(t + i * 1.3) * 25);
+            const by = gs(30 + i * 80 + Math.cos(t * 0.6 + i * 1.7) * 35);
+            const sz = gs(24 + i * 3);
             const tileKey = getTileKey(i % 6, 1);
             const tileImg = spr(tileKey);
             if (tileImg) {
-                ctx.drawImage(tileImg, bx - sz / 2, by - sz / 2, sz, sz);
+                ctx.save();
+                ctx.translate(bx, by);
+                ctx.rotate(Math.sin(t * 0.3 + i) * 0.15);
+                ctx.drawImage(tileImg, -sz / 2, -sz / 2, sz, sz);
+                ctx.restore();
             }
         }
         ctx.globalAlpha = 1;
@@ -833,17 +870,32 @@ window.ToyCrush = (() => {
         const w = gs(COLS * BLOCK_SIZE + pad * 2);
         const h = gs(ROWS * BLOCK_SIZE + pad * 2);
 
-        // Grid area: dark rounded rectangle background
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        // Outer shadow for depth
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.35)';
+        ctx.shadowBlur = gs(12);
+        ctx.shadowOffsetY = gs(4);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.beginPath();
-        ctx.roundRect(x - gs(2), y - gs(2), w + gs(4), h + gs(4), gs(12));
+        ctx.roundRect(x - gs(2), y - gs(2), w + gs(4), h + gs(4), gs(14));
         ctx.fill();
+        ctx.restore();
 
-        // Inner lighter fill
-        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        // Inner lighter fill with warm tint
+        const innerGrad = ctx.createLinearGradient(x, y, x, y + h);
+        innerGrad.addColorStop(0, 'rgba(255,255,255,0.14)');
+        innerGrad.addColorStop(1, 'rgba(255,255,255,0.06)');
+        ctx.fillStyle = innerGrad;
         ctx.beginPath();
         ctx.roundRect(x, y, w, h, gs(10));
         ctx.fill();
+
+        // Warm golden border
+        ctx.strokeStyle = 'rgba(255,215,0,0.15)';
+        ctx.lineWidth = gs(1.5);
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, gs(10));
+        ctx.stroke();
 
         // Subtle cell grid lines
         ctx.strokeStyle = 'rgba(255,255,255,0.05)';
@@ -1174,6 +1226,17 @@ window.ToyCrush = (() => {
                     drawStarShape(0, 0, gs(p.size) * p.life, 4);
                     ctx.fill();
                 }
+            } else if (p.isConfetti) {
+                // Confetti rectangle with tumble
+                ctx.translate(gs(p.x), gs(p.y));
+                ctx.rotate(p.rotation);
+                ctx.fillStyle = p.color;
+                const cw = gs(p.size * 1.6);
+                const ch = gs(p.size * 0.7);
+                ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
+                // Subtle highlight on confetti
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fillRect(-cw / 2, -ch / 2, cw, ch * 0.35);
             } else if (p.spriteParticle) {
                 // Kenney white particle sprite, tinted with block color
                 ctx.translate(gs(p.x), gs(p.y));
@@ -1341,9 +1404,23 @@ window.ToyCrush = (() => {
         ctx.fillStyle = '#FFF';
         ctx.fillText(`Level ${lv.id}`, gs(GAME_W / 2), pillY + pillH / 2);
 
-        // ── Goal text with target icon ──
+        // ── Goal panel with polished card ──
+        const gpX = gs(GAME_W / 2 - 105);
+        const gpY = gs(34);
+        const gpW = gs(210);
+        const gpH = gs(22);
+        // Goal card background
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath();
+        ctx.roundRect(gpX - gs(2), gpY - gs(2), gpW + gs(4), gpH + gs(4), gs(12));
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.roundRect(gpX, gpY, gpW, gpH, gs(10));
+        ctx.fill();
+
         ctx.font = `${gs(11)}px sans-serif`;
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
         let goalText = lv.goal.desc;
         if (lv.goal.type === 'clear_color') {
             goalText = `${lv.goal.desc} (${levelProgress}/${lv.goal.target})`;
@@ -1352,12 +1429,29 @@ window.ToyCrush = (() => {
             const goalTileImg = spr(goalTileKey);
             if (goalTileImg) {
                 const iconSz = gs(18);
-                ctx.drawImage(goalTileImg, gs(GAME_W / 2 - 80), gs(34), iconSz, iconSz);
+                ctx.drawImage(goalTileImg, gpX + gs(4), gpY + gs(2), iconSz, iconSz);
+            }
+            // Progress fill inside goal card
+            const gpFrac = clamp(levelProgress / lv.goal.target, 0, 1);
+            if (gpFrac > 0) {
+                ctx.fillStyle = `rgba(${COLOR_HEX[lv.goal.colorIdx] === '#E74C3C' ? '231,76,60' : '74,222,128'},0.15)`;
+                ctx.beginPath();
+                ctx.roundRect(gpX, gpY, gpW * gpFrac, gpH, gs(10));
+                ctx.fill();
             }
         } else {
             goalText = `${lv.goal.desc} (${score}/${lv.goal.target})`;
+            // Score progress fill
+            const gpFrac = clamp(score / lv.goal.target, 0, 1);
+            if (gpFrac > 0) {
+                ctx.fillStyle = 'rgba(255,215,0,0.12)';
+                ctx.beginPath();
+                ctx.roundRect(gpX, gpY, gpW * gpFrac, gpH, gs(10));
+                ctx.fill();
+            }
         }
-        ctx.fillText(goalText, gs(GAME_W / 2), gs(42));
+        ctx.fillStyle = '#FFF';
+        ctx.fillText(goalText, gs(GAME_W / 2), gpY + gpH / 2);
 
         // ── Moves counter (left) ──
         ctx.textAlign = 'left';

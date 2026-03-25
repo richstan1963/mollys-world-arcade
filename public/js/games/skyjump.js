@@ -1186,38 +1186,72 @@ window.SkyJump = (() => {
         ctx.lineTo(gs(6), r + gs(6) - legWiggle);
         ctx.stroke();
 
-        // Jetpack flames
+        // Jetpack flames — bigger, multi-layered
         if (jetpackTimer > 0) {
-            const flameH = gs(8 + Math.random() * 6);
-            ctx.fillStyle = '#FF6600';
-            ctx.beginPath();
-            ctx.moveTo(-gs(4), r);
-            ctx.lineTo(0, r + flameH);
-            ctx.lineTo(gs(4), r);
-            ctx.fill();
-            ctx.fillStyle = '#FFCC00';
-            ctx.beginPath();
-            ctx.moveTo(-gs(2), r);
-            ctx.lineTo(0, r + flameH * 0.6);
-            ctx.lineTo(gs(2), r);
-            ctx.fill();
-        }
-
-        // Rocket boost flames
-        if (rocketBoostTimer > 0) {
             const flameH = gs(14 + Math.random() * 10);
+            ctx.save();
+            ctx.shadowColor = '#FF6600';
+            ctx.shadowBlur = gs(12);
+            // Outer flame
             ctx.fillStyle = '#FF4400';
             ctx.beginPath();
             ctx.moveTo(-gs(6), r);
-            ctx.lineTo(0, r + flameH);
+            ctx.lineTo(gs(-1 + Math.random() * 2), r + flameH);
             ctx.lineTo(gs(6), r);
             ctx.fill();
-            ctx.fillStyle = '#FFAA00';
+            // Mid flame
+            ctx.fillStyle = '#FF8800';
+            ctx.beginPath();
+            ctx.moveTo(-gs(4), r);
+            ctx.lineTo(gs(Math.random() * 1.5), r + flameH * 0.75);
+            ctx.lineTo(gs(4), r);
+            ctx.fill();
+            // Hot core
+            ctx.fillStyle = '#FFEE44';
+            ctx.beginPath();
+            ctx.moveTo(-gs(2), r);
+            ctx.lineTo(0, r + flameH * 0.45);
+            ctx.lineTo(gs(2), r);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Rocket boost flames — massive, dramatic
+        if (rocketBoostTimer > 0) {
+            const flameH = gs(22 + Math.random() * 14);
+            ctx.save();
+            ctx.shadowColor = '#FF4400';
+            ctx.shadowBlur = gs(20);
+            // Outer flame
+            ctx.fillStyle = '#FF2200';
+            ctx.beginPath();
+            ctx.moveTo(-gs(8), r);
+            ctx.lineTo(gs(-2 + Math.random() * 4), r + flameH);
+            ctx.lineTo(gs(8), r);
+            ctx.fill();
+            // Mid flame
+            ctx.fillStyle = '#FF6600';
+            ctx.beginPath();
+            ctx.moveTo(-gs(5), r);
+            ctx.lineTo(gs(Math.random() * 2), r + flameH * 0.7);
+            ctx.lineTo(gs(5), r);
+            ctx.fill();
+            // Hot core
+            ctx.fillStyle = '#FFFF66';
             ctx.beginPath();
             ctx.moveTo(-gs(3), r);
-            ctx.lineTo(0, r + flameH * 0.5);
+            ctx.lineTo(0, r + flameH * 0.4);
             ctx.lineTo(gs(3), r);
             ctx.fill();
+            // Smoke particles hint
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = '#AAA';
+            for (let si = 0; si < 3; si++) {
+                ctx.beginPath();
+                ctx.arc(gs(-3 + Math.random() * 6), r + flameH + gs(2 + si * 4), gs(3 + si * 2), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
         }
 
         // Propeller hat
@@ -1285,6 +1319,12 @@ window.SkyJump = (() => {
 
             ctx.save();
             ctx.translate(ex, ey);
+
+            // Enemy danger glow
+            const dangerPulse = 0.15 + Math.sin(frameCount * 0.06 + e.phase) * 0.1;
+            const dangerColor = e.type === 'ufo' ? '#3B82F6' : e.type === 'monster' ? '#EF4444' : '#8B5CF6';
+            ctx.shadowColor = dangerColor;
+            ctx.shadowBlur = gs(12 + Math.sin(frameCount * 0.08) * 4);
 
             if (e.type === 'ufo') {
                 // UFO body
@@ -1400,21 +1440,34 @@ window.SkyJump = (() => {
             ctx.translate(cx, cy);
 
             if (c.type === 'coin') {
+                // Coin sparkle aura
+                ctx.save();
+                ctx.shadowColor = '#FBBF24';
+                ctx.shadowBlur = gs(8);
                 const csz = gs(COIN_R * 2);
                 if (!drawSprite('coinGold', -csz / 2, -csz / 2, csz, csz)) {
                     ctx.fillStyle = '#FBBF24';
                     ctx.beginPath(); ctx.arc(0, 0, gs(COIN_R), 0, Math.PI * 2); ctx.fill();
                     ctx.strokeStyle = '#D97706'; ctx.lineWidth = gs(1); ctx.stroke();
+                    // Highlight
+                    ctx.fillStyle = '#FFFBE8';
+                    ctx.beginPath(); ctx.arc(gs(-1), gs(-1), gs(COIN_R * 0.3), 0, Math.PI * 2); ctx.fill();
                 }
+                ctx.restore();
             } else {
                 const ssz = gs(STAR_R * 2.2);
+                ctx.save();
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = gs(12);
                 if (!drawSprite('star', -ssz / 2, -ssz / 2, ssz, ssz)) {
                     drawStar(0, 0, gs(STAR_R), 5, '#FFD700', '#F59E0B');
                 }
-                // Glow
+                ctx.restore();
+                // Pulsing glow
+                const starPulse = 0.2 + Math.sin(c.bob * 3) * 0.1;
                 ctx.beginPath();
-                ctx.arc(0, 0, gs(STAR_R + 3), 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255,215,0,0.15)';
+                ctx.arc(0, 0, gs(STAR_R + 5), 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,215,0,${starPulse})`;
                 ctx.fill();
             }
 

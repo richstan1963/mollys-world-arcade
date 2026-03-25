@@ -1310,142 +1310,130 @@ window.MiniStroke = (() => {
 
     // ── Table with wood rail sprites ──
     function drawTable() {
-        // Wood rail border using wood element sprites tiled
-        const woodSpr = getSprite('wood/011'); // wide plank sprite
-        if (woodSpr) {
-            // Top rail
-            tileSpriteRect('wood/011', 0, 0, W, RAIL_W, 40, RAIL_W, '#5C3317');
-            // Bottom rail
-            tileSpriteRect('wood/011', 0, H - RAIL_W, W, RAIL_W, 40, RAIL_W, '#5C3317');
-            // Left rail
-            tileSpriteRect('wood/019', 0, RAIL_W, RAIL_W, H - RAIL_W * 2, RAIL_W, 40, '#5C3317');
-            // Right rail
-            tileSpriteRect('wood/019', W - RAIL_W, RAIL_W, RAIL_W, H - RAIL_W * 2, RAIL_W, 40, '#5C3317');
-        } else {
-            // Fallback: gradient wood rails
-            const g = ctx.createLinearGradient(0, 0, W, H);
-            g.addColorStop(0, '#6B3A1F');
-            g.addColorStop(0.5, '#5C3317');
-            g.addColorStop(1, '#4A2810');
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, W, H);
+        const TW = W - RAIL_W * 2, TH = H - RAIL_W * 2;
+
+        // ── RICH MAHOGANY RAILS ──
+        let rGrad = ctx.createLinearGradient(0, 0, 0, RAIL_W);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, 0, W, RAIL_W);
+
+        rGrad = ctx.createLinearGradient(0, H - RAIL_W, 0, H);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, H - RAIL_W, W, RAIL_W);
+
+        rGrad = ctx.createLinearGradient(0, 0, RAIL_W, 0);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, RAIL_W, RAIL_W, TH);
+
+        rGrad = ctx.createLinearGradient(W - RAIL_W, 0, W, 0);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(W - RAIL_W, RAIL_W, RAIL_W, TH);
+
+        // Subtle noise on rails
+        for (let i = 0; i < 400; i++) {
+            const nx = (i * 197.3 + 13) % W, ny = (i * 127.7 + 41) % H;
+            if (ny < RAIL_W || ny > H - RAIL_W || nx < RAIL_W || nx > W - RAIL_W) {
+                ctx.fillStyle = (i % 2 === 0) ? 'rgba(0,0,0,0.03)' : 'rgba(255,200,140,0.02)';
+                ctx.fillRect(nx, ny, 1, 1);
+            }
         }
 
-        // Darken rail edges for depth
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.fillRect(0, 0, W, 2);
-        ctx.fillRect(0, H - 2, W, 2);
-        ctx.fillRect(0, 0, 2, H);
-        ctx.fillRect(W - 2, 0, 2, H);
+        // Green cushion bumper strip
+        ctx.fillStyle = '#1B7A3D';
+        ctx.fillRect(RAIL_W - 1, RAIL_W - 3, TW + 2, 3);
+        ctx.fillRect(RAIL_W - 1, H - RAIL_W, TW + 2, 3);
+        ctx.fillRect(RAIL_W - 3, RAIL_W - 1, 3, TH + 2);
+        ctx.fillRect(W - RAIL_W, RAIL_W - 1, 3, TH + 2);
+        ctx.fillStyle = 'rgba(50,180,90,0.3)';
+        ctx.fillRect(RAIL_W, RAIL_W - 1, TW, 1);
+        ctx.fillRect(RAIL_W, H - RAIL_W, TW, 1);
+        ctx.fillRect(RAIL_W - 1, RAIL_W, 1, TH);
+        ctx.fillRect(W - RAIL_W, RAIL_W, 1, TH);
 
-        // Green felt playing surface
+        // Inner bevel highlight
+        ctx.fillStyle = 'rgba(200,170,120,0.35)';
+        ctx.fillRect(RAIL_W - 4, RAIL_W - 4, TW + 8, 1);
+        ctx.fillRect(RAIL_W - 4, RAIL_W - 4, 1, TH + 8);
+        // Outer bevel shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(0, 0, W, 1); ctx.fillRect(0, H - 1, W, 1);
+        ctx.fillRect(0, 0, 1, H); ctx.fillRect(W - 1, 0, 1, H);
+
+        // Gold corner brackets
+        ctx.fillStyle = '#C8A050';
+        ctx.fillRect(3, 3, 12, 2); ctx.fillRect(3, 3, 2, 12);
+        ctx.fillRect(W - 15, 3, 12, 2); ctx.fillRect(W - 5, 3, 2, 12);
+        ctx.fillRect(3, H - 5, 12, 2); ctx.fillRect(3, H - 15, 2, 12);
+        ctx.fillRect(W - 15, H - 5, 12, 2); ctx.fillRect(W - 5, H - 15, 2, 12);
+        ctx.fillStyle = 'rgba(255,220,120,0.4)';
+        ctx.fillRect(3, 3, 10, 1); ctx.fillRect(3, 3, 1, 10);
+        ctx.fillRect(W - 13, 3, 10, 1); ctx.fillRect(W - 4, 3, 1, 10);
+        ctx.fillRect(3, H - 4, 10, 1); ctx.fillRect(3, H - 13, 1, 10);
+        ctx.fillRect(W - 13, H - 4, 10, 1); ctx.fillRect(W - 4, H - 13, 1, 10);
+
+        // ── FELT SURFACE ──
         if (feltPattern) {
             ctx.fillStyle = feltPattern;
-            ctx.fillRect(RAIL_W, RAIL_W, W - RAIL_W * 2, H - RAIL_W * 2);
+            ctx.fillRect(RAIL_W, RAIL_W, TW, TH);
         } else {
             const fg = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, W * 0.6);
-            fg.addColorStop(0, '#1B8C3D');
-            fg.addColorStop(1, '#146B2E');
+            fg.addColorStop(0, '#1B8C3D'); fg.addColorStop(1, '#146B2E');
             ctx.fillStyle = fg;
-            ctx.fillRect(RAIL_W, RAIL_W, W - RAIL_W * 2, H - RAIL_W * 2);
+            ctx.fillRect(RAIL_W, RAIL_W, TW, TH);
+        }
+        // Radial light
+        const feltHL = ctx.createRadialGradient(W / 2, H / 2, 20, W / 2, H / 2, W * 0.5);
+        feltHL.addColorStop(0, 'rgba(40,180,80,0.15)'); feltHL.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = feltHL;
+        ctx.fillRect(RAIL_W, RAIL_W, TW, TH);
+
+        // Felt noise
+        for (let i = 0; i < 200; i++) {
+            const fx = RAIL_W + (i * 137.5 + 7) % TW;
+            const fy = RAIL_W + (i * 89.3 + 23) % TH;
+            ctx.fillStyle = (i % 3 !== 0) ? 'rgba(0,20,0,0.04)' : 'rgba(40,100,40,0.03)';
+            ctx.fillRect(fx, fy, 1, 1);
         }
 
-        // Subtle felt radial highlight
-        const feltHighlight = ctx.createRadialGradient(W / 2, H / 2, 20, W / 2, H / 2, W * 0.5);
-        feltHighlight.addColorStop(0, 'rgba(40,180,80,0.15)');
-        feltHighlight.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = feltHighlight;
-        ctx.fillRect(RAIL_W, RAIL_W, W - RAIL_W * 2, H - RAIL_W * 2);
-
-        // Felt texture lines (subtle)
-        ctx.strokeStyle = 'rgba(255,255,255,0.012)';
-        ctx.lineWidth = 0.5;
-        for (let y = RAIL_W; y < H - RAIL_W; y += 4) {
-            ctx.beginPath();
-            ctx.moveTo(RAIL_W, y);
-            ctx.lineTo(W - RAIL_W, y);
-            ctx.stroke();
+        // Diamond sights
+        ctx.fillStyle = '#C8A860';
+        for (const p of [0.25, 0.5, 0.75]) {
+            const dx = RAIL_W + TW * p;
+            drawMiniDiamond(ctx, dx, RAIL_W / 2, 3);
+            drawMiniDiamond(ctx, dx, H - RAIL_W / 2, 3);
         }
-
-        // Rail inner edge (dark shadow line)
-        ctx.strokeStyle = '#3A1F0A';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(RAIL_W - 1, RAIL_W - 1, W - RAIL_W * 2 + 2, H - RAIL_W * 2 + 2);
-
-        // Rail diamond markers using metal sprites
-        const metalDiamondSpr = getSprite('metal/003');
-        const diamondPositions = [0.25, 0.5, 0.75];
-        for (const p of diamondPositions) {
-            const dx = RAIL_W + (W - 2 * RAIL_W) * p;
-            // Top rail diamonds
-            if (metalDiamondSpr) {
-                ctx.drawImage(metalDiamondSpr, dx - 4, RAIL_W / 2 - 4, 8, 8);
-                ctx.drawImage(metalDiamondSpr, dx - 4, H - RAIL_W / 2 - 4, 8, 8);
-            } else {
-                ctx.fillStyle = '#FFD700';
-                ctx.beginPath(); ctx.arc(dx, RAIL_W / 2, 2, 0, PI2); ctx.fill();
-                ctx.beginPath(); ctx.arc(dx, H - RAIL_W / 2, 2, 0, PI2); ctx.fill();
-            }
-        }
-        // Side diamonds
         for (const p of [0.33, 0.67]) {
-            const dy = RAIL_W + (H - 2 * RAIL_W) * p;
-            if (metalDiamondSpr) {
-                ctx.drawImage(metalDiamondSpr, RAIL_W / 2 - 4, dy - 4, 8, 8);
-                ctx.drawImage(metalDiamondSpr, W - RAIL_W / 2 - 4, dy - 4, 8, 8);
-            } else {
-                ctx.fillStyle = '#FFD700';
-                ctx.beginPath(); ctx.arc(RAIL_W / 2, dy, 2, 0, PI2); ctx.fill();
-                ctx.beginPath(); ctx.arc(W - RAIL_W / 2, dy, 2, 0, PI2); ctx.fill();
-            }
+            const dy = RAIL_W + TH * p;
+            drawMiniDiamond(ctx, RAIL_W / 2, dy, 3);
+            drawMiniDiamond(ctx, W - RAIL_W / 2, dy, 3);
         }
 
-        // Pockets with metal rim sprites
+        // Pockets
         for (const p of POCKETS) {
-            // Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.beginPath();
-            ctx.arc(p.x + 1, p.y + 1, POCKET_R + 3, 0, PI2);
-            ctx.fill();
-
-            // Dark pocket hole
-            ctx.fillStyle = '#080808';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, POCKET_R, 0, PI2);
-            ctx.fill();
-
-            // Inner depth gradient
+            ctx.beginPath(); ctx.arc(p.x + 1, p.y + 1, POCKET_R + 3, 0, PI2); ctx.fill();
             const pg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, POCKET_R);
-            pg.addColorStop(0, 'rgba(0,0,0,0.95)');
-            pg.addColorStop(1, 'rgba(30,15,5,0.6)');
+            pg.addColorStop(0, 'rgba(0,0,0,0.95)'); pg.addColorStop(1, 'rgba(30,15,5,0.6)');
             ctx.fillStyle = pg;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, POCKET_R, 0, PI2);
-            ctx.fill();
-
-            // Metal rim sprite ring
-            const rimSpr = getSprite('metal/040');
-            if (rimSpr) {
-                ctx.save();
-                ctx.globalAlpha = 0.7;
-                ctx.drawImage(rimSpr, p.x - POCKET_R - 3, p.y - POCKET_R - 3, (POCKET_R + 3) * 2, (POCKET_R + 3) * 2);
-                ctx.globalAlpha = 1;
-                ctx.restore();
-            } else {
-                // Fallback: chrome ring
-                ctx.strokeStyle = '#888';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, POCKET_R + 1, 0, PI2);
-                ctx.stroke();
-            }
-            // Inner metallic rim highlight
-            ctx.strokeStyle = 'rgba(200,200,200,0.2)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, POCKET_R - 1, 0, PI2);
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(p.x, p.y, POCKET_R, 0, PI2); ctx.fill();
+            ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(p.x, p.y, POCKET_R + 1, 0, PI2); ctx.stroke();
+            ctx.strokeStyle = 'rgba(200,200,200,0.15)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(p.x, p.y, POCKET_R - 1, 0, PI2); ctx.stroke();
         }
+    }
+
+    function drawMiniDiamond(c, cx, cy, s) {
+        c.beginPath(); c.moveTo(cx, cy - s); c.lineTo(cx + s, cy);
+        c.lineTo(cx, cy + s); c.lineTo(cx - s, cy); c.closePath(); c.fill();
     }
 
     function drawObstacles() {

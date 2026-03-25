@@ -1276,52 +1276,105 @@ window.SlingPool = (() => {
     }
 
     function drawTable() {
-        // Wooden outer rail
-        ctx.fillStyle = RAIL_CLR;
-        ctx.fillRect(0, 0, W, H);
+        // ── RICH MAHOGANY RAILS ──
+        const TW = W - RAIL_W * 2, TH = H - RAIL_W * 2;
 
-        // Rail highlights
-        ctx.fillStyle = RAIL_LIGHT;
-        ctx.fillRect(2, 2, W - 4, 4);      // top edge
-        ctx.fillRect(2, 2, 4, H - 4);      // left edge
+        // Top rail
+        let rGrad = ctx.createLinearGradient(0, 0, 0, RAIL_W);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, 0, W, RAIL_W);
 
-        // Felt surface
+        // Bottom rail
+        rGrad = ctx.createLinearGradient(0, H - RAIL_W, 0, H);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, H - RAIL_W, W, RAIL_W);
+
+        // Left rail
+        rGrad = ctx.createLinearGradient(0, 0, RAIL_W, 0);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(0, RAIL_W, RAIL_W, H - RAIL_W * 2);
+
+        // Right rail
+        rGrad = ctx.createLinearGradient(W - RAIL_W, 0, W, 0);
+        rGrad.addColorStop(0, '#3D1C0A'); rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12'); rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210'); rGrad.addColorStop(1, '#3D1C0A');
+        ctx.fillStyle = rGrad; ctx.fillRect(W - RAIL_W, RAIL_W, RAIL_W, H - RAIL_W * 2);
+
+        // Subtle noise on rails
+        for (let i = 0; i < 400; i++) {
+            const nx = (i * 197.3 + 13) % W, ny = (i * 127.7 + 41) % H;
+            if (ny < RAIL_W || ny > H - RAIL_W || nx < RAIL_W || nx > W - RAIL_W) {
+                ctx.fillStyle = (i % 2 === 0) ? 'rgba(0,0,0,0.03)' : 'rgba(255,200,140,0.02)';
+                ctx.fillRect(nx, ny, 1, 1);
+            }
+        }
+
+        // Green cushion bumper strip
+        ctx.fillStyle = '#1B7A3D';
+        ctx.fillRect(RAIL_W - 1, RAIL_W - 3, TW + 2, 3);
+        ctx.fillRect(RAIL_W - 1, H - RAIL_W, TW + 2, 3);
+        ctx.fillRect(RAIL_W - 3, RAIL_W - 1, 3, TH + 2);
+        ctx.fillRect(W - RAIL_W, RAIL_W - 1, 3, TH + 2);
+        // Cushion highlight
+        ctx.fillStyle = 'rgba(50,180,90,0.3)';
+        ctx.fillRect(RAIL_W, RAIL_W - 1, TW, 1);
+        ctx.fillRect(RAIL_W, H - RAIL_W, TW, 1);
+        ctx.fillRect(RAIL_W - 1, RAIL_W, 1, TH);
+        ctx.fillRect(W - RAIL_W, RAIL_W, 1, TH);
+
+        // Inner bevel highlight
+        ctx.fillStyle = 'rgba(200,170,120,0.35)';
+        ctx.fillRect(RAIL_W - 4, RAIL_W - 4, TW + 8, 1);
+        ctx.fillRect(RAIL_W - 4, RAIL_W - 4, 1, TH + 8);
+        // Outer bevel shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(0, 0, W, 1); ctx.fillRect(0, H - 1, W, 1);
+        ctx.fillRect(0, 0, 1, H); ctx.fillRect(W - 1, 0, 1, H);
+
+        // Gold corner brackets
+        ctx.fillStyle = '#C8A050';
+        ctx.fillRect(3, 3, 12, 2); ctx.fillRect(3, 3, 2, 12);
+        ctx.fillRect(W - 15, 3, 12, 2); ctx.fillRect(W - 5, 3, 2, 12);
+        ctx.fillRect(3, H - 5, 12, 2); ctx.fillRect(3, H - 15, 2, 12);
+        ctx.fillRect(W - 15, H - 5, 12, 2); ctx.fillRect(W - 5, H - 15, 2, 12);
+        ctx.fillStyle = 'rgba(255,220,120,0.4)';
+        ctx.fillRect(3, 3, 10, 1); ctx.fillRect(3, 3, 1, 10);
+        ctx.fillRect(W - 13, 3, 10, 1); ctx.fillRect(W - 4, 3, 1, 10);
+        ctx.fillRect(3, H - 4, 10, 1); ctx.fillRect(3, H - 13, 1, 10);
+        ctx.fillRect(W - 13, H - 4, 10, 1); ctx.fillRect(W - 4, H - 13, 1, 10);
+
+        // ── FELT SURFACE ──
         const feltGrad = ctx.createRadialGradient(W / 2, H / 2, 20, W / 2, H / 2, W * 0.6);
         feltGrad.addColorStop(0, FELT_CLR);
         feltGrad.addColorStop(1, FELT_CLR2);
         ctx.fillStyle = feltGrad;
-        ctx.fillRect(RAIL_W, RAIL_W, W - RAIL_W * 2, H - RAIL_W * 2);
+        ctx.fillRect(RAIL_W, RAIL_W, TW, TH);
 
-        // Felt texture lines (subtle)
-        ctx.strokeStyle = 'rgba(255,255,255,0.015)';
-        ctx.lineWidth = 0.5;
-        for (let i = 0; i < W; i += 8) {
-            ctx.beginPath();
-            ctx.moveTo(i, RAIL_W);
-            ctx.lineTo(i, H - RAIL_W);
-            ctx.stroke();
+        // Felt texture (subtle noise dots)
+        for (let i = 0; i < 200; i++) {
+            const fx = RAIL_W + (i * 137.5 + 7) % TW;
+            const fy = RAIL_W + (i * 89.3 + 23) % TH;
+            ctx.fillStyle = (i % 3 !== 0) ? 'rgba(0,20,0,0.04)' : 'rgba(40,100,40,0.03)';
+            ctx.fillRect(fx, fy, 1, 1);
         }
-
-        // Cushion (inner rail edge)
-        ctx.strokeStyle = CUSHION_CLR;
-        ctx.lineWidth = 3;
-        ctx.strokeRect(RAIL_W + 1, RAIL_W + 1, W - RAIL_W * 2 - 2, H - RAIL_W * 2 - 2);
 
         // Draw pockets
         for (const p of pockets) {
-            // Pocket shadow
             ctx.beginPath();
             ctx.arc(p.x + 1, p.y + 1, POCKET_R + 2, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.fill();
-
-            // Pocket
             ctx.beginPath();
             ctx.arc(p.x, p.y, POCKET_R, 0, Math.PI * 2);
             ctx.fillStyle = '#0a0a0a';
             ctx.fill();
-
-            // Inner rim
             ctx.beginPath();
             ctx.arc(p.x, p.y, POCKET_R - 2, 0, Math.PI * 2);
             ctx.strokeStyle = '#333';
@@ -1335,7 +1388,7 @@ window.SlingPool = (() => {
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
         ctx.fill();
 
-        // Head string (horizontal line above turret zone)
+        // Head string
         ctx.setLineDash([4, 4]);
         ctx.strokeStyle = 'rgba(255,255,255,0.08)';
         ctx.lineWidth = 0.5;

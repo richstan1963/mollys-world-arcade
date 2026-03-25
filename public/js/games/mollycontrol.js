@@ -988,16 +988,20 @@ window.MollyControl = (() => {
                     for (let wy = by + 5; wy < gy - 4; wy += 7) {
                         for (let wx = bx + 3; wx < bx + b.w - 3; wx += 5) {
                             const winSeed = (seed + Math.floor(wx) * 7 + Math.floor(wy) * 13) % 100;
-                            if (winSeed > 25) {
-                                // Flicker some windows
-                                const flicker = (winSeed % 20 < 3) ? (0.6 + 0.4 * Math.sin(t * 2 + winSeed)) : 1;
+                            if (winSeed > 15) {
+                                // Flicker some windows — more lit
+                                const flicker = (winSeed % 20 < 5) ? (0.6 + 0.4 * Math.sin(t * 2 + winSeed)) : 1;
                                 const warm = winSeed % 3 === 0;
-                                ctx.fillStyle = warm ? `rgba(254,240,138,${(0.9 * flicker).toFixed(2)})` : `rgba(254,249,195,${(0.7 * flicker).toFixed(2)})`;
-                                ctx.fillRect(wx, wy, 2, 3);
-                                // Tiny window glow
-                                if (winSeed > 70) {
-                                    ctx.fillStyle = `rgba(254,249,195,${(0.15 * flicker).toFixed(2)})`;
-                                    ctx.fillRect(wx - 1, wy - 1, 4, 5);
+                                const cool = winSeed % 7 === 0;
+                                const wColor = cool ? `rgba(180,220,255,${(0.7 * flicker).toFixed(2)})` :
+                                               warm ? `rgba(254,230,100,${(0.95 * flicker).toFixed(2)})` :
+                                               `rgba(254,249,195,${(0.8 * flicker).toFixed(2)})`;
+                                ctx.fillStyle = wColor;
+                                ctx.fillRect(wx, wy, 3, 3);
+                                // Wider window glow
+                                if (winSeed > 50) {
+                                    ctx.fillStyle = `rgba(254,249,195,${(0.2 * flicker).toFixed(2)})`;
+                                    ctx.fillRect(wx - 1, wy - 1, 5, 5);
                                 }
                             }
                         }
@@ -1184,12 +1188,12 @@ window.MollyControl = (() => {
 
     function drawPlayerMissiles() {
         playerMissiles.forEach(m => {
-            // Smoke trail puffs
+            // Smoke trail puffs — thicker
             if (m.trail.length > 2) {
                 for (let t = 0; t < m.trail.length; t++) {
                     const pct = t / m.trail.length;
-                    const alpha = pct * 0.25;
-                    const size = (1 - pct) * 4 + 2;
+                    const alpha = pct * 0.35;
+                    const size = (1 - pct) * 6 + 3;
                     ctx.fillStyle = `rgba(180,200,220,${alpha.toFixed(2)})`;
                     ctx.beginPath();
                     ctx.arc(m.trail[t].x + (Math.random() - 0.5) * 2, m.trail[t].y + (Math.random() - 0.5) * 2, size, 0, Math.PI * 2);
@@ -1265,14 +1269,14 @@ window.MollyControl = (() => {
             const pulse = 0.75 + 0.25 * Math.sin(Date.now() * 0.02);
             const phaseAlpha = e.phase === 2 ? Math.max(0, 1 - e.timer / EXP_SHRINK_MS) : 1;
 
-            // Wide atmospheric glow
-            const farGlow = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r * 2.5);
-            farGlow.addColorStop(0, `rgba(255,140,50,${(0.15 * phaseAlpha).toFixed(2)})`);
-            farGlow.addColorStop(0.5, `rgba(255,60,30,${(0.06 * phaseAlpha).toFixed(2)})`);
+            // Wide atmospheric glow — bigger radius
+            const farGlow = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r * 3.5);
+            farGlow.addColorStop(0, `rgba(255,140,50,${(0.2 * phaseAlpha).toFixed(2)})`);
+            farGlow.addColorStop(0.4, `rgba(255,60,30,${(0.1 * phaseAlpha).toFixed(2)})`);
             farGlow.addColorStop(1, 'transparent');
             ctx.fillStyle = farGlow;
             ctx.beginPath();
-            ctx.arc(e.x, e.y, e.r * 2.5, 0, Math.PI * 2);
+            ctx.arc(e.x, e.y, e.r * 3.5, 0, Math.PI * 2);
             ctx.fill();
 
             // Core explosion: white center → orange → red → fade

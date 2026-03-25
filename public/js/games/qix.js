@@ -908,13 +908,15 @@ window.Qix = (() => {
                 const gradDist = Math.sqrt((gradX - 0.5) ** 2 + (gradY - 0.5) ** 2);
                 const brightness = 0.5 + (1 - gradDist) * 0.5;
 
-                // Pattern: animated diagonal stripes shimmer
-                const stripe = Math.sin((gx + gy) * 0.5 + frameCount * 0.03) * 0.04;
-                const checker = ((gx + gy) % 4 < 2) ? 1.0 + stripe : 0.92 - stripe;
+                // Pattern: richer animated diagonal + crosshatch shimmer
+                const stripe = Math.sin((gx + gy) * 0.5 + frameCount * 0.03) * 0.06;
+                const cross = Math.sin((gx - gy) * 0.3 + frameCount * 0.02) * 0.03;
+                const wave = Math.sin(gx * 0.15 + frameCount * 0.01) * Math.sin(gy * 0.15 + frameCount * 0.015) * 0.05;
+                const checker = ((gx + gy) % 4 < 2) ? 1.0 + stripe + wave : 0.88 - stripe + cross;
 
-                const r = Math.floor(c.r * brightness * checker * 0.6);
-                const g = Math.floor(c.g * brightness * checker * 0.6);
-                const b = Math.floor(c.b * brightness * checker * 0.6);
+                const r = Math.floor(c.r * brightness * checker * 0.65);
+                const g = Math.floor(c.g * brightness * checker * 0.65);
+                const b = Math.floor(c.b * brightness * checker * 0.65);
 
                 for (let py2 = pixY; py2 < pixY + pixH && py2 < imgH; py2++) {
                     for (let px2 = pixX; px2 < pixX + pixW && px2 < imgW; px2++) {
@@ -1008,9 +1010,9 @@ window.Qix = (() => {
                     const hue = (q.hue + i * 12 + tendril * 40) % 360;
                     const wobbleX = Math.sin(frameCount * 0.04 + i * 0.3 + offset) * (3 + t * 5);
                     const wobbleY = Math.cos(frameCount * 0.035 + i * 0.25 + offset) * (3 + t * 5);
-                    ctx.strokeStyle = `hsla(${hue}, 90%, ${60 - tendril * 10}%, ${(1 - t * 0.8) * 0.7})`;
-                    ctx.shadowColor = `hsla(${hue}, 90%, 50%, 0.4)`;
-                    ctx.shadowBlur = gs(5 * (1 - t));
+                    ctx.strokeStyle = `hsla(${hue}, 95%, ${65 - tendril * 10}%, ${(1 - t * 0.7) * 0.8})`;
+                    ctx.shadowColor = `hsla(${hue}, 95%, 55%, 0.6)`;
+                    ctx.shadowBlur = gs(8 * (1 - t));
                     ctx.beginPath();
                     ctx.moveTo(gs(q.segments[i - 1].x + wobbleX * (1 - (i-1)/q.segments.length)),
                                gs(q.segments[i - 1].y + wobbleY * (1 - (i-1)/q.segments.length)));
@@ -1066,12 +1068,12 @@ window.Qix = (() => {
         for (const s of sparx) {
             const pulse = 0.7 + Math.sin(frameCount * 0.3 + s.x) * 0.3;
 
-            // Electric trail behind sparx
-            ctx.strokeStyle = `rgba(251,191,36,${0.15 * pulse})`;
-            ctx.lineWidth = gs(2);
+            // Electric trail behind sparx — wider and brighter
+            ctx.strokeStyle = `rgba(251,191,36,${0.2 * pulse})`;
+            ctx.lineWidth = gs(3);
             ctx.shadowColor = '#FBBF24';
-            ctx.shadowBlur = gs(4);
-            for (let t = 1; t <= 5; t++) {
+            ctx.shadowBlur = gs(8);
+            for (let t = 1; t <= 7; t++) {
                 const trailAlpha = (5 - t) / 5 * 0.3;
                 ctx.strokeStyle = `rgba(251,191,36,${trailAlpha})`;
                 ctx.beginPath();

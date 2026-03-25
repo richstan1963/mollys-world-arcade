@@ -1119,7 +1119,7 @@ window.BubbleBlaster = (() => {
 
     function drawBiomeDecor(biome) {
         ctx.save();
-        ctx.globalAlpha = 0.08;
+        ctx.globalAlpha = 0.14;
         if (biome === 'forest') {
             // Distant trees
             ctx.fillStyle = '#1A5C1A';
@@ -1278,14 +1278,14 @@ window.BubbleBlaster = (() => {
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fill();
 
-        // Rainbow shimmer reflection that moves
-        ctx.globalAlpha = 0.2 + Math.sin(b.shimmer) * 0.1;
+        // Rainbow shimmer reflection — more visible with brighter colors
+        ctx.globalAlpha = 0.3 + Math.sin(b.shimmer) * 0.15;
         const shimmerAngle = b.shimmer * 0.7;
-        const shimmerX = x + Math.cos(shimmerAngle) * r * 0.3;
-        const shimmerY = y + Math.sin(shimmerAngle) * r * 0.3;
-        const shimGrad = ctx.createRadialGradient(shimmerX, shimmerY, 0, shimmerX, shimmerY, r * 0.8);
-        shimGrad.addColorStop(0, `hsla(${(frameCount * 4 + b.shimmer * 60) % 360},90%,75%,0.4)`);
-        shimGrad.addColorStop(0.5, `hsla(${(frameCount * 4 + b.shimmer * 60 + 120) % 360},80%,70%,0.2)`);
+        const shimmerX = x + Math.cos(shimmerAngle) * r * 0.35;
+        const shimmerY = y + Math.sin(shimmerAngle) * r * 0.35;
+        const shimGrad = ctx.createRadialGradient(shimmerX, shimmerY, 0, shimmerX, shimmerY, r * 0.9);
+        shimGrad.addColorStop(0, `hsla(${(frameCount * 5 + b.shimmer * 60) % 360},100%,80%,0.5)`);
+        shimGrad.addColorStop(0.4, `hsla(${(frameCount * 5 + b.shimmer * 60 + 120) % 360},90%,75%,0.3)`);
         shimGrad.addColorStop(1, 'transparent');
         ctx.fillStyle = shimGrad;
         ctx.beginPath();
@@ -1325,10 +1325,10 @@ window.BubbleBlaster = (() => {
                          boss: '#E67E22', charger: '#FF6B35', floater: '#4CC9F0', splitter: '#C77DFF' };
         ctx.fillStyle = colors[enemy.type] || '#E74C3C';
 
-        // Struggle animation — shake and push against bubble wall
-        const struggle = Math.sin(trapTimer * 0.15) * size * 0.15;
-        const pushX = Math.sin(trapTimer * 0.08) * size * 0.2;
-        const pushY = Math.cos(trapTimer * 0.12) * size * 0.1;
+        // Struggle animation — more pronounced shake and push
+        const struggle = Math.sin(trapTimer * 0.18) * size * 0.25;
+        const pushX = Math.sin(trapTimer * 0.1) * size * 0.3;
+        const pushY = Math.cos(trapTimer * 0.14) * size * 0.15;
 
         // Squished body with struggle offset
         ctx.beginPath();

@@ -784,8 +784,15 @@ window.Bomberman = (() => {
         ctx.beginPath(); ctx.arc(x + gs(5), y + s - gs(5), rs, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(x + s - gs(5), y + s - gs(5), rs, 0, Math.PI * 2); ctx.fill();
         // Highlight edge
-        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
         ctx.fillRect(x, y, s, gs(2));
+        // Bottom shadow edge
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(x, y + s - gs(2), s, gs(2));
+        // Mortar line texture
+        ctx.fillStyle = 'rgba(0,0,0,0.06)';
+        ctx.fillRect(x, y + s / 2 - gs(0.5), s, gs(1));
+        ctx.fillRect(x + s / 2 - gs(0.5), y, gs(1), s);
     }
 
     function drawSoftBlock(x, y, s) {
@@ -1021,12 +1028,24 @@ window.Bomberman = (() => {
             const expand = t < 0.3 ? t / 0.3 : 1;
             const pad = gs(2) * (1 - expand);
 
-            // Base fire gradient
+            // Ambient glow around explosion — brighter
+            ctx.save();
+            ctx.globalAlpha = alpha * 0.2;
+            const ambGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * 1.2);
+            ambGlow.addColorStop(0, '#FF8800');
+            ambGlow.addColorStop(1, 'rgba(255,60,0,0)');
+            ctx.fillStyle = ambGlow;
+            ctx.beginPath();
+            ctx.arc(cx, cy, s * 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Base fire gradient — brighter
             const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * 0.6);
-            grad.addColorStop(0, `rgba(255,255,255,${alpha * 0.9})`);
-            grad.addColorStop(0.3, `rgba(255,200,50,${alpha * 0.8})`);
-            grad.addColorStop(0.7, `rgba(255,100,20,${alpha * 0.6})`);
-            grad.addColorStop(1, `rgba(200,30,0,${alpha * 0.2})`);
+            grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+            grad.addColorStop(0.2, `rgba(255,240,100,${alpha * 0.9})`);
+            grad.addColorStop(0.5, `rgba(255,150,30,${alpha * 0.7})`);
+            grad.addColorStop(1, `rgba(200,30,0,${alpha * 0.25})`);
             ctx.fillStyle = grad;
             ctx.fillRect(x + pad, y + pad, s - pad * 2, s - pad * 2);
 
@@ -1157,9 +1176,9 @@ window.Bomberman = (() => {
             const s = TILE * SCALE;
             const pulse = 0.8 + 0.2 * Math.sin(frameCount * 0.12 + pw.col);
 
-            // Outer glow ring
+            // Outer glow ring — more visible pulsing
             ctx.shadowColor = PW_COLORS[pw.type];
-            ctx.shadowBlur = gs(12) * pulse;
+            ctx.shadowBlur = gs(18) * pulse;
             ctx.fillStyle = `rgba(${pw.type === PW_BOMB ? '59,130,246' : pw.type === PW_FIRE ? '239,68,68' : pw.type === PW_SPEED ? '34,197,94' : pw.type === PW_WALLPASS ? '168,85,247' : pw.type === PW_BOMBPASS ? '245,158,11' : pw.type === PW_REMOTE ? '236,72,153' : pw.type === PW_KICK ? '20,184,166' : '107,114,128'},0.25)`;
             ctx.beginPath();
             ctx.arc(x, y, s * 0.42 * pulse, 0, Math.PI * 2);

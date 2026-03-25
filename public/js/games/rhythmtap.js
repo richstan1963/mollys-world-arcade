@@ -552,29 +552,50 @@ window.RhythmTap = (() => {
             const x = e.x, y = e.y;
             ctx.save();
             if (e.type === 'hit') {
-                // Expanding ring
+                // Screen-wide pulse on Perfect hits (signature "whoa" moment)
+                if (e.isPerfect) {
+                    ctx.fillStyle = e.color;
+                    ctx.globalAlpha = (1 - p) * 0.12;
+                    ctx.fillRect(0, 0, W, H);
+                    // Horizontal light beam sweep
+                    const beamGrad = ctx.createLinearGradient(0, y - 30, 0, y + 30);
+                    beamGrad.addColorStop(0, 'rgba(255,255,255,0)');
+                    beamGrad.addColorStop(0.5, `rgba(255,255,255,${(1 - p) * 0.15})`);
+                    beamGrad.addColorStop(1, 'rgba(255,255,255,0)');
+                    ctx.fillStyle = beamGrad;
+                    ctx.fillRect(0, y - 30, W, 60);
+                }
+                // Expanding ring — brighter
                 ctx.strokeStyle = e.color;
-                ctx.lineWidth = 3 * (1 - p);
+                ctx.lineWidth = 4 * (1 - p);
                 ctx.globalAlpha = 1 - p;
+                ctx.shadowColor = e.color;
+                ctx.shadowBlur = 15 * (1 - p);
                 ctx.beginPath();
-                ctx.arc(x, y, laneW * 0.3 + p * laneW * 0.5, 0, Math.PI * 2);
+                ctx.arc(x, y, laneW * 0.3 + p * laneW * 0.7, 0, Math.PI * 2);
                 ctx.stroke();
-                // Inner flash
+                ctx.shadowBlur = 0;
+                // Inner flash — bigger
                 ctx.fillStyle = e.color;
-                ctx.globalAlpha = (1 - p) * 0.3;
+                ctx.globalAlpha = (1 - p) * 0.4;
                 ctx.beginPath();
-                ctx.arc(x, y, laneW * 0.3 * (1 - p), 0, Math.PI * 2);
+                ctx.arc(x, y, laneW * 0.35 * (1 - p), 0, Math.PI * 2);
                 ctx.fill();
             } else {
-                // Miss X
-                ctx.strokeStyle = '#FF3333';
-                ctx.lineWidth = 3;
+                // Miss X — MORE visible with red flash
+                ctx.fillStyle = 'rgba(255,0,0,0.06)';
                 ctx.globalAlpha = 1 - p;
-                const s = 12;
+                ctx.fillRect(0, 0, W, H);
+                ctx.strokeStyle = '#FF3333';
+                ctx.lineWidth = 4;
+                ctx.shadowColor = '#FF0000';
+                ctx.shadowBlur = 10 * (1 - p);
+                const s = 16;
                 ctx.beginPath();
                 ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y + s);
                 ctx.moveTo(x + s, y - s); ctx.lineTo(x - s, y + s);
                 ctx.stroke();
+                ctx.shadowBlur = 0;
             }
             ctx.restore();
             return true;
@@ -626,13 +647,24 @@ window.RhythmTap = (() => {
         for (let i = 0; i < lanes; i++) {
             const lane = laneOff + i;
             const x = laneX(lane);
-            const flicker = Math.sin(frameCount * 0.3 + i) * 5;
-            const grad = ctx.createRadialGradient(x, hitY, 0, x, hitY - 40, 60 + flicker);
-            grad.addColorStop(0, `rgba(255,${Math.floor(100 + intensity * 100)},0,${intensity * 0.4})`);
-            grad.addColorStop(0.5, `rgba(255,${Math.floor(50 + intensity * 50)},0,${intensity * 0.15})`);
+            const flicker = Math.sin(frameCount * 0.3 + i) * 8;
+            const fireH = 120 + intensity * 40;
+            const grad = ctx.createRadialGradient(x, hitY, 0, x, hitY - fireH * 0.5, fireH + flicker);
+            grad.addColorStop(0, `rgba(255,${Math.floor(120 + intensity * 120)},0,${intensity * 0.55})`);
+            grad.addColorStop(0.3, `rgba(255,${Math.floor(80 + intensity * 80)},0,${intensity * 0.3})`);
+            grad.addColorStop(0.6, `rgba(255,${Math.floor(30 + intensity * 30)},0,${intensity * 0.12})`);
             grad.addColorStop(1, 'rgba(255,0,0,0)');
             ctx.fillStyle = grad;
-            ctx.fillRect(x - laneW * 0.5, hitY - 80, laneW, 80);
+            ctx.fillRect(x - laneW * 0.6, hitY - fireH, laneW * 1.2, fireH);
+            // Rising embers
+            for (let e = 0; e < 3; e++) {
+                const ey = hitY - 20 - ((frameCount * 2 + e * 25 + i * 17) % 80);
+                const ex = x + Math.sin(frameCount * 0.1 + e * 2 + i) * 12;
+                ctx.fillStyle = `rgba(255,200,50,${intensity * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(ex, ey, 1.5 + Math.random(), 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
     }
 
@@ -951,10 +983,11 @@ window.RhythmTap = (() => {
         });
         hitEffects.push({
             x: laneX(lane), y: hitY,
-            color: color, t: Date.now(), type: 'hit'
+            color: color, t: Date.now(), type: 'hit',
+            isPerfect: judgement === 'PERFECT'
         });
 
-        spawnHitParticles(laneX(lane), hitY, color, judgement === 'PERFECT' ? 15 : 8);
+        spawnHitParticles(laneX(lane), hitY, color, judgement === 'PERFECT' ? 20 : 8);
         playHitSound(lane, judgement);
 
         // Beat pulse

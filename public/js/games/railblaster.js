@@ -306,12 +306,21 @@ window.RailBlaster = (() => {
         const px = (crossX - VP_X) * 0.02;  // parallax offset from crosshair
         const py = (crossY - VP_Y) * 0.01;
 
-        // Sky gradient
-        const skyGrad = ctx.createLinearGradient(0, 0, 0, gs(GAME_H * 0.6));
+        // Sky gradient — deeper with more color stops
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, gs(GAME_H * 0.7));
         skyGrad.addColorStop(0, env.sky);
+        skyGrad.addColorStop(0.4, env.sky);
+        skyGrad.addColorStop(0.7, env.ground);
         skyGrad.addColorStop(1, env.ground);
         ctx.fillStyle = skyGrad;
         ctx.fillRect(0, 0, W, H);
+        // Atmospheric depth haze
+        const hazeGrad = ctx.createLinearGradient(0, gs(VP_Y), 0, H);
+        hazeGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        hazeGrad.addColorStop(0.4, `${env.ground}11`);
+        hazeGrad.addColorStop(1, `${env.ground}22`);
+        ctx.fillStyle = hazeGrad;
+        ctx.fillRect(0, gs(VP_Y), W, H - gs(VP_Y));
 
         // Perspective grid lines (floor)
         ctx.strokeStyle = env.accent + '18';
@@ -479,18 +488,39 @@ window.RailBlaster = (() => {
             const h = gs(cov.h + (ducking ? 50 : 0));
             const y = gs(coverBaseY) - h;
 
-            // Main body
-            ctx.fillStyle = cov.color;
-            ctx.fillRect(x, y, w, h);
+            // Drop shadow behind cover
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.fillRect(x + gs(4), y + gs(4), w, h);
 
-            // Edge highlight
-            ctx.fillStyle = '#ffffff18';
-            ctx.fillRect(x, y, w, gs(3));
-            ctx.fillRect(x, y, gs(3), h);
+            // Main body with gradient
+            const covGrad = ctx.createLinearGradient(x, y, x, y + h);
+            covGrad.addColorStop(0, cov.color);
+            covGrad.addColorStop(0.6, cov.color);
+            covGrad.addColorStop(1, '#00000044');
+            ctx.fillStyle = covGrad;
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, gs(3));
+            ctx.fill();
 
-            // Shadow
-            ctx.fillStyle = '#00000033';
-            ctx.fillRect(x + gs(3), y + h - gs(5), w - gs(3), gs(5));
+            // Top edge highlight
+            ctx.fillStyle = '#ffffff22';
+            ctx.fillRect(x + gs(2), y, w - gs(4), gs(2));
+            // Left edge highlight
+            ctx.fillStyle = '#ffffff15';
+            ctx.fillRect(x, y + gs(2), gs(2), h - gs(4));
+            // Bottom shadow
+            ctx.fillStyle = '#00000044';
+            ctx.fillRect(x + gs(2), y + h - gs(4), w - gs(2), gs(4));
+
+            // Surface detail
+            ctx.strokeStyle = '#ffffff0a';
+            ctx.lineWidth = gs(1);
+            for (let dy = 0; dy < h; dy += gs(12)) {
+                ctx.beginPath();
+                ctx.moveTo(x + gs(4), y + dy);
+                ctx.lineTo(x + w - gs(4), y + dy);
+                ctx.stroke();
+            }
         }
 
         // Foreground cover bar (main cover the player ducks behind)
@@ -911,10 +941,27 @@ window.RailBlaster = (() => {
         for (const p of particles) {
             const alpha = clamp(p.life / p.maxLife, 0, 1);
             if (p.type === 'spark') {
+                // Glow halo for sparks
+                if (p.size > 2) {
+                    ctx.globalAlpha = alpha * 0.25;
+                    const sg = ctx.createRadialGradient(gs(p.x), gs(p.y), 0, gs(p.x), gs(p.y), gs(p.size * 2.5));
+                    sg.addColorStop(0, p.color);
+                    sg.addColorStop(1, 'transparent');
+                    ctx.fillStyle = sg;
+                    ctx.fillRect(gs(p.x) - gs(p.size * 2.5), gs(p.y) - gs(p.size * 2.5), gs(p.size * 5), gs(p.size * 5));
+                }
                 ctx.globalAlpha = alpha;
                 ctx.fillStyle = p.color;
-                ctx.fillRect(gs(p.x - p.size / 2), gs(p.y - p.size / 2), gs(p.size), gs(p.size));
+                ctx.beginPath();
+                ctx.arc(gs(p.x), gs(p.y), gs(p.size * 0.5), 0, Math.PI * 2);
+                ctx.fill();
             } else if (p.type === 'ring') {
+                // Expanding ring with inner glow
+                ctx.globalAlpha = alpha * 0.3;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(gs(p.x), gs(p.y), gs(p.size * 0.7), 0, Math.PI * 2);
+                ctx.fill();
                 ctx.globalAlpha = alpha * 0.6;
                 ctx.strokeStyle = p.color;
                 ctx.lineWidth = gs(2);
@@ -952,8 +999,20 @@ window.RailBlaster = (() => {
     function drawEnemies() {
         // Sort back-to-front for proper depth rendering
         const sorted = [...enemies].filter(e => e.alive).sort((a, b) => a.depth - b.depth);
+        const env = ENV_COLORS[envId] || ENV_COLORS[0];
+        let lastDepthBand = -1;
         for (const e of sorted) {
             if (e.type === EN_SNIPER && e.sniperVisible <= 0) continue;
+            // Depth fog between enemy layers
+            const depthBand = Math.floor(e.depth * 3);
+            if (depthBand > lastDepthBand && lastDepthBand >= 0) {
+                const fogAlpha = 0.03 + depthBand * 0.02;
+                ctx.fillStyle = `${env.ground}`;
+                ctx.globalAlpha = fogAlpha;
+                ctx.fillRect(0, 0, W, H);
+                ctx.globalAlpha = 1;
+            }
+            lastDepthBand = depthBand;
 
             const sc = depthScale(e.depth);
             const ew = EN_W[e.type] * sc;
@@ -1120,16 +1179,37 @@ window.RailBlaster = (() => {
         for (const b of enemyBullets) {
             const sc = depthScale(b.depth);
             const size = b.size;
-            const glow = ctx.createRadialGradient(gs(b.x), gs(b.y), 0, gs(b.x), gs(b.y), gs(size * 1.5));
+
+            // Tracer streak behind bullet
+            if (b.vx !== undefined || b.vy !== undefined) {
+                const tvx = b.vx || 0, tvy = b.vy || (b.speed || 2);
+                const tLen = 12;
+                const tGrad = ctx.createLinearGradient(gs(b.x - tvx * tLen), gs(b.y - tvy * tLen), gs(b.x), gs(b.y));
+                tGrad.addColorStop(0, 'rgba(255,68,0,0)');
+                tGrad.addColorStop(0.5, 'rgba(255,68,0,0.1)');
+                tGrad.addColorStop(1, 'rgba(255,68,0,0.3)');
+                ctx.strokeStyle = tGrad;
+                ctx.lineWidth = gs(size * 0.4);
+                ctx.beginPath();
+                ctx.moveTo(gs(b.x - tvx * tLen), gs(b.y - tvy * tLen));
+                ctx.lineTo(gs(b.x), gs(b.y));
+                ctx.stroke();
+            }
+
+            // Glow halo
+            const glow = ctx.createRadialGradient(gs(b.x), gs(b.y), 0, gs(b.x), gs(b.y), gs(size * 2));
             glow.addColorStop(0, '#ff440088');
+            glow.addColorStop(0.5, '#ff440033');
             glow.addColorStop(1, 'transparent');
             ctx.fillStyle = glow;
             ctx.fillRect(gs(b.x - size * 2), gs(b.y - size * 2), gs(size * 4), gs(size * 4));
 
+            // Core
             ctx.fillStyle = '#ff4400';
             ctx.beginPath();
             ctx.arc(gs(b.x), gs(b.y), gs(size / 2), 0, Math.PI * 2);
             ctx.fill();
+            // Hot center
             ctx.fillStyle = '#ffcc00';
             ctx.beginPath();
             ctx.arc(gs(b.x), gs(b.y), gs(size / 4), 0, Math.PI * 2);
@@ -1142,6 +1222,14 @@ window.RailBlaster = (() => {
     // ══════════════════════════════════════════════
     function drawHUD() {
         const accent = themeColors ? themeColors[0] : '#e94560';
+
+        // HUD backdrop panels
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.roundRect(gs(4), gs(6), gs(180), gs(40), gs(5));
+        ctx.fill();
+        ctx.fillStyle = `${accent}15`;
+        ctx.fillRect(gs(4), gs(44), gs(180), gs(1));
 
         // Score
         ctx.font = `bold ${gs(16)}px monospace`;
@@ -1305,22 +1393,54 @@ window.RailBlaster = (() => {
         const cy = gs(GAME_H - 10);
         const r = gs(30 + Math.random() * 15);
 
+        // Bullet tracer streak toward crosshair
+        const tracerAlpha = alpha * 0.4;
+        ctx.globalAlpha = tracerAlpha;
+        const tGrad = ctx.createLinearGradient(cx, cy, gs(crossX), gs(crossY));
+        tGrad.addColorStop(0, '#ffcc00');
+        tGrad.addColorStop(0.3, 'rgba(255,200,0,0.3)');
+        tGrad.addColorStop(0.7, 'rgba(255,200,0,0.05)');
+        tGrad.addColorStop(1, 'rgba(255,200,0,0)');
+        ctx.strokeStyle = tGrad;
+        ctx.lineWidth = gs(2);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(gs(crossX), gs(crossY));
+        ctx.stroke();
+        // Second tracer line (thinner, brighter)
+        ctx.globalAlpha = tracerAlpha * 0.6;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = gs(0.8);
+        ctx.beginPath();
+        ctx.moveTo(cx + gs(Math.random() * 2 - 1), cy);
+        ctx.lineTo(gs(crossX + Math.random() * 4 - 2), gs(crossY + Math.random() * 4 - 2));
+        ctx.stroke();
+
+        // Flash radial
         ctx.globalAlpha = alpha * 0.8;
         const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
         grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.3, '#ffaa00');
-        grad.addColorStop(0.6, '#ff440066');
+        grad.addColorStop(0.2, '#ffcc44');
+        grad.addColorStop(0.5, '#ff660044');
+        grad.addColorStop(0.8, '#ff220011');
         grad.addColorStop(1, 'transparent');
         ctx.fillStyle = grad;
         ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
 
-        // Gun barrel hint
-        ctx.fillStyle = '#333';
-        ctx.fillRect(gs(GAME_W / 2 - 15), gs(GAME_H - 5), gs(30), gs(10));
-        ctx.fillStyle = '#555';
-        ctx.fillRect(gs(GAME_W / 2 - 10), gs(GAME_H - 3), gs(20), gs(8));
-
+        // Gun barrel hint with gradient
+        const barrelGrad = ctx.createLinearGradient(gs(GAME_W / 2 - 15), 0, gs(GAME_W / 2 + 15), 0);
+        barrelGrad.addColorStop(0, '#2a2a2a');
+        barrelGrad.addColorStop(0.5, '#555');
+        barrelGrad.addColorStop(1, '#2a2a2a');
         ctx.globalAlpha = 1;
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.roundRect(gs(GAME_W / 2 - 15), gs(GAME_H - 5), gs(30), gs(10), gs(2));
+        ctx.fill();
+        ctx.fillStyle = barrelGrad;
+        ctx.beginPath();
+        ctx.roundRect(gs(GAME_W / 2 - 10), gs(GAME_H - 3), gs(20), gs(8), gs(1));
+        ctx.fill();
     }
 
     // ══════════════════════════════════════════════
@@ -1619,6 +1739,14 @@ window.RailBlaster = (() => {
             drawCover();
             drawMuzzleFlash();
             drawScorePopups();
+
+            // Screen edge vignette
+            const vig = ctx.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.72);
+            vig.addColorStop(0, 'rgba(0,0,0,0)');
+            vig.addColorStop(1, 'rgba(0,0,0,0.4)');
+            ctx.fillStyle = vig;
+            ctx.fillRect(0, 0, W, H);
+
             drawHUD();
 
             if (state !== ST_DYING) {

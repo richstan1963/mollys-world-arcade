@@ -349,16 +349,26 @@ window.TowerDefense = (() => {
                 const px = c * CELL;
                 const py = r * CELL + HUD_H;
                 if (grid[r][c] === 1) {
-                    // Path
-                    ctx.fillStyle = '#4A3728';
+                    // Path with depth
+                    const pathGrad = ctx.createLinearGradient(px, py, px, py + CELL);
+                    pathGrad.addColorStop(0, '#5A4738');
+                    pathGrad.addColorStop(0.5, '#4A3728');
+                    pathGrad.addColorStop(1, '#3A2718');
+                    ctx.fillStyle = pathGrad;
                     ctx.fillRect(px, py, CELL, CELL);
-                    // Path texture
-                    ctx.fillStyle = hexAlpha('#5C4A3A', 0.4);
-                    ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+                    // Path edge highlights
+                    ctx.fillStyle = hexAlpha('#8B7355', 0.2);
+                    ctx.fillRect(px + 1, py + 1, CELL - 2, 2);
                 } else {
-                    // Grass
-                    ctx.fillStyle = ((r + c) % 2 === 0) ? '#1B3A1B' : '#1E3E1E';
+                    // Grass with subtle variation
+                    const grassBase = ((r + c) % 2 === 0) ? '#1B3A1B' : '#1E3E1E';
+                    ctx.fillStyle = grassBase;
                     ctx.fillRect(px, py, CELL, CELL);
+                    // Occasional grass highlight
+                    if ((r * 7 + c * 13) % 5 === 0) {
+                        ctx.fillStyle = 'rgba(100,200,100,0.06)';
+                        ctx.fillRect(px, py, CELL, CELL);
+                    }
                 }
             }
         }
@@ -403,17 +413,36 @@ window.TowerDefense = (() => {
                 const px = c * CELL;
                 const py = r * CELL + HUD_H;
                 if (grid[r][c] === 0) {
-                    // Valid placement
+                    // Valid placement with glow
                     const td = TOWER_DEFS[selectedTowerType];
-                    ctx.fillStyle = hexAlpha(td.color, 0.2);
+                    ctx.fillStyle = hexAlpha(td.color, 0.25);
                     ctx.fillRect(px, py, CELL, CELL);
-                    // Range preview
+                    // Pulsing border on hover cell
+                    const hPulse = Math.sin(Date.now() * 0.005) * 0.2 + 0.5;
+                    ctx.strokeStyle = hexAlpha(td.color, hPulse);
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 1, py + 1, CELL - 2, CELL - 2);
+                    // Range preview with glow
                     const cp = cellToPixel(c, r);
-                    ctx.strokeStyle = hexAlpha(td.color, 0.3);
-                    ctx.lineWidth = 1;
+                    ctx.save();
+                    ctx.shadowColor = td.color;
+                    ctx.shadowBlur = 8;
+                    // Range fill
+                    const rGrad = ctx.createRadialGradient(cp.x, cp.y, 0, cp.x, cp.y, td.range * CELL);
+                    rGrad.addColorStop(0, hexAlpha(td.color, 0.08));
+                    rGrad.addColorStop(0.8, hexAlpha(td.color, 0.04));
+                    rGrad.addColorStop(1, hexAlpha(td.color, 0));
+                    ctx.fillStyle = rGrad;
+                    ctx.beginPath();
+                    ctx.arc(cp.x, cp.y, td.range * CELL, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Range ring
+                    ctx.strokeStyle = hexAlpha(td.color, 0.4);
+                    ctx.lineWidth = 1.5;
                     ctx.beginPath();
                     ctx.arc(cp.x, cp.y, td.range * CELL, 0, Math.PI * 2);
                     ctx.stroke();
+                    ctx.restore();
                 } else if (grid[r][c] === 1) {
                     ctx.fillStyle = hexAlpha('#FF0000', 0.15);
                     ctx.fillRect(px, py, CELL, CELL);
@@ -448,26 +477,48 @@ window.TowerDefense = (() => {
 
         ctx.save();
 
-        // Base platform
-        ctx.fillStyle = '#333';
+        // Base platform with depth
+        const baseGrad = ctx.createLinearGradient(x - CELL * 0.4, y - CELL * 0.4, x + CELL * 0.4, y + CELL * 0.4);
+        baseGrad.addColorStop(0, '#444');
+        baseGrad.addColorStop(0.5, '#555');
+        baseGrad.addColorStop(1, '#2A2A2A');
+        ctx.fillStyle = baseGrad;
         ctx.beginPath();
-        ctx.roundRect(x - CELL * 0.4, y - CELL * 0.4, CELL * 0.8, CELL * 0.8, [3]);
+        ctx.roundRect(x - CELL * 0.4, y - CELL * 0.4, CELL * 0.8, CELL * 0.8, [4]);
+        ctx.fill();
+        // Base highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.roundRect(x - CELL * 0.38, y - CELL * 0.38, CELL * 0.76, CELL * 0.3, [3]);
         ctx.fill();
 
-        // Tower body
-        ctx.fillStyle = baseColor;
+        // Tower body with gradient for 3D look
         const bodyR = CELL * (0.28 + lvl * 0.03);
+        const bodyGrad = ctx.createRadialGradient(x - bodyR * 0.3, y - bodyR * 0.3, 0, x, y, bodyR);
+        bodyGrad.addColorStop(0, hexAlpha(baseColor, 1));
+        bodyGrad.addColorStop(0.7, baseColor);
+        bodyGrad.addColorStop(1, hexAlpha('#000', 0.3));
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
         ctx.arc(x, y, bodyR, 0, Math.PI * 2);
         ctx.fill();
+        // Highlight on tower body
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.beginPath();
+        ctx.arc(x - bodyR * 0.2, y - bodyR * 0.2, bodyR * 0.4, 0, Math.PI * 2);
+        ctx.fill();
 
-        // Level indicator rings
+        // Level indicator rings with glow
         for (let l = 0; l < lvl; l++) {
-            ctx.strokeStyle = hexAlpha('#FFD700', 0.6);
+            ctx.save();
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 4;
+            ctx.strokeStyle = hexAlpha('#FFD700', 0.7);
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(x, y, bodyR + 3 + l * 3, 0, Math.PI * 2);
             ctx.stroke();
+            ctx.restore();
         }
 
         // Turret (rotates toward target)
@@ -540,15 +591,35 @@ window.TowerDefense = (() => {
             ctx.fill();
         }
 
-        // Selected tower highlight
+        // Selected tower highlight with glowing range circle
         if (selectedTower === t) {
-            ctx.strokeStyle = '#FFD700';
+            // Soft fill for range area
+            const rangeGrad = ctx.createRadialGradient(x, y, bodyR, x, y, t.rangePx);
+            rangeGrad.addColorStop(0, hexAlpha(baseColor, 0.1));
+            rangeGrad.addColorStop(0.7, hexAlpha(baseColor, 0.05));
+            rangeGrad.addColorStop(1, hexAlpha(baseColor, 0));
+            ctx.fillStyle = rangeGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, t.rangePx, 0, Math.PI * 2);
+            ctx.fill();
+            // Glowing ring
+            ctx.save();
+            ctx.shadowColor = baseColor;
+            ctx.shadowBlur = 10;
+            ctx.strokeStyle = hexAlpha(baseColor, 0.6);
             ctx.lineWidth = 2;
-            ctx.setLineDash([4, 4]);
+            ctx.setLineDash([6, 4]);
             ctx.beginPath();
             ctx.arc(x, y, t.rangePx, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
+            ctx.restore();
+            // Inner solid ring
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(x, y, bodyR + 8, 0, Math.PI * 2);
+            ctx.stroke();
         }
 
         ctx.restore();
@@ -569,13 +640,22 @@ window.TowerDefense = (() => {
         const _esz = CELL * (ENEMY_DEFS[e.type]?.size || 0.3) * 2.5;
         if (__sprites[_ek]) {
             ctx.drawImage(__sprites[_ek], e.drawX - _esz/2, e.drawY - _esz/2, _esz, _esz);
-            // Health bar
+            // Health bar above head with gradient
             if (e.hp < e.maxHp) {
-                const barW = _esz * 0.8, barH = 3;
-                ctx.fillStyle = '#333';
-                ctx.fillRect(e.drawX - barW/2, e.drawY - _esz/2 - 5, barW, barH);
-                ctx.fillStyle = '#22C55E';
-                ctx.fillRect(e.drawX - barW/2, e.drawY - _esz/2 - 5, barW * (e.hp / e.maxHp), barH);
+                const hpR = e.hp / e.maxHp;
+                const barW = _esz * 0.9, barH = 4;
+                const hbx = e.drawX - barW/2, hby = e.drawY - _esz/2 - 8;
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(hbx - 1, hby - 1, barW + 2, barH + 2);
+                const hpCol = hpR > 0.5 ? '#22C55E' : hpR > 0.25 ? '#F59E0B' : '#EF4444';
+                const hpLi = hpR > 0.5 ? '#4ADE80' : hpR > 0.25 ? '#FCD34D' : '#FCA5A5';
+                const hpG = ctx.createLinearGradient(hbx, hby, hbx, hby + barH);
+                hpG.addColorStop(0, hpLi);
+                hpG.addColorStop(1, hpCol);
+                ctx.fillStyle = hpG;
+                ctx.fillRect(hbx, hby, barW * hpR, barH);
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.fillRect(hbx, hby, barW * hpR, barH * 0.4);
             }
             return;
         }
@@ -652,17 +732,30 @@ window.TowerDefense = (() => {
             ctx.fill();
         }
 
-        // HP bar
+        // HP bar — positioned well above the head
         const hpRatio = e.hp / e.maxHp;
         if (hpRatio < 1) {
-            const barW = sz * 2;
-            const barH = 3;
+            const barW = sz * 2.5;
+            const barH = 4;
             const bx = e.x - barW / 2;
-            const by = e.y - sz - 6;
-            ctx.fillStyle = '#333';
-            ctx.fillRect(bx, by, barW, barH);
-            ctx.fillStyle = hpRatio > 0.5 ? '#22C55E' : hpRatio > 0.25 ? '#F59E0B' : '#EF4444';
+            const by = e.y - sz - 10;
+            // Background with border
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(bx - 1, by - 1, barW + 2, barH + 2, 2);
+            else ctx.rect(bx - 1, by - 1, barW + 2, barH + 2);
+            ctx.fill();
+            // HP fill with gradient
+            const hpColor = hpRatio > 0.5 ? '#22C55E' : hpRatio > 0.25 ? '#F59E0B' : '#EF4444';
+            const hpLight = hpRatio > 0.5 ? '#4ADE80' : hpRatio > 0.25 ? '#FCD34D' : '#FCA5A5';
+            const hpGrad = ctx.createLinearGradient(bx, by, bx, by + barH);
+            hpGrad.addColorStop(0, hpLight);
+            hpGrad.addColorStop(1, hpColor);
+            ctx.fillStyle = hpGrad;
             ctx.fillRect(bx, by, barW * hpRatio, barH);
+            // Highlight on HP bar
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fillRect(bx, by, barW * hpRatio, barH * 0.4);
         }
 
         ctx.restore();
@@ -693,21 +786,30 @@ window.TowerDefense = (() => {
                 ctx.stroke();
                 ctx.shadowBlur = 0;
             } else {
-                // Regular projectile
-                ctx.fillStyle = p.color;
-                ctx.shadowColor = p.color;
-                ctx.shadowBlur = 6;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.splash ? 4 : 3, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Trail
-                ctx.strokeStyle = hexAlpha(p.color, 0.3);
-                ctx.lineWidth = 2;
+                // Trail with gradient fade
+                const trailGrad = ctx.createLinearGradient(p.sx, p.sy, p.x, p.y);
+                trailGrad.addColorStop(0, hexAlpha(p.color, 0));
+                trailGrad.addColorStop(0.5, hexAlpha(p.color, 0.2));
+                trailGrad.addColorStop(1, hexAlpha(p.color, 0.5));
+                ctx.strokeStyle = trailGrad;
+                ctx.lineWidth = p.splash ? 3 : 2;
                 ctx.beginPath();
                 ctx.moveTo(p.sx, p.sy);
                 ctx.lineTo(p.x, p.y);
                 ctx.stroke();
+
+                // Projectile with glow
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.splash ? 5 : 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                // Bright core
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.splash ? 2.5 : 1.5, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             ctx.shadowBlur = 0;

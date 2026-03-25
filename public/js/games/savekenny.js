@@ -523,18 +523,26 @@ window.SaveKenny = (() => {
             ctx.fill();
             ctx.globalAlpha = 1;
 
-            // Rotor blades
-            ctx.strokeStyle = 'rgba(150,150,150,0.5)';
-            ctx.lineWidth = gs(1);
-            const rotAngle = frameCount * 0.4 + i * Math.PI * 0.5;
+            // Rotor blades — motion blur disc effect
+            ctx.save();
+            ctx.translate(gs(ax), gs(ay));
+            // Blur disc (fast spinning visual)
+            ctx.fillStyle = 'rgba(180,180,180,0.12)';
             ctx.beginPath();
-            ctx.moveTo(gs(ax - Math.cos(rotAngle) * 8), gs(ay - Math.sin(rotAngle) * 2));
-            ctx.lineTo(gs(ax + Math.cos(rotAngle) * 8), gs(ay + Math.sin(rotAngle) * 2));
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(gs(ax - Math.cos(rotAngle + Math.PI / 2) * 8), gs(ay - Math.sin(rotAngle + Math.PI / 2) * 2));
-            ctx.lineTo(gs(ax + Math.cos(rotAngle + Math.PI / 2) * 8), gs(ay + Math.sin(rotAngle + Math.PI / 2) * 2));
-            ctx.stroke();
+            ctx.ellipse(0, 0, gs(10), gs(3), 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Blade lines
+            ctx.strokeStyle = 'rgba(150,150,150,0.6)';
+            ctx.lineWidth = gs(1.5);
+            const rotAngle = frameCount * 0.5 + i * Math.PI * 0.5;
+            for (let b = 0; b < 2; b++) {
+                const ba = rotAngle + b * Math.PI / 2;
+                ctx.beginPath();
+                ctx.moveTo(gs(-Math.cos(ba) * 9), gs(-Math.sin(ba) * 2.5));
+                ctx.lineTo(gs(Math.cos(ba) * 9), gs(Math.sin(ba) * 2.5));
+                ctx.stroke();
+            }
+            ctx.restore();
         }
 
         // Camera underneath
@@ -725,6 +733,22 @@ window.SaveKenny = (() => {
             ctx.save();
             ctx.translate(gs(t.x), gs(t.y));
 
+            // Proximity danger glow when close to Kenny
+            const dx = t.x - droneX, dy = t.y - droneY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 80) {
+                const dangerAlpha = (1 - dist / 80) * 0.4;
+                ctx.save();
+                ctx.globalAlpha = dangerAlpha;
+                ctx.fillStyle = '#FF0000';
+                ctx.shadowColor = '#FF0000';
+                ctx.shadowBlur = gs(16);
+                ctx.beginPath();
+                ctx.arc(0, 0, gs(15), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
             // Sprite threats
             const _tMap = { [TH_BIRD]:'enemyBird', [TH_BASEBALL]:'enemyBall', [TH_AIRPLANE]:'enemyPlane', [TH_UFO]:'enemyUFO', [TH_CAT]:'enemyCat' };
             const _tsk = _tMap[t.type];
@@ -896,13 +920,26 @@ window.SaveKenny = (() => {
             ctx.lineTo(gs(-4), gs(3));
             ctx.closePath();
             ctx.fill();
-            // Smoke trail
-            ctx.fillStyle = 'rgba(200,200,200,0.4)';
-            for (let i = 1; i <= 3; i++) {
+            // Smoke trail — thicker, more visible
+            for (let i = 1; i <= 5; i++) {
+                ctx.fillStyle = `rgba(200,200,200,${0.5 - i * 0.08})`;
                 ctx.beginPath();
-                ctx.arc(gs(-4 - i * 4), gs(rng(-1, 1)), gs(1.5 + i * 0.5), 0, Math.PI * 2);
+                ctx.arc(gs(-4 - i * 5), gs(rng(-2, 2)), gs(2 + i * 1.2), 0, Math.PI * 2);
                 ctx.fill();
             }
+            // Flame at back of missile
+            ctx.fillStyle = '#FF8800';
+            ctx.beginPath();
+            ctx.moveTo(gs(-4), gs(-2));
+            ctx.lineTo(gs(-8 - Math.random() * 3), 0);
+            ctx.lineTo(gs(-4), gs(2));
+            ctx.fill();
+            ctx.fillStyle = '#FFCC00';
+            ctx.beginPath();
+            ctx.moveTo(gs(-4), gs(-1));
+            ctx.lineTo(gs(-6 - Math.random() * 2), 0);
+            ctx.lineTo(gs(-4), gs(1));
+            ctx.fill();
             ctx.restore();
         });
     }

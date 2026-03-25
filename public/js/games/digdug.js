@@ -795,13 +795,13 @@ window.DigDug = (() => {
                     if (Math.abs(dx) < CELL * 0.7 && Math.abs(dy) < CELL * 0.7) {
                         e.dead = true;
                         rock.crushCount++;
-                        // Crush particles
-                        for (let j = 0; j < 8; j++) {
+                        // Crush particles — bigger dust cloud
+                        for (let j = 0; j < 16; j++) {
                             particles.push({
-                                x: e.x, y: e.y,
-                                vx: rand(-2, 2), vy: rand(-3, 0),
-                                life: rand(15, 30), maxLife: 30,
-                                size: rand(2, 4), color: '#8B7355'
+                                x: e.x + rand(-8, 8), y: e.y + rand(-4, 4),
+                                vx: rand(-3, 3), vy: rand(-4, 1),
+                                life: rand(20, 40), maxLife: 40,
+                                size: rand(2, 6), color: ['#8B7355','#A0907E','#D4C4A0','#C9B98A'][j % 4]
                             });
                         }
                         sfxCrush();
@@ -967,8 +967,12 @@ window.DigDug = (() => {
                     if (allSpritesReady && sprites['dirtCenter']) {
                         ctx.drawImage(sprites['dirtCenter'], x, y, w + 1, h + 1);
                     } else {
-                    // Solid dirt fallback
-                    ctx.fillStyle = DIRT_COLORS[dl];
+                    // Solid dirt with richer vertical gradient per cell
+                    const dirtGrad = ctx.createLinearGradient(x, y, x, y + h);
+                    dirtGrad.addColorStop(0, DIRT_COLORS[Math.max(0, dl - 1)] || DIRT_COLORS[dl]);
+                    dirtGrad.addColorStop(0.5, DIRT_COLORS[dl]);
+                    dirtGrad.addColorStop(1, DIRT_DARK[dl] || DIRT_COLORS[dl]);
+                    ctx.fillStyle = dirtGrad;
                     ctx.fillRect(x, y, w + 1, h + 1);
                     // Dirt texture (speckles)
                     ctx.fillStyle = DIRT_DARK[dl];
@@ -1573,10 +1577,25 @@ window.DigDug = (() => {
         ctx.setLineDash([]);
         ctx.lineDashOffset = 0;
 
-        // Nozzle tip with glow
+        // Hose glow when connected to enemy
+        if (pumpLine.targetEnemy) {
+            ctx.save();
+            ctx.globalAlpha = 0.2 + Math.sin(frameCount * 0.2) * 0.1;
+            ctx.shadowColor = '#F59E0B';
+            ctx.shadowBlur = gs(8);
+            ctx.strokeStyle = '#FDE68A';
+            ctx.lineWidth = gs(hoseWidth + 3);
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.quadraticCurveTo(midX + perpX, midY + perpY, endX, endY);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Nozzle tip with glow — brighter
         ctx.fillStyle = '#EF4444';
         ctx.shadowColor = '#EF4444';
-        ctx.shadowBlur = gs(4);
+        ctx.shadowBlur = gs(8);
         ctx.beginPath();
         ctx.arc(endX, endY, gs(3.5), 0, Math.PI * 2);
         ctx.fill();

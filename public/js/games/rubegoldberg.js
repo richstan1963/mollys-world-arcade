@@ -918,6 +918,29 @@ window.RubeGoldberg = (() => {
         ctx.fillStyle = botLight;
         ctx.fillRect(0, GAME_H - 60, GAME_W, 60);
 
+        // ── Workshop lamp glow cone (signature visual — dramatic overhead light) ──
+        const lampX = GAME_W / 2 - cameraX * 0.05;
+        const lampGlow = ctx.createRadialGradient(lampX, HUD_H - 10, 0, lampX, HUD_H + 200, 320);
+        const lampPulse = 0.85 + Math.sin(Date.now() * 0.002) * 0.15;
+        lampGlow.addColorStop(0, `rgba(255,230,150,${0.18 * lampPulse})`);
+        lampGlow.addColorStop(0.3, `rgba(255,200,100,${0.08 * lampPulse})`);
+        lampGlow.addColorStop(0.7, `rgba(200,150,60,${0.03 * lampPulse})`);
+        lampGlow.addColorStop(1, 'rgba(200,150,60,0)');
+        ctx.fillStyle = lampGlow;
+        ctx.fillRect(0, HUD_H, GAME_W, GAME_H - HUD_H);
+
+        // ── Floating dust motes in the lamp light ──
+        ctx.fillStyle = 'rgba(255,230,170,0.35)';
+        const dustT = Date.now() * 0.001;
+        for (let i = 0; i < 8; i++) {
+            const dx = lampX + Math.sin(dustT * 0.4 + i * 2.1) * 180;
+            const dy = HUD_H + 40 + Math.cos(dustT * 0.3 + i * 1.7) * 120 + i * 30;
+            const ds = 1 + Math.sin(dustT + i) * 0.5;
+            ctx.beginPath();
+            ctx.arc(dx, dy, ds, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
         // ── Vignette edges (tilt-shift style) ──
         // Left edge shadow
         const leftVig = ctx.createLinearGradient(0, 0, 80, 0);
@@ -973,20 +996,28 @@ window.RubeGoldberg = (() => {
             ctx.globalAlpha = 1;
         }
 
-        // Front edge of workbench — THICK isometric thickness (like viewing table edge)
-        const edgeH = 14;
+        // Front edge of workbench — THICK isometric thickness (dramatic depth)
+        const edgeH = 22;
         const edgeGrad = ctx.createLinearGradient(0, GAME_H - edgeH, 0, GAME_H);
-        edgeGrad.addColorStop(0, 'rgba(90,62,35,0.9)');
-        edgeGrad.addColorStop(0.3, 'rgba(70,48,28,0.85)');
-        edgeGrad.addColorStop(1, 'rgba(35,22,10,0.9)');
+        edgeGrad.addColorStop(0, 'rgba(110,78,42,0.95)');
+        edgeGrad.addColorStop(0.15, 'rgba(90,62,35,0.9)');
+        edgeGrad.addColorStop(0.5, 'rgba(60,40,22,0.9)');
+        edgeGrad.addColorStop(1, 'rgba(25,15,5,0.95)');
         ctx.fillStyle = edgeGrad;
         ctx.fillRect(0, GAME_H - edgeH, GAME_W, edgeH);
-        // Bright top edge of table front
-        ctx.strokeStyle = 'rgba(160,120,70,0.5)';
-        ctx.lineWidth = 1;
+        // Bright top edge of table front (polished wood highlight)
+        ctx.strokeStyle = 'rgba(200,160,90,0.6)';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(0, GAME_H - edgeH);
         ctx.lineTo(GAME_W, GAME_H - edgeH);
+        ctx.stroke();
+        // Secondary highlight for beveled edge
+        ctx.strokeStyle = 'rgba(255,220,140,0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, GAME_H - edgeH + 2);
+        ctx.lineTo(GAME_W, GAME_H - edgeH + 2);
         ctx.stroke();
 
         // Occasional grass tufts with drop shadow

@@ -639,7 +639,15 @@ window.Connect4 = (() => {
 
         if (glowing) {
             ctx.shadowColor = clr1;
-            ctx.shadowBlur = 12 + Math.sin(winPulse) * 6;
+            ctx.shadowBlur = 20 + Math.sin(winPulse) * 12;
+            // Extra glow ring around winning disc
+            ctx.strokeStyle = clr1;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.3 + Math.sin(winPulse * 1.5) * 0.2;
+            ctx.beginPath();
+            ctx.arc(x, y, DISC_R + 6, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = alpha || 1;
         }
 
         // TRY SPRITE FIRST — Kenney Board Game Pack chips/pieces
@@ -760,7 +768,21 @@ window.Connect4 = (() => {
     function drawDroppingDisc() {
         if (state !== ST_DROPPING) return;
         const cx = cellCenter(0, dropCol).x;
+        // Squash/stretch based on velocity
+        const stretchAmt = Math.min(0.3, Math.abs(dropVY) * 0.015);
+        const atBottom = dropY >= dropTargetY - 2;
+        ctx.save();
+        ctx.translate(cx, dropY);
+        if (atBottom && Math.abs(dropVY) > 1) {
+            // Squash on bounce
+            ctx.scale(1 + stretchAmt * 1.5, 1 - stretchAmt * 1.2);
+        } else if (Math.abs(dropVY) > 2) {
+            // Stretch while falling
+            ctx.scale(1 - stretchAmt * 0.5, 1 + stretchAmt);
+        }
+        ctx.translate(-cx, -dropY);
         drawDisc(cx, dropY, dropWho, 1, false);
+        ctx.restore();
     }
 
     function drawHoverPreview() {
@@ -1179,6 +1201,27 @@ window.Connect4 = (() => {
             if (aiMoveCol >= 0 && aiThinkTimer <= 0) {
                 startDrop(aiMoveCol, 2);
                 aiMoveCol = -1;
+            }
+        }
+
+        // AI thinking animation — orbiting dots above board
+        if (state === ST_PLAYING && currentTurn === 2) {
+            const thinkX = BASE_W / 2;
+            const thinkY = BOARD_Y - 20;
+            for (let i = 0; i < 3; i++) {
+                const angle = Date.now() * 0.005 + i * (Math.PI * 2 / 3);
+                const tx = thinkX + Math.cos(angle) * 12;
+                const ty = thinkY + Math.sin(angle) * 5;
+                const dotAlpha = 0.3 + 0.4 * Math.sin(Date.now() * 0.008 + i);
+                ctx.save();
+                ctx.fillStyle = AI_CLR;
+                ctx.globalAlpha = dotAlpha;
+                ctx.shadowColor = AI_CLR;
+                ctx.shadowBlur = 6;
+                ctx.beginPath();
+                ctx.arc(tx, ty, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             }
         }
 

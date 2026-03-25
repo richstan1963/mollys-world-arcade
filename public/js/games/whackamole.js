@@ -575,58 +575,147 @@ window.WhackAMole = (() => {
     // DRAWING
     // ══════════════════════════════════════════════
     function drawBackground() {
-        // Sky gradient
+        // Warm cheerful sky gradient
         const grad = ctx.createLinearGradient(0, 0, 0, GAME_H);
-        grad.addColorStop(0, '#87CEEB');
+        grad.addColorStop(0, '#7EC8E3');
+        grad.addColorStop(0.15, '#A8DAEF');
         grad.addColorStop(0.3, '#68B8DE');
-        grad.addColorStop(0.5, '#4CAF50');
+        grad.addColorStop(0.48, '#5CB85C');
         grad.addColorStop(1, '#2E7D32');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        // Fence
-        ctx.fillStyle = '#8B6914';
-        for (let x = 0; x < GAME_W; x += 40) {
-            ctx.fillRect(x + 5, 100, 8, 60);
-            ctx.fillRect(x + 25, 100, 8, 60);
+        // Soft clouds
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        const ct = performance.now() * 0.00005;
+        for (let i = 0; i < 3; i++) {
+            const cx = ((ct * (40 + i * 15) + i * 150) % (GAME_W + 80)) - 40;
+            const cy = 25 + i * 22;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, 40 + i * 10, 14 + i * 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(cx + 25, cy - 5, 25, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
         }
+
+        // Fence with wood grain
+        for (let x = 0; x < GAME_W; x += 40) {
+            // Fence post with grain
+            const postGrad = ctx.createLinearGradient(x + 5, 100, x + 13, 100);
+            postGrad.addColorStop(0, '#9B7B2C');
+            postGrad.addColorStop(0.5, '#B8922E');
+            postGrad.addColorStop(1, '#7A6118');
+            ctx.fillStyle = postGrad;
+            ctx.fillRect(x + 5, 98, 8, 62);
+            // Post cap
+            ctx.fillStyle = '#A8861C';
+            ctx.beginPath();
+            ctx.arc(x + 9, 98, 5, Math.PI, 0);
+            ctx.fill();
+
+            ctx.fillStyle = postGrad;
+            ctx.fillRect(x + 25, 98, 8, 62);
+            ctx.fillStyle = '#A8861C';
+            ctx.beginPath();
+            ctx.arc(x + 29, 98, 5, Math.PI, 0);
+            ctx.fill();
+        }
+        // Fence rails with highlight
+        ctx.fillStyle = '#8B6914';
         ctx.fillRect(0, 115, GAME_W, 6);
         ctx.fillRect(0, 140, GAME_W, 6);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(0, 115, GAME_W, 2);
+        ctx.fillRect(0, 140, GAME_W, 2);
 
-        // Grass
-        ctx.fillStyle = '#4CAF50';
+        // Grass with texture
+        const grassGrad = ctx.createLinearGradient(0, 155, 0, GAME_H);
+        grassGrad.addColorStop(0, '#5CB85C');
+        grassGrad.addColorStop(0.3, '#4CAF50');
+        grassGrad.addColorStop(1, '#388E3C');
+        ctx.fillStyle = grassGrad;
         ctx.fillRect(0, 155, GAME_W, GAME_H - 155);
 
-        // Background flowers
+        // Grass blade tufts
+        ctx.strokeStyle = '#5CB85C';
+        ctx.lineWidth = 1.5;
+        for (let gx = 10; gx < GAME_W; gx += 35) {
+            const gy = 158 + (gx * 7) % 15;
+            for (let j = -1; j <= 1; j++) {
+                ctx.beginPath();
+                ctx.moveTo(gx + j * 4, gy + 8);
+                ctx.quadraticCurveTo(gx + j * 6 + Math.sin(performance.now() * 0.002 + gx) * 2, gy - 4, gx + j * 3, gy - 6);
+                ctx.stroke();
+            }
+        }
+
+        // Background flowers with more variety and opacity
         for (const f of bgFlowers) {
             f.sway += 0.01;
             ctx.save();
-            ctx.globalAlpha = 0.4;
+            ctx.globalAlpha = 0.55;
             ctx.font = `${f.size}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            const swayX = Math.sin(f.sway) * 2;
-            ctx.fillText(f.emoji, f.x + swayX, f.y);
+            const swayX = Math.sin(f.sway) * 3;
+            const swayY = Math.cos(f.sway * 0.7) * 1;
+            ctx.fillText(f.emoji, f.x + swayX, f.y + swayY);
             ctx.restore();
         }
     }
 
+    let lastDisplayScore = 0;
+    let scoreBounceAmt = 0;
     function drawHUD() {
-        // Score
+        // Score bounce on increase
+        if (score !== lastDisplayScore) {
+            scoreBounceAmt = Math.min(1.3, scoreBounceAmt + 0.15);
+            lastDisplayScore = score;
+        }
+        if (scoreBounceAmt > 0) scoreBounceAmt = Math.max(0, scoreBounceAmt - 0.03);
+        const sBounce = 1 + scoreBounceAmt * 0.12;
+
         ctx.save();
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
+        // Score with warm background pill
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath();
+        ctx.roundRect(12, 22, 160, 36, 18);
+        ctx.fill();
+        ctx.save();
+        ctx.translate(92, 40);
+        ctx.scale(sBounce, sBounce);
         ctx.font = 'bold 28px "Segoe UI", Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 4;
-        ctx.fillText(`Score: ${score}`, 20, 40);
+        ctx.textAlign = 'center';
+        ctx.fillText(`${score}`, 0, 0);
+        ctx.restore();
+        ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.textAlign = 'left';
+        ctx.fillText('SCORE', 22, 28);
 
-        // Time
+        // Time with pill background
         ctx.textAlign = 'right';
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath();
+        ctx.roundRect(GAME_W - 130, 22, 118, 36, 18);
+        ctx.fill();
         const timeColor = timeLeft <= 10 ? '#EF4444' : '#FFFFFF';
+        const timeScale = timeLeft <= 5 ? 1 + Math.sin(frameCount * 0.3) * 0.08 : 1;
+        ctx.save();
+        ctx.translate(GAME_W - 30, 40);
+        ctx.scale(timeScale, timeScale);
+        ctx.font = 'bold 28px "Segoe UI", Arial, sans-serif';
         ctx.fillStyle = timeColor;
-        ctx.fillText(`⏱️ ${Math.ceil(timeLeft)}s`, GAME_W - 20, 40);
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(`${Math.ceil(timeLeft)}s`, 0, 0);
+        ctx.restore();
 
         // Combo
         if (combo > 1) {
@@ -782,36 +871,63 @@ window.WhackAMole = (() => {
         ctx.fillStyle = mole.type === MOLE_BOMB ? '#444' : '#D4A853';
         ctx.fill();
 
-        // Eyes
+        // Eyes — larger and more expressive
         const eyeY = moleY - 5;
-        // White
+        // Eye sockets (slight shadow)
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
         ctx.beginPath();
-        ctx.arc(x - 14, eyeY, 10, 0, Math.PI * 2);
+        ctx.ellipse(x - 14, eyeY + 1, 11, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(x + 14, eyeY + 1, 11, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // White of eyes
+        ctx.beginPath();
+        ctx.arc(x - 14, eyeY, 11, 0, Math.PI * 2);
         ctx.fillStyle = eyeColor;
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(x + 14, eyeY, 10, 0, Math.PI * 2);
+        ctx.arc(x + 14, eyeY, 11, 0, Math.PI * 2);
         ctx.fillStyle = eyeColor;
         ctx.fill();
-        // Pupils
+        // Pupils — larger, more visible
+        const pupilColor = mole.type === MOLE_BOMB ? '#FF0000' : '#1A1A1A';
         ctx.beginPath();
-        ctx.arc(x - 12, eyeY, 5, 0, Math.PI * 2);
-        ctx.fillStyle = mole.type === MOLE_BOMB ? '#FF0000' : '#1A1A1A';
+        ctx.arc(x - 12, eyeY + 1, 6, 0, Math.PI * 2);
+        ctx.fillStyle = pupilColor;
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(x + 16, eyeY, 5, 0, Math.PI * 2);
-        ctx.fillStyle = mole.type === MOLE_BOMB ? '#FF0000' : '#1A1A1A';
+        ctx.arc(x + 16, eyeY + 1, 6, 0, Math.PI * 2);
+        ctx.fillStyle = pupilColor;
         ctx.fill();
-        // Eye shine
+        // Eye shine — bigger and brighter
         if (mole.type !== MOLE_BOMB) {
-            ctx.beginPath();
-            ctx.arc(x - 10, eyeY - 3, 2, 0, Math.PI * 2);
             ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(x - 10, eyeY - 3, 3, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(x + 18, eyeY - 3, 2, 0, Math.PI * 2);
-            ctx.fillStyle = '#FFFFFF';
+            ctx.arc(x + 18, eyeY - 3, 3, 0, Math.PI * 2);
             ctx.fill();
+            // Secondary smaller shine
+            ctx.beginPath();
+            ctx.arc(x - 15, eyeY + 1, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 13, eyeY + 1, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Bomb mole: angry eyebrows
+            ctx.strokeStyle = '#FF0000';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(x - 22, eyeY - 10);
+            ctx.lineTo(x - 8, eyeY - 6);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x + 22, eyeY - 10);
+            ctx.lineTo(x + 8, eyeY - 6);
+            ctx.stroke();
         }
 
         // Nose
@@ -889,38 +1005,76 @@ window.WhackAMole = (() => {
     function drawHammer() {
         const now = performance.now();
         let angle = -0.3;
+        let impactFlash = 0;
 
         if (hammerSwing) {
             const elapsed = now - hammerSwingTime;
             if (elapsed < HAMMER_SWING_DUR) {
                 const progress = elapsed / HAMMER_SWING_DUR;
                 angle = -0.3 + Math.sin(progress * Math.PI) * 1.2;
+                // Flash white at peak of swing (impact moment)
+                if (progress > 0.35 && progress < 0.55) {
+                    impactFlash = 1 - Math.abs(progress - 0.45) / 0.1;
+                }
             } else {
                 hammerSwing = false;
             }
+        }
+
+        // Impact white flash ring at hammer position
+        if (impactFlash > 0) {
+            ctx.save();
+            ctx.globalAlpha = impactFlash * 0.6;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(hammerX, hammerY - 15, 30 * impactFlash, 0, Math.PI * 2);
+            ctx.fill();
+            // Radiating ring
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = impactFlash * 0.4;
+            ctx.beginPath();
+            ctx.arc(hammerX, hammerY - 15, 45 * impactFlash, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
         }
 
         ctx.save();
         ctx.translate(hammerX, hammerY);
         ctx.rotate(angle);
 
-        // Handle
-        ctx.fillStyle = '#8B4513';
+        // Handle with wood grain
+        const handleGrad = ctx.createLinearGradient(-3, 0, 3, 0);
+        handleGrad.addColorStop(0, '#6B3410');
+        handleGrad.addColorStop(0.5, '#A0582A');
+        handleGrad.addColorStop(1, '#6B3410');
+        ctx.fillStyle = handleGrad;
         ctx.fillRect(-3, 0, 6, 40);
+        // Handle highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect(-1, 2, 2, 36);
 
-        // Head — use crate sprite or fallback
+        // Head — use sprite or polished fallback
         const hammerSpr = wamSpr('hammerItem');
         if (hammerSpr) {
             ctx.drawImage(hammerSpr, -20, -24, 40, 28);
         } else {
+            // Metallic hammer head
+            const headGrad = ctx.createLinearGradient(-18, -20, -18, 4);
+            headGrad.addColorStop(0, '#999');
+            headGrad.addColorStop(0.3, '#CCC');
+            headGrad.addColorStop(0.5, '#EEE');
+            headGrad.addColorStop(0.7, '#CCC');
+            headGrad.addColorStop(1, '#777');
             roundRect(-18, -20, 36, 24, 4);
-            ctx.fillStyle = '#777777';
+            ctx.fillStyle = headGrad;
             ctx.fill();
             ctx.strokeStyle = '#555555';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1.5;
             ctx.stroke();
-            roundRect(-15, -18, 30, 8, 2);
-            ctx.fillStyle = '#999999';
+            // Highlight strip
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            roundRect(-15, -18, 30, 6, 2);
             ctx.fill();
         }
 

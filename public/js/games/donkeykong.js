@@ -507,18 +507,34 @@ window.DonkeyKong = (() => {
 
     function drawFlame(cx, cy, w, h) {
         const t = frameCount * 0.1;
-        for (let i = 0; i < 5; i++) {
-            const ox = Math.sin(t + i * 1.3) * w * 0.3;
-            const oy = -Math.random() * h * 0.3;
-            const r = w * (0.2 + 0.15 * Math.sin(t * 2 + i));
+        // Ambient fire glow underneath
+        ctx.save();
+        ctx.globalAlpha = 0.15;
+        const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 2.5);
+        glowGrad.addColorStop(0, '#FF6600');
+        glowGrad.addColorStop(1, 'rgba(255,60,0,0)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, w * 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Flame tongues — more of them, brighter
+        for (let i = 0; i < 7; i++) {
+            const ox = Math.sin(t + i * 1.1) * w * 0.35;
+            const oy = -Math.random() * h * 0.4;
+            const r = w * (0.22 + 0.18 * Math.sin(t * 2 + i));
+            ctx.save();
+            ctx.shadowColor = '#FF6600';
+            ctx.shadowBlur = r * 1.5;
             const grad = ctx.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
-            grad.addColorStop(0, i < 2 ? '#FFF' : '#FF8');
-            grad.addColorStop(0.4, '#F80');
+            grad.addColorStop(0, i < 2 ? '#FFF' : '#FFE066');
+            grad.addColorStop(0.3, '#FF8800');
             grad.addColorStop(1, 'rgba(255,0,0,0)');
             ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.arc(cx + ox, cy + oy, r, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
         }
     }
 
@@ -683,12 +699,14 @@ window.DonkeyKong = (() => {
         ctx.moveTo(x + 16 * s, y + 14 * s);
         ctx.lineTo(x + 22 * s, y + 8 * s - armWave * s);
         ctx.stroke();
-        // Speech bubble with "HELP!"
-        const bubbleAlpha = 0.7 + Math.sin(pauline.helpBubble * 3) * 0.3;
-        const bubbleY = y - 18 * s + Math.sin(pauline.helpBubble * 2) * 2 * s;
-        const bubbleScale = 0.9 + Math.sin(pauline.helpBubble * 4) * 0.1;
+        // Speech bubble with "HELP!" — more visible with glow
+        const bubbleAlpha = 0.85 + Math.sin(pauline.helpBubble * 3) * 0.15;
+        const bubbleY = y - 20 * s + Math.sin(pauline.helpBubble * 2) * 3 * s;
+        const bubbleScale = 0.95 + Math.sin(pauline.helpBubble * 4) * 0.12;
         ctx.save();
         ctx.globalAlpha = bubbleAlpha;
+        ctx.shadowColor = '#FF4477';
+        ctx.shadowBlur = 8 * s;
         ctx.translate(x + 10 * s, bubbleY);
         ctx.scale(bubbleScale, bubbleScale);
         // Bubble shape
@@ -813,6 +831,19 @@ window.DonkeyKong = (() => {
 
     function drawBarrel(b) {
         const cx = gx(b.x), cy = gy(b.y), r = gs(BARREL_R), s = gs(1);
+        // Fire glow around rolling barrel
+        if (b.onFire || Math.abs(b.vx) > 0.5) {
+            ctx.save();
+            ctx.globalAlpha = 0.12 + Math.sin(frameCount * 0.15 + b.x) * 0.06;
+            const fireGlow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 2.2);
+            fireGlow.addColorStop(0, '#FF6600');
+            fireGlow.addColorStop(1, 'rgba(255,60,0,0)');
+            ctx.fillStyle = fireGlow;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
         // Try sprite barrel
         if (allSpritesReady && sprites['boxCrate']) {
             ctx.save();

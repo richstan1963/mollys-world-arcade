@@ -776,10 +776,32 @@ window.Pickleball = (() => {
         ctx.fillStyle = 'rgba(45,139,87,0.35)';
         ctx.fillRect(30, COURT_Y, GAME_W - 60, GAME_H - COURT_Y);
 
-        // Court outline
+        // Court texture — subtle grain lines for surface detail
+        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+        ctx.lineWidth = 0.5;
+        for (let ty = COURT_Y + 4; ty < GAME_H; ty += 6) {
+            ctx.beginPath();
+            ctx.moveTo(30, ty);
+            ctx.lineTo(GAME_W - 30, ty);
+            ctx.stroke();
+        }
+        // Subtle cross-texture
+        ctx.strokeStyle = 'rgba(0,0,0,0.03)';
+        for (let tx = 34; tx < GAME_W - 30; tx += 12) {
+            ctx.beginPath();
+            ctx.moveTo(tx, COURT_Y);
+            ctx.lineTo(tx, GAME_H);
+            ctx.stroke();
+        }
+
+        // Court outline — brighter double line
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.strokeRect(30, COURT_Y, GAME_W - 60, GAME_H - COURT_Y - 2);
+        // Inner line
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(33, COURT_Y + 3, GAME_W - 66, GAME_H - COURT_Y - 8);
 
         // Center line (service)
         ctx.setLineDash([4, 4]);
@@ -818,19 +840,35 @@ window.Pickleball = (() => {
     }
 
     function drawCrowd() {
-        // Simple crowd silhouettes
-        ctx.fillStyle = 'rgba(60, 60, 80, 0.3)';
+        // Crowd silhouettes with varied colors and wave animation
         const crowdY = COURT_Y - 25;
-        for (let i = 0; i < 30; i++) {
-            const cx = 20 + i * 20 + Math.sin(i * 1.7) * 5;
-            const cy = crowdY - Math.abs(Math.sin(i * 0.8)) * 12;
-            const bobble = Math.sin(frameCount * 0.04 + i * 0.5) * 1.5;
+        const crowdColors = ['rgba(70,50,80,0.35)', 'rgba(50,60,90,0.35)', 'rgba(80,60,60,0.35)', 'rgba(60,70,60,0.35)', 'rgba(90,50,50,0.35)'];
+        for (let i = 0; i < 35; i++) {
+            const cx = 15 + i * 18 + Math.sin(i * 1.7) * 6;
+            const cy = crowdY - Math.abs(Math.sin(i * 0.8)) * 14;
+            // Mexican wave effect — crowd bobbles in a wave pattern
+            const wavePhase = (frameCount * 0.06 + i * 0.3);
+            const bobble = Math.sin(wavePhase) * 2.5;
+            const extraBob = Math.max(0, Math.sin(wavePhase) * 1.5); // jumps up on wave peak
+            ctx.fillStyle = crowdColors[i % crowdColors.length];
             // Head
             ctx.beginPath();
-            ctx.arc(cx, cy - 10 + bobble, 5, 0, Math.PI * 2);
+            ctx.arc(cx, cy - 10 + bobble - extraBob, 5.5, 0, Math.PI * 2);
             ctx.fill();
             // Body
-            ctx.fillRect(cx - 4, cy - 5 + bobble, 8, 12);
+            ctx.fillRect(cx - 4, cy - 5 + bobble - extraBob, 8, 13);
+            // Arms (some raised during wave)
+            if (extraBob > 1) {
+                ctx.fillRect(cx - 7, cy - 12 + bobble - extraBob, 3, 8);
+                ctx.fillRect(cx + 4, cy - 12 + bobble - extraBob, 3, 8);
+            }
+        }
+        // Crowd noise indicator — subtle colorful dots for signs
+        for (let i = 0; i < 6; i++) {
+            const sx = 40 + i * 95 + Math.sin(i * 2.3) * 20;
+            const bobble2 = Math.sin(frameCount * 0.05 + i * 1.1) * 2;
+            ctx.fillStyle = ['rgba(255,100,100,0.2)', 'rgba(100,100,255,0.2)', 'rgba(100,255,100,0.2)'][i % 3];
+            ctx.fillRect(sx - 6, crowdY - 22 + bobble2, 12, 8);
         }
     }
 
@@ -955,14 +993,31 @@ window.Pickleball = (() => {
             ctx.fill();
         }
 
-        // Trail
+        // Trail — with spin indicator (rotating dots along trail path)
         for (let i = 0; i < ballTrail.length; i++) {
             const t = ballTrail[i];
-            const alpha = t.life / 12 * 0.3;
+            const alpha = t.life / 12 * 0.35;
+            const trailProg = i / ballTrail.length;
             ctx.fillStyle = `rgba(200, 220, 50, ${alpha})`;
             ctx.beginPath();
             ctx.arc(t.x, t.y, BALL_R * (t.life / 12) * 0.7, 0, Math.PI * 2);
             ctx.fill();
+            // Spin streaks — perpendicular to trail direction
+            if (i > 0 && ball.spin && Math.abs(ball.spin) > 0.5) {
+                const prev = ballTrail[i - 1];
+                const dx = t.x - prev.x;
+                const dy = t.y - prev.y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                if (len > 1) {
+                    const nx = -dy / len;
+                    const ny = dx / len;
+                    const spinOffset = Math.sin(frameCount * 0.15 + i * 0.8) * ball.spin * 0.8;
+                    ctx.fillStyle = `rgba(255, 255, 100, ${alpha * 0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(t.x + nx * spinOffset, t.y + ny * spinOffset, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
         }
 
         // Ball body (wiffle ball — yellow-green)

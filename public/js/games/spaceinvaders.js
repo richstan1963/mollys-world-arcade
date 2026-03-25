@@ -975,11 +975,36 @@ window.SpaceInvaders = (() => {
     }
 
     function drawStars() {
+        const starColors = ['#E0E7FF', '#A5B4FC', '#C8D6E5', '#F9D5BB', '#D4DBFF'];
         for (const s of stars) {
             const b = s.brightness * (0.7 + Math.sin(frameCount * s.twinkleSpeed) * 0.3);
-            ctx.fillStyle = STAR_COLOR;
+            const col = starColors[Math.floor(s.x + s.y) % starColors.length];
             ctx.globalAlpha = b;
-            ctx.fillRect(gx(s.x), gy(s.y), gs(s.size), gs(s.size));
+            if (s.size > 1.5) {
+                // Bright stars get a soft glow halo
+                const sg = ctx.createRadialGradient(gx(s.x), gy(s.y), 0, gx(s.x), gy(s.y), gs(s.size * 3));
+                sg.addColorStop(0, col);
+                sg.addColorStop(0.4, col.replace('FF', '66'));
+                sg.addColorStop(1, 'transparent');
+                ctx.fillStyle = sg;
+                ctx.fillRect(gx(s.x) - gs(s.size * 3), gy(s.y) - gs(s.size * 3), gs(s.size * 6), gs(s.size * 6));
+                // Cross spikes on brightest stars
+                if (b > 0.8) {
+                    ctx.strokeStyle = col;
+                    ctx.lineWidth = gs(0.5);
+                    ctx.globalAlpha = (b - 0.8) * 3;
+                    const sp = gs(s.size * 4);
+                    ctx.beginPath();
+                    ctx.moveTo(gx(s.x) - sp, gy(s.y)); ctx.lineTo(gx(s.x) + sp, gy(s.y));
+                    ctx.moveTo(gx(s.x), gy(s.y) - sp); ctx.lineTo(gx(s.x), gy(s.y) + sp);
+                    ctx.stroke();
+                    ctx.globalAlpha = b;
+                }
+            }
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.arc(gx(s.x), gy(s.y), gs(s.size * 0.5), 0, Math.PI * 2);
+            ctx.fill();
         }
         ctx.globalAlpha = 1;
     }
@@ -1766,14 +1791,24 @@ window.SpaceInvaders = (() => {
             );
         }
 
-        // Background
+        // Background — deep space with multiple gradient layers
         if (!bgGradient) {
             bgGradient = ctx.createLinearGradient(0, 0, 0, H);
-            bgGradient.addColorStop(0, '#080818');
-            bgGradient.addColorStop(0.5, '#050510');
-            bgGradient.addColorStop(1, '#020208');
+            bgGradient.addColorStop(0, '#030308');
+            bgGradient.addColorStop(0.3, '#04040e');
+            bgGradient.addColorStop(0.6, '#030310');
+            bgGradient.addColorStop(0.85, '#050308');
+            bgGradient.addColorStop(1, '#020204');
         }
         ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, W, H);
+        // Subtle nebula wash
+        const nPulse = 0.5 + 0.2 * Math.sin(frameCount * 0.003);
+        const nebG = ctx.createRadialGradient(W * 0.3, H * 0.4, 0, W * 0.3, H * 0.4, W * 0.5);
+        nebG.addColorStop(0, `rgba(60,20,80,${0.04 * nPulse})`);
+        nebG.addColorStop(0.5, `rgba(20,10,60,${0.03 * nPulse})`);
+        nebG.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = nebG;
         ctx.fillRect(0, 0, W, H);
 
         // Loading screen
@@ -1803,10 +1838,20 @@ window.SpaceInvaders = (() => {
         // Shields
         for (const s of shields) drawShield(s);
 
-        // Aliens
+        // Aliens with glow halos
         for (const a of aliens) {
             if (!a.alive) continue;
-            ALIEN_DRAW[a.row](a.x, a.y, ALIEN_W, ALIEN_H, ALIEN_COLORS[a.row], ALIEN_GLOW[a.row], a.frame);
+            // Subtle under-glow halo per alien
+            const glowCol = ALIEN_GLOW[a.row];
+            const haloAlpha = 0.08 + 0.04 * Math.sin(frameCount * 0.06 + a.x * 0.1);
+            const hg = ctx.createRadialGradient(gx(a.x + ALIEN_W/2), gy(a.y + ALIEN_H/2), 0, gx(a.x + ALIEN_W/2), gy(a.y + ALIEN_H/2), gs(ALIEN_W * 1.2));
+            hg.addColorStop(0, glowCol);
+            hg.addColorStop(1, 'transparent');
+            ctx.globalAlpha = haloAlpha;
+            ctx.fillStyle = hg;
+            ctx.fillRect(gx(a.x + ALIEN_W/2) - gs(ALIEN_W * 1.2), gy(a.y + ALIEN_H/2) - gs(ALIEN_W * 1.2), gs(ALIEN_W * 2.4), gs(ALIEN_W * 2.4));
+            ctx.globalAlpha = 1;
+            ALIEN_DRAW[a.row](a.x, a.y, ALIEN_W, ALIEN_H, ALIEN_COLORS[a.row], glowCol, a.frame);
         }
 
         // Boss
@@ -1825,9 +1870,9 @@ window.SpaceInvaders = (() => {
             drawPlayer(playerX, GAME_H - 60);
         }
 
-        // Player bullets (sprite laser or canvas fallback)
+        // Player bullets (sprite laser or canvas fallback) with gradient trails
         for (const b of playerBullets) {
-            drawGlow(b.x + BULLET_W/2, b.y + BULLET_H/2, 8, BULLET_COLOR, 0.3);
+            drawGlow(b.x + BULLET_W/2, b.y + BULLET_H/2, 10, BULLET_COLOR, 0.35);
             const laserS = sprites['laserBlue'];
             if (laserS && allSpritesReady) {
                 ctx.drawImage(laserS, gx(b.x - 2), gy(b.y - 2), gs(BULLET_W + 4), gs(BULLET_H + 4));
@@ -1835,10 +1880,13 @@ window.SpaceInvaders = (() => {
                 ctx.fillStyle = BULLET_COLOR;
                 ctx.fillRect(gx(b.x), gy(b.y), gs(BULLET_W), gs(BULLET_H));
             }
-            // Bullet trail
-            ctx.globalAlpha = 0.15;
-            ctx.fillRect(gx(b.x + 1), gy(b.y + BULLET_H), gs(BULLET_W - 2), gs(12));
-            ctx.globalAlpha = 1;
+            // Gradient bullet trail
+            const trailGrad = ctx.createLinearGradient(gx(b.x + BULLET_W/2), gy(b.y + BULLET_H), gx(b.x + BULLET_W/2), gy(b.y + BULLET_H + 20));
+            trailGrad.addColorStop(0, 'rgba(56,189,248,0.25)');
+            trailGrad.addColorStop(0.5, 'rgba(56,189,248,0.08)');
+            trailGrad.addColorStop(1, 'rgba(56,189,248,0)');
+            ctx.fillStyle = trailGrad;
+            ctx.fillRect(gx(b.x), gy(b.y + BULLET_H), gs(BULLET_W), gs(20));
         }
 
         // Alien bullets (sprite laser or canvas fallback)
@@ -1914,16 +1962,31 @@ window.SpaceInvaders = (() => {
             }
         }
 
-        // Score popups
+        // Score popups — scale up then fade
         for (const p of scorePopups) {
             const alpha = p.life / p.maxLife;
+            const age = 1 - alpha;
+            const sc = age < 0.2 ? 0.8 + age * 3 : 1.4 - age * 0.5;
             ctx.globalAlpha = alpha;
-            ctx.fillStyle = '#FBBF24';
+            ctx.save();
+            ctx.translate(gx(p.x), gy(p.y));
+            ctx.scale(sc, sc);
+            ctx.fillStyle = '#000';
             ctx.font = `bold ${gs(16)}px monospace`;
             ctx.textAlign = 'center';
-            ctx.fillText(p.text, gx(p.x), gy(p.y));
+            ctx.fillText(p.text, gs(1), gs(1));
+            ctx.fillStyle = '#FBBF24';
+            ctx.fillText(p.text, 0, 0);
+            ctx.restore();
         }
         ctx.globalAlpha = 1;
+
+        // Screen edge vignette
+        const vig = ctx.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.72);
+        vig.addColorStop(0, 'rgba(0,0,0,0)');
+        vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, W, H);
 
         // HUD
         drawHUD();
@@ -2016,6 +2079,18 @@ window.SpaceInvaders = (() => {
     }
 
     function drawHUD() {
+        // Semi-transparent HUD backdrop panels
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.roundRect(gx(10), gy(10), gs(180), gs(50), gs(6));
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(gx(GAME_W - 120), gy(10), gs(110), gs(30), gs(6));
+        ctx.fill();
+        // Accent line
+        ctx.fillStyle = 'rgba(56,189,248,0.2)';
+        ctx.fillRect(gx(10), gy(58), gs(180), gs(1));
+
         ctx.fillStyle = HUD_COLOR;
         ctx.font = `bold ${gs(18)}px monospace`;
         ctx.textAlign = 'left';
@@ -2025,7 +2100,6 @@ window.SpaceInvaders = (() => {
         // Lives
         ctx.textAlign = 'left';
         for (let i = 0; i < lives; i++) {
-            // Mini ship icons
             const lx = 20 + i * 30, ly = 45;
             ctx.fillStyle = playerColor || PLAYER_COLOR;
             ctx.beginPath();

@@ -1154,101 +1154,119 @@ window.Pool = (() => {
         ctx.fillStyle = '#1A0E08';
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        // ── THICK WOOD RAILS with manual grain ──
-        // Base wood color for all rails
-        const railColors = ['#6B3A1E', '#5C3018', '#7A4422', '#6B3A1E'];
-
-        // TOP RAIL
+        // ── RICH MAHOGANY RAILS ──
+        // Top rail
         let rGrad = ctx.createLinearGradient(0, 0, 0, RAIL);
-        rGrad.addColorStop(0, '#8B6B40');   // lighter bevel top
-        rGrad.addColorStop(0.08, '#7A5428');
-        rGrad.addColorStop(0.3, '#6B3A1E');
-        rGrad.addColorStop(0.7, '#5C3018');
-        rGrad.addColorStop(0.92, '#4A2510');
-        rGrad.addColorStop(1, '#3A1A0A');   // darker bevel bottom
+        rGrad.addColorStop(0, '#3D1C0A');
+        rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12');
+        rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210');
+        rGrad.addColorStop(1, '#3D1C0A');
         ctx.fillStyle = rGrad;
         ctx.fillRect(0, 0, GAME_W, RAIL);
 
-        // BOTTOM RAIL
+        // Bottom rail
         rGrad = ctx.createLinearGradient(0, GAME_H - RAIL, 0, GAME_H);
-        rGrad.addColorStop(0, '#8B6B40');
-        rGrad.addColorStop(0.08, '#7A5428');
-        rGrad.addColorStop(0.3, '#6B3A1E');
-        rGrad.addColorStop(0.7, '#5C3018');
-        rGrad.addColorStop(0.92, '#4A2510');
-        rGrad.addColorStop(1, '#3A1A0A');
+        rGrad.addColorStop(0, '#3D1C0A');
+        rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12');
+        rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210');
+        rGrad.addColorStop(1, '#3D1C0A');
         ctx.fillStyle = rGrad;
         ctx.fillRect(0, GAME_H - RAIL, GAME_W, RAIL);
 
-        // LEFT RAIL
+        // Left rail
         rGrad = ctx.createLinearGradient(0, 0, RAIL, 0);
-        rGrad.addColorStop(0, '#8B6B40');
-        rGrad.addColorStop(0.08, '#7A5428');
-        rGrad.addColorStop(0.3, '#6B3A1E');
-        rGrad.addColorStop(0.7, '#5C3018');
-        rGrad.addColorStop(0.92, '#4A2510');
-        rGrad.addColorStop(1, '#3A1A0A');
+        rGrad.addColorStop(0, '#3D1C0A');
+        rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12');
+        rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210');
+        rGrad.addColorStop(1, '#3D1C0A');
         ctx.fillStyle = rGrad;
         ctx.fillRect(0, RAIL, RAIL, GAME_H - RAIL * 2);
 
-        // RIGHT RAIL
+        // Right rail
         rGrad = ctx.createLinearGradient(GAME_W - RAIL, 0, GAME_W, 0);
-        rGrad.addColorStop(0, '#3A1A0A');
-        rGrad.addColorStop(0.08, '#4A2510');
-        rGrad.addColorStop(0.3, '#5C3018');
-        rGrad.addColorStop(0.7, '#6B3A1E');
-        rGrad.addColorStop(0.92, '#7A5428');
-        rGrad.addColorStop(1, '#8B6B40');
+        rGrad.addColorStop(0, '#3D1C0A');
+        rGrad.addColorStop(0.15, '#4A2210');
+        rGrad.addColorStop(0.4, '#5C2D12');
+        rGrad.addColorStop(0.6, '#5C2D12');
+        rGrad.addColorStop(0.85, '#4A2210');
+        rGrad.addColorStop(1, '#3D1C0A');
         ctx.fillStyle = rGrad;
         ctx.fillRect(GAME_W - RAIL, RAIL, RAIL, GAME_H - RAIL * 2);
 
-        // ── WOOD GRAIN LINES on rails ──
+        // ── SUBTLE NOISE TEXTURE on rails (no bezier grain) ──
         ctx.save();
-        ctx.globalAlpha = 0.2;
-        ctx.strokeStyle = '#2A1508';
-        ctx.lineWidth = 0.8;
-        // Horizontal grain on top/bottom rails
-        for (let gy = 3; gy < RAIL - 2; gy += 3 + Math.sin(gy * 1.7) * 2) {
-            ctx.beginPath();
-            ctx.moveTo(RAIL, gy);
-            ctx.bezierCurveTo(GAME_W * 0.25, gy + Math.sin(gy * 0.5) * 1.5, GAME_W * 0.75, gy - Math.sin(gy * 0.3) * 1.5, GAME_W - RAIL, gy);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(RAIL, GAME_H - RAIL + gy);
-            ctx.bezierCurveTo(GAME_W * 0.25, GAME_H - RAIL + gy + Math.sin(gy * 0.5) * 1.5, GAME_W * 0.75, GAME_H - RAIL + gy - Math.sin(gy * 0.3) * 1.5, GAME_W - RAIL, GAME_H - RAIL + gy);
-            ctx.stroke();
-        }
-        // Vertical grain on left/right rails
-        for (let gx = 3; gx < RAIL - 2; gx += 3 + Math.sin(gx * 1.7) * 2) {
-            ctx.beginPath();
-            ctx.moveTo(gx, RAIL);
-            ctx.bezierCurveTo(gx + Math.sin(gx * 0.5) * 1.5, GAME_H * 0.25, gx - Math.sin(gx * 0.3) * 1.5, GAME_H * 0.75, gx, GAME_H - RAIL);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(GAME_W - RAIL + gx, RAIL);
-            ctx.bezierCurveTo(GAME_W - RAIL + gx + Math.sin(gx * 0.5) * 1.5, GAME_H * 0.25, GAME_W - RAIL + gx - Math.sin(gx * 0.3) * 1.5, GAME_H * 0.75, GAME_W - RAIL + gx, GAME_H - RAIL);
-            ctx.stroke();
+        for (let i = 0; i < 600; i++) {
+            const nx = (i * 197.3 + 13) % GAME_W;
+            const ny = (i * 127.7 + 41) % GAME_H;
+            // Only draw on rail areas
+            const onRail = ny < RAIL || ny > GAME_H - RAIL || nx < RAIL || nx > GAME_W - RAIL;
+            if (onRail) {
+                ctx.fillStyle = (i % 2 === 0) ? 'rgba(0,0,0,0.03)' : 'rgba(255,200,140,0.02)';
+                ctx.fillRect(nx, ny, 1, 1);
+            }
         }
         ctx.restore();
 
-        // ── RAIL BEVEL (inner light edge, outer dark edge) ──
-        // Inner bevel (light)
-        ctx.fillStyle = '#A07840';
-        ctx.fillRect(RAIL - 4, RAIL - 4, TABLE_W + 8, 3);
-        ctx.fillRect(RAIL - 4, RAIL - 4, 3, TABLE_H + 8);
-        // Outer bevel (dark)
-        ctx.fillStyle = '#2A1508';
-        ctx.fillRect(RAIL - 4, TABLE_B + 1, TABLE_W + 8, 3);
-        ctx.fillRect(TABLE_R + 1, RAIL - 4, 3, TABLE_H + 8);
+        // ── GREEN CUSHION BUMPER STRIP (rubber along inner rail edge) ──
+        ctx.fillStyle = '#1B7A3D';
+        // Top cushion
+        ctx.fillRect(RAIL - 1, RAIL - 4, TABLE_W + 2, 4);
+        // Bottom cushion
+        ctx.fillRect(RAIL - 1, TABLE_B, TABLE_W + 2, 4);
+        // Left cushion
+        ctx.fillRect(RAIL - 4, RAIL - 1, 4, TABLE_H + 2);
+        // Right cushion
+        ctx.fillRect(TABLE_R, RAIL - 1, 4, TABLE_H + 2);
+        // Cushion highlight (bright edge where rubber meets felt)
+        ctx.fillStyle = 'rgba(50,180,90,0.3)';
+        ctx.fillRect(RAIL, RAIL - 1, TABLE_W, 1);
+        ctx.fillRect(RAIL, TABLE_B, TABLE_W, 1);
+        ctx.fillRect(RAIL - 1, RAIL, 1, TABLE_H);
+        ctx.fillRect(TABLE_R, RAIL, 1, TABLE_H);
 
-        // Top edge highlight
-        ctx.fillStyle = 'rgba(200,170,120,0.25)';
-        ctx.fillRect(RAIL, 1, TABLE_W, 2);
-        ctx.fillRect(1, RAIL, 2, TABLE_H);
-        // Bottom edge shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.fillRect(RAIL, GAME_H - 3, TABLE_W, 2);
-        ctx.fillRect(GAME_W - 3, RAIL, 2, TABLE_H);
+        // ── INNER BEVEL (thin bright highlight along cushion) ──
+        ctx.fillStyle = 'rgba(200,170,120,0.35)';
+        ctx.fillRect(RAIL - 5, RAIL - 5, TABLE_W + 10, 1);
+        ctx.fillRect(RAIL - 5, RAIL - 5, 1, TABLE_H + 10);
+        // ── OUTER BEVEL (thin dark shadow along outside edge) ──
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(0, 0, GAME_W, 1);
+        ctx.fillRect(0, GAME_H - 1, GAME_W, 1);
+        ctx.fillRect(0, 0, 1, GAME_H);
+        ctx.fillRect(GAME_W - 1, 0, 1, GAME_H);
+        // Second outer shadow line
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(1, 1, GAME_W - 2, 1);
+        ctx.fillRect(1, GAME_H - 2, GAME_W - 2, 1);
+        ctx.fillRect(1, 1, 1, GAME_H - 2);
+        ctx.fillRect(GAME_W - 2, 1, 1, GAME_H - 2);
+
+        // ── GOLD CORNER BRACKETS (L-shaped accents at all 4 corners) ──
+        ctx.fillStyle = '#C8A050';
+        ctx.shadowColor = 'rgba(200,160,60,0.3)';
+        ctx.shadowBlur = 3;
+        // Top-left
+        ctx.fillRect(3, 3, 14, 2); ctx.fillRect(3, 3, 2, 14);
+        // Top-right
+        ctx.fillRect(GAME_W - 17, 3, 14, 2); ctx.fillRect(GAME_W - 5, 3, 2, 14);
+        // Bottom-left
+        ctx.fillRect(3, GAME_H - 5, 14, 2); ctx.fillRect(3, GAME_H - 17, 2, 14);
+        // Bottom-right
+        ctx.fillRect(GAME_W - 17, GAME_H - 5, 14, 2); ctx.fillRect(GAME_W - 5, GAME_H - 17, 2, 14);
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        // Gold highlight on brackets
+        ctx.fillStyle = 'rgba(255,220,120,0.4)';
+        ctx.fillRect(3, 3, 12, 1); ctx.fillRect(3, 3, 1, 12);
+        ctx.fillRect(GAME_W - 15, 3, 12, 1); ctx.fillRect(GAME_W - 4, 3, 1, 12);
+        ctx.fillRect(3, GAME_H - 4, 12, 1); ctx.fillRect(3, GAME_H - 15, 1, 12);
+        ctx.fillRect(GAME_W - 15, GAME_H - 4, 12, 1); ctx.fillRect(GAME_W - 4, GAME_H - 15, 1, 12);
 
         // ── DIAMOND SIGHTS / MARKERS on rails ──
         ctx.save();

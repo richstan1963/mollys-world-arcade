@@ -850,10 +850,21 @@ window.PrincessRun = (() => {
             const bob = Math.sin(frameCount * 0.08 + g.x * 0.1) * gs(2);
             const sz = gs(GEM_R * 2);
             const sprKey = gemSprites[Math.abs(Math.floor(g.x * 0.1)) % gemSprites.length];
+            // Gem glow aura
+            ctx.save();
+            ctx.globalAlpha = 0.25 + Math.sin(frameCount * 0.1 + g.x * 0.05) * 0.12;
+            ctx.fillStyle = '#FF69B4';
+            ctx.shadowColor = '#FF69B4';
+            ctx.shadowBlur = gs(8);
+            ctx.beginPath(); ctx.arc(gsx, gsy + bob, sz * 0.55, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
             if (!drawSprite(sprKey, gsx - sz / 2, gsy + bob - sz / 2, sz, sz)) {
                 // Canvas fallback
                 ctx.save();
                 ctx.translate(gsx, gsy + bob);
+                ctx.shadowColor = '#FF69B4';
+                ctx.shadowBlur = gs(6);
                 ctx.fillStyle = '#FF69B4';
                 ctx.beginPath();
                 ctx.moveTo(0, -gs(GEM_R));
@@ -862,6 +873,9 @@ window.PrincessRun = (() => {
                 ctx.lineTo(-gs(GEM_R * 0.7), 0);
                 ctx.closePath();
                 ctx.fill();
+                // Sparkle highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.beginPath(); ctx.arc(gs(-1), gs(-GEM_R * 0.3), gs(1.5), 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
             }
         }
@@ -1034,10 +1048,16 @@ window.PrincessRun = (() => {
         for (const a of followerAnimals) {
             const ax = gs(a.x), ay = gs(a.y + Math.sin(a.bob) * 3);
             drawMiniAnimal(ax, ay, a.animal, gs(7));
-            // Little hearts above
-            if (a.timer > 60) {
-                ctx.fillStyle = `rgba(255,105,180,${(a.timer - 60) / 120})`;
-                drawHeart(ax, ay - gs(14), gs(3), `rgba(255,105,180,${(a.timer - 60) / 120})`);
+            // Multiple floating hearts above rescued animals
+            if (a.timer > 40) {
+                const heartAlpha = Math.min(1, (a.timer - 40) / 80);
+                for (let hi = 0; hi < 3; hi++) {
+                    const hAngle = a.bob * 2 + hi * Math.PI * 0.6;
+                    const hx = ax + Math.sin(hAngle + hi) * gs(6 + hi * 3);
+                    const hy = ay - gs(12 + hi * 6) - Math.sin(a.bob * 1.5 + hi) * gs(3);
+                    ctx.fillStyle = `rgba(255,105,180,${heartAlpha * (0.7 - hi * 0.15)})`;
+                    drawHeart(hx, hy, gs(2.5 - hi * 0.5), ctx.fillStyle);
+                }
             }
         }
     }
@@ -1050,9 +1070,32 @@ window.PrincessRun = (() => {
         // Flash on hit
         if (boss.flashTimer > 0 && boss.flashTimer % 2 === 0) return;
 
-        // Dark aura
-        ctx.fillStyle = 'rgba(75,0,130,0.3)';
+        // Dramatic dark aura with pulsing glow
+        ctx.save();
+        const auraPulse = 0.3 + Math.sin(frameCount * 0.04) * 0.15;
+        ctx.shadowColor = '#7B1FA2';
+        ctx.shadowBlur = gs(25 + Math.sin(frameCount * 0.06) * 10);
+        ctx.fillStyle = `rgba(75,0,130,${auraPulse})`;
+        ctx.beginPath(); ctx.ellipse(bx + bw / 2, by + bh * 0.5, bw * 1.0, bh * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        // Dark ground shadow
+        ctx.fillStyle = 'rgba(75,0,130,0.4)';
         ctx.beginPath(); ctx.ellipse(bx + bw / 2, by + bh, bw * 0.8, gs(10), 0, 0, Math.PI * 2); ctx.fill();
+
+        // Swirling dark particles around boss
+        ctx.save();
+        for (let i = 0; i < 6; i++) {
+            const angle = frameCount * 0.03 + i * Math.PI / 3;
+            const dist = bw * 0.6 + Math.sin(frameCount * 0.05 + i) * gs(8);
+            const px = bx + bw / 2 + Math.cos(angle) * dist;
+            const py = by + bh * 0.4 + Math.sin(angle) * dist * 0.5;
+            ctx.globalAlpha = 0.3 + Math.sin(frameCount * 0.08 + i) * 0.15;
+            ctx.fillStyle = '#7B1FA2';
+            ctx.beginPath(); ctx.arc(px, py, gs(2 + Math.sin(i) * 1), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
 
         // Body (robe)
         ctx.fillStyle = '#1A0033';
@@ -1077,16 +1120,30 @@ window.PrincessRun = (() => {
         ctx.closePath();
         ctx.fill();
 
-        // Eyes
+        // Eyes — glowing green with pulsing
+        ctx.save();
+        const eyeGlow = 0.6 + Math.sin(frameCount * 0.08) * 0.4;
+        ctx.shadowColor = '#00FF00';
+        ctx.shadowBlur = gs(8 + eyeGlow * 6);
         ctx.fillStyle = '#00FF00';
-        ctx.beginPath(); ctx.arc(bx + bw * 0.4, by + bh * 0.22, gs(3), 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(bx + bw * 0.6, by + bh * 0.22, gs(3), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx + bw * 0.4, by + bh * 0.22, gs(3.5), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx + bw * 0.6, by + bh * 0.22, gs(3.5), 0, Math.PI * 2); ctx.fill();
+        // Eye hot core
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath(); ctx.arc(bx + bw * 0.4, by + bh * 0.22, gs(1.2), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx + bw * 0.6, by + bh * 0.22, gs(1.2), 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
 
-        // HP bar
-        const hpW = bw * 0.8, hpH = gs(4);
-        const hpX = bx + bw * 0.1, hpY = by - gs(12);
-        ctx.fillStyle = '#333'; ctx.fillRect(hpX, hpY, hpW, hpH);
-        ctx.fillStyle = '#FF1744'; ctx.fillRect(hpX, hpY, hpW * (boss.hp / boss.maxHp), hpH);
+        // HP bar with gradient fill
+        const hpW = bw * 0.8, hpH = gs(5);
+        const hpX = bx + bw * 0.1, hpY = by - gs(14);
+        ctx.fillStyle = '#222'; ctx.fillRect(hpX - gs(1), hpY - gs(1), hpW + gs(2), hpH + gs(2));
+        const hpGrad = ctx.createLinearGradient(hpX, hpY, hpX, hpY + hpH);
+        hpGrad.addColorStop(0, '#FF5252');
+        hpGrad.addColorStop(0.5, '#FF1744');
+        hpGrad.addColorStop(1, '#D50000');
+        ctx.fillStyle = hpGrad;
+        ctx.fillRect(hpX, hpY, hpW * (boss.hp / boss.maxHp), hpH);
 
         // Curses
         for (const c of boss.curses) {
@@ -1515,8 +1572,12 @@ window.PrincessRun = (() => {
     }
 
     function drawDeath() {
-        // Dim overlay
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        // Dramatic vignette overlay
+        const deathGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.15, W / 2, H / 2, H * 0.8);
+        deathGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
+        deathGrad.addColorStop(0.5, 'rgba(0,0,0,0.55)');
+        deathGrad.addColorStop(1, 'rgba(30,0,30,0.75)');
+        ctx.fillStyle = deathGrad;
         ctx.fillRect(0, 0, W, H);
 
         ctx.fillStyle = '#FFF';
@@ -1711,6 +1772,14 @@ window.PrincessRun = (() => {
         if (bossActive) drawBoss();
         drawParticles();
         drawVignette();
+
+        // Environment transition flash
+        if (envTransition > 40) {
+            const flashAlpha = (envTransition - 40) / 20 * 0.35;
+            ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
+            ctx.fillRect(0, 0, W, H);
+        }
+
         drawHUD();
         drawControls();
 

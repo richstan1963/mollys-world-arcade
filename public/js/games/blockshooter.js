@@ -768,42 +768,62 @@ window.BlockShooter = (() => {
     // Draw tiled background image or fallback gradient
     function drawBackground() {
         if (sprites.loaded && sprites.bg && sprites.bg.naturalWidth) {
-            // Tile the bg image to cover the full canvas
             const bw = sprites.bg.naturalWidth;
             const bh = sprites.bg.naturalHeight;
-            // Scale bg to fill width, then tile vertically
-            const scale = W / bw;
-            const sh = bh * scale;
+            const bScale = W / bw;
+            const sh = bh * bScale;
             for (let yy = 0; yy < H; yy += sh) {
                 ctx.drawImage(sprites.bg, 0, yy, W, sh);
             }
-            // Darken slightly for contrast
-            ctx.fillStyle = 'rgba(0,0,20,0.25)';
+            ctx.fillStyle = 'rgba(0,0,20,0.2)';
             ctx.fillRect(0, 0, W, H);
         } else {
             const grad = ctx.createLinearGradient(0, 0, 0, H);
             grad.addColorStop(0, '#1A0B2E');
+            grad.addColorStop(0.6, '#251545');
             grad.addColorStop(1, '#2D1B3D');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, W, H);
         }
+        // Warm radial light from cannon area
+        const cannonGlow = ctx.createRadialGradient(gs(GAME_W / 2), gs(CANNON_Y), 0, gs(GAME_W / 2), gs(CANNON_Y), H * 0.5);
+        cannonGlow.addColorStop(0, 'rgba(255,200,100,0.06)');
+        cannonGlow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = cannonGlow;
+        ctx.fillRect(0, 0, W, H);
     }
 
     function drawCeiling() {
         const cy = gs(CEIL_Y + ceilingOffset * CELL * 0.87 - CELL * 0.43);
-        // Metallic bar
+        // Metallic bar with enhanced sheen
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = gs(6);
+        ctx.shadowOffsetY = gs(2);
         const grad = ctx.createLinearGradient(0, cy - gs(8), 0, cy + gs(8));
-        grad.addColorStop(0, '#888');
-        grad.addColorStop(0.5, '#CCC');
-        grad.addColorStop(1, '#666');
+        grad.addColorStop(0, '#777');
+        grad.addColorStop(0.3, '#BBB');
+        grad.addColorStop(0.5, '#E0E0E0');
+        grad.addColorStop(0.7, '#BBB');
+        grad.addColorStop(1, '#555');
         ctx.fillStyle = grad;
         ctx.fillRect(0, cy - gs(6), W, gs(12));
+        ctx.restore();
 
-        // Rivets
-        ctx.fillStyle = '#555';
+        // Highlight strip
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(0, cy - gs(4), W, gs(2));
+
+        // Rivets with highlight
         for (let i = 0; i < COLS + 1; i++) {
+            const rx = gs(i * CELL);
+            ctx.fillStyle = '#444';
             ctx.beginPath();
-            ctx.arc(gs(i * CELL), cy, gs(3), 0, Math.PI * 2);
+            ctx.arc(rx, cy, gs(3.5), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#777';
+            ctx.beginPath();
+            ctx.arc(rx - gs(0.5), cy - gs(0.5), gs(1.5), 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -1049,32 +1069,55 @@ window.BlockShooter = (() => {
     function drawCannon() {
         const cx = gs(GAME_W / 2), cy = gs(CANNON_Y);
 
-        // Base
+        // Base with metallic sheen
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = gs(8);
+        ctx.shadowOffsetY = gs(3);
         const baseGrad = ctx.createLinearGradient(cx - gs(30), cy, cx + gs(30), cy + gs(30));
-        baseGrad.addColorStop(0, '#666');
-        baseGrad.addColorStop(0.5, '#999');
-        baseGrad.addColorStop(1, '#555');
+        baseGrad.addColorStop(0, '#5A5A6A');
+        baseGrad.addColorStop(0.3, '#AAB0C0');
+        baseGrad.addColorStop(0.5, '#DDE0E8');
+        baseGrad.addColorStop(0.7, '#AAB0C0');
+        baseGrad.addColorStop(1, '#4A4A5A');
         ctx.fillStyle = baseGrad;
         ctx.beginPath();
         ctx.roundRect(cx - gs(28), cy + gs(5), gs(56), gs(30), gs(8));
         ctx.fill();
+        // Base highlight strip
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.beginPath();
+        ctx.roundRect(cx - gs(24), cy + gs(7), gs(48), gs(6), gs(3));
+        ctx.fill();
+        ctx.restore();
 
-        // Barrel
+        // Barrel with metallic sheen
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(-aimAngle + Math.PI / 2);
-        const barrelGrad = ctx.createLinearGradient(-gs(8), 0, gs(8), 0);
-        barrelGrad.addColorStop(0, '#777');
-        barrelGrad.addColorStop(0.5, '#BBB');
-        barrelGrad.addColorStop(1, '#666');
+        const barrelGrad = ctx.createLinearGradient(-gs(10), 0, gs(10), 0);
+        barrelGrad.addColorStop(0, '#555');
+        barrelGrad.addColorStop(0.2, '#999');
+        barrelGrad.addColorStop(0.45, '#DDD');
+        barrelGrad.addColorStop(0.55, '#EEE');
+        barrelGrad.addColorStop(0.8, '#999');
+        barrelGrad.addColorStop(1, '#555');
         ctx.fillStyle = barrelGrad;
         ctx.beginPath();
         ctx.roundRect(-gs(8), -gs(40), gs(16), gs(40), gs(3));
         ctx.fill();
-        // Muzzle
-        ctx.fillStyle = '#444';
+        // Barrel highlight stripe
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(-gs(2), -gs(38), gs(4), gs(36));
+        // Muzzle with metallic ring
+        const muzzleGrad = ctx.createLinearGradient(-gs(10), -gs(46), gs(10), -gs(46));
+        muzzleGrad.addColorStop(0, '#333');
+        muzzleGrad.addColorStop(0.4, '#777');
+        muzzleGrad.addColorStop(0.6, '#888');
+        muzzleGrad.addColorStop(1, '#333');
+        ctx.fillStyle = muzzleGrad;
         ctx.beginPath();
-        ctx.roundRect(-gs(10), -gs(44), gs(20), gs(8), gs(2));
+        ctx.roundRect(-gs(10), -gs(46), gs(20), gs(10), gs(3));
         ctx.fill();
         ctx.restore();
 

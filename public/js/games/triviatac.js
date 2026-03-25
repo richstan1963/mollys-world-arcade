@@ -765,44 +765,78 @@ window.TriviaTac = (() => {
         const remaining = Math.max(0, timerDur - elapsed);
         const timerFrac = remaining / timerDur;
 
-        // Darken background
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        // Darken background with blur effect
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
         ctx.fillRect(0, 0, W, H);
 
-        // Card
-        ctx.fillStyle = 'rgba(20,24,40,0.97)';
-        roundRect(ctx, gs(Q_PAD), gs(Q_TOP), gs(Q_W), gs(Q_H), gs(16));
+        // Card with shadow and polished styling
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = gs(24);
+        ctx.shadowOffsetY = gs(6);
+        // Card gradient background
+        const cardGrad = ctx.createLinearGradient(gs(Q_PAD), gs(Q_TOP), gs(Q_PAD), gs(Q_TOP + Q_H));
+        cardGrad.addColorStop(0, 'rgba(30,34,60,0.98)');
+        cardGrad.addColorStop(1, 'rgba(18,20,38,0.98)');
+        ctx.fillStyle = cardGrad;
+        roundRect(ctx, gs(Q_PAD), gs(Q_TOP), gs(Q_W), gs(Q_H), gs(18));
         ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-        ctx.lineWidth = gs(1);
-        roundRect(ctx, gs(Q_PAD), gs(Q_TOP), gs(Q_W), gs(Q_H), gs(16));
+        ctx.restore();
+        // Card border with subtle gradient
+        const borderGrad = ctx.createLinearGradient(gs(Q_PAD), gs(Q_TOP), gs(Q_PAD + Q_W), gs(Q_TOP + Q_H));
+        borderGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
+        borderGrad.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+        borderGrad.addColorStop(1, 'rgba(255,255,255,0.12)');
+        ctx.strokeStyle = borderGrad;
+        ctx.lineWidth = gs(1.5);
+        roundRect(ctx, gs(Q_PAD), gs(Q_TOP), gs(Q_W), gs(Q_H), gs(18));
         ctx.stroke();
-
-        // Timer bar
-        const barY = Q_TOP + 10;
-        const barW = Q_W - 40;
-        const barH = 8;
-        const barX = Q_PAD + 20;
-        // BG
-        ctx.fillStyle = 'rgba(255,255,255,0.1)';
-        roundRect(ctx, gs(barX), gs(barY), gs(barW), gs(barH), gs(4));
+        // Inner highlight at top of card
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        roundRect(ctx, gs(Q_PAD + 2), gs(Q_TOP + 2), gs(Q_W - 4), gs(40), gs(16));
         ctx.fill();
-        // Fill
+
+        // Timer bar with polished look
+        const barY = Q_TOP + 12;
+        const barW = Q_W - 40;
+        const barH = 10;
+        const barX = Q_PAD + 20;
+        // BG with inset shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        roundRect(ctx, gs(barX - 1), gs(barY - 1), gs(barW + 2), gs(barH + 2), gs(6));
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        roundRect(ctx, gs(barX), gs(barY), gs(barW), gs(barH), gs(5));
+        ctx.fill();
+        // Fill with gradient
         const timerColor = timerFrac > 0.3 ? '#22C55E' : timerFrac > 0.15 ? '#FBBF24' : '#EF4444';
-        ctx.fillStyle = timerColor;
         if (timerFrac > 0) {
-            roundRect(ctx, gs(barX), gs(barY), gs(barW * timerFrac), gs(barH), gs(4));
+            const tGrad = ctx.createLinearGradient(gs(barX), gs(barY), gs(barX), gs(barY + barH));
+            tGrad.addColorStop(0, timerColor);
+            tGrad.addColorStop(1, timerFrac > 0.3 ? '#16A34A' : timerFrac > 0.15 ? '#D97706' : '#DC2626');
+            ctx.fillStyle = tGrad;
+            roundRect(ctx, gs(barX), gs(barY), gs(barW * timerFrac), gs(barH), gs(5));
+            ctx.fill();
+            // Highlight strip on timer bar
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            roundRect(ctx, gs(barX), gs(barY), gs(barW * timerFrac), gs(barH * 0.35), gs(5));
             ctx.fill();
         }
         // Glow when low
         if (timerFrac < 0.3 && timerFrac > 0) {
             ctx.save();
             ctx.shadowColor = '#EF4444';
-            ctx.shadowBlur = gs(10);
+            ctx.shadowBlur = gs(14);
             ctx.fillStyle = '#EF4444';
-            roundRect(ctx, gs(barX), gs(barY), gs(barW * timerFrac), gs(barH), gs(4));
+            roundRect(ctx, gs(barX), gs(barY), gs(barW * timerFrac), gs(barH), gs(5));
             ctx.fill();
             ctx.restore();
+            // Pulsing red border when low
+            const urgePulse = Math.sin(performance.now() * 0.008) * 0.3 + 0.3;
+            ctx.strokeStyle = `rgba(239,68,68,${urgePulse})`;
+            ctx.lineWidth = gs(2);
+            roundRect(ctx, gs(Q_PAD), gs(Q_TOP), gs(Q_W), gs(Q_H), gs(18));
+            ctx.stroke();
         }
 
         // Question text
@@ -820,22 +854,42 @@ window.TriviaTac = (() => {
             const r = answerBtnRect(i);
             const hovered = hoveredAnswer === i;
 
-            // Button bg
+            // Button bg with depth
             let btnColor = hovered ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)';
-            // Show result highlights
+            let btnBorder = 'rgba(255,255,255,0.08)';
+            // Show result highlights with stronger feedback
             if (state === ST_RESULT) {
-                if (i === currentQ.correct) btnColor = 'rgba(34,197,94,0.35)';
-                else if (i === hoveredAnswer && !resultCorrect) btnColor = 'rgba(239,68,68,0.35)';
+                if (i === currentQ.correct) {
+                    btnColor = 'rgba(34,197,94,0.4)';
+                    btnBorder = 'rgba(34,197,94,0.7)';
+                }
+                else if (i === hoveredAnswer && !resultCorrect) {
+                    btnColor = 'rgba(239,68,68,0.4)';
+                    btnBorder = 'rgba(239,68,68,0.7)';
+                }
             }
             ctx.fillStyle = btnColor;
-            roundRect(ctx, gs(r.x), gs(r.y), gs(r.w), gs(r.h), gs(10));
+            roundRect(ctx, gs(r.x), gs(r.y), gs(r.w), gs(r.h), gs(12));
+            ctx.fill();
+            // Subtle border on all buttons
+            ctx.strokeStyle = btnBorder;
+            ctx.lineWidth = gs(1);
+            roundRect(ctx, gs(r.x), gs(r.y), gs(r.w), gs(r.h), gs(12));
+            ctx.stroke();
+            // Top highlight for depth
+            ctx.fillStyle = 'rgba(255,255,255,0.04)';
+            roundRect(ctx, gs(r.x + 1), gs(r.y + 1), gs(r.w - 2), gs(r.h * 0.4), gs(11));
             ctx.fill();
 
             if (hovered && state === ST_QUESTION) {
-                ctx.strokeStyle = withAlpha(playerColor, 0.6);
+                ctx.save();
+                ctx.shadowColor = playerColor;
+                ctx.shadowBlur = gs(8);
+                ctx.strokeStyle = withAlpha(playerColor, 0.7);
                 ctx.lineWidth = gs(2);
-                roundRect(ctx, gs(r.x), gs(r.y), gs(r.w), gs(r.h), gs(10));
+                roundRect(ctx, gs(r.x), gs(r.y), gs(r.w), gs(r.h), gs(12));
                 ctx.stroke();
+                ctx.restore();
             }
 
             // Label
@@ -886,15 +940,33 @@ window.TriviaTac = (() => {
         if (state !== ST_RESULT) return;
         const progress = resultTimer / 45; // ~0.75 sec at 60fps
         if (resultCorrect) {
-            // Green flash fading out
-            const a = Math.max(0, 0.25 * (1 - progress));
-            ctx.fillStyle = `rgba(34,197,94,${a})`;
+            // Dramatic green flash with radial burst
+            const a = Math.max(0, 0.35 * (1 - progress));
+            const burstGrad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * (0.3 + progress * 0.5));
+            burstGrad.addColorStop(0, `rgba(34,197,94,${a * 1.5})`);
+            burstGrad.addColorStop(0.5, `rgba(34,197,94,${a})`);
+            burstGrad.addColorStop(1, `rgba(34,197,94,0)`);
+            ctx.fillStyle = burstGrad;
             ctx.fillRect(0, 0, W, H);
+            // Green border glow
+            ctx.strokeStyle = `rgba(34,197,94,${a * 2})`;
+            ctx.lineWidth = gs(4);
+            ctx.strokeRect(gs(2), gs(2), W - gs(4), H - gs(4));
         } else {
-            // Red flash fading out
-            const a = Math.max(0, 0.3 * (1 - progress));
+            // Dramatic red flash with screen shake effect (handled via shakeTimer)
+            const a = Math.max(0, 0.4 * (1 - progress));
             ctx.fillStyle = `rgba(239,68,68,${a})`;
             ctx.fillRect(0, 0, W, H);
+            // Red vignette
+            const vigGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H * 0.7);
+            vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            vigGrad.addColorStop(1, `rgba(239,68,68,${a * 0.5})`);
+            ctx.fillStyle = vigGrad;
+            ctx.fillRect(0, 0, W, H);
+            // Red border glow
+            ctx.strokeStyle = `rgba(239,68,68,${a * 2})`;
+            ctx.lineWidth = gs(4);
+            ctx.strokeRect(gs(2), gs(2), W - gs(4), H - gs(4));
         }
     }
 

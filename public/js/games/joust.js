@@ -420,13 +420,13 @@ window.Joust = (() => {
             player.flapping = true;
             player.flapFrame = 6;
             sfxFlap();
-            // Wind particles
-            for (let i = 0; i < 3; i++) {
+            // Wind particles — bigger and more visible
+            for (let i = 0; i < 5; i++) {
                 particles.push({
-                    x: player.x, y: player.y + PLAYER_H / 2,
-                    vx: rng(-1, 1), vy: rng(1, 3),
-                    life: 0.4, maxLife: 0.4,
-                    r: 3, color: 'rgba(200,220,255,0.4)', type: 'wind',
+                    x: player.x + rng(-6, 6), y: player.y + PLAYER_H / 2,
+                    vx: rng(-1.5, 1.5), vy: rng(1.5, 4),
+                    life: 0.5, maxLife: 0.5,
+                    r: rng(3, 6), color: 'rgba(200,220,255,0.5)', type: 'wind',
                 });
             }
         }
@@ -1028,16 +1028,16 @@ window.Joust = (() => {
                 }
             }
 
-            // Moss patches on top
-            ctx.fillStyle = 'rgba(34,120,60,0.35)';
-            for (let mx = 6; mx < p.w - 6; mx += 9) {
-                if (Math.sin(mx * 2.1 + p.x) > 0.1) {
-                    const mw = 4 + Math.sin(mx * 1.3) * 2;
-                    ctx.fillRect(gx(p.x + mx), py - gs(1), gs(mw), gs(3));
+            // Moss patches on top — more visible
+            ctx.fillStyle = 'rgba(34,140,60,0.55)';
+            for (let mx = 4; mx < p.w - 4; mx += 7) {
+                if (Math.sin(mx * 2.1 + p.x) > 0) {
+                    const mw = 5 + Math.sin(mx * 1.3) * 3;
+                    ctx.fillRect(gx(p.x + mx), py - gs(1), gs(mw), gs(4));
                 }
             }
-            // Moss drip
-            ctx.fillStyle = 'rgba(34,120,60,0.2)';
+            // Moss drip — more visible
+            ctx.fillStyle = 'rgba(34,140,60,0.35)';
             for (let mx = 10; mx < p.w - 10; mx += 18) {
                 if (Math.sin(mx * 3.3 + p.x * 0.5) > 0.4) {
                     ctx.fillRect(gx(p.x + mx), py + ph, gs(2), gs(rng(3, 8)));
@@ -1125,17 +1125,26 @@ window.Joust = (() => {
         }
         ctx.globalAlpha = 1;
 
-        // Occasional eruption particles
-        if (frameCount % 40 === 0) {
+        // More frequent eruption particles — bigger and more visible
+        if (frameCount % 25 === 0) {
             const ex = rng(20, GAME_W - 20);
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 8; i++) {
                 particles.push({
-                    x: ex + rng(-8, 8), y: LAVA_Y,
-                    vx: rng(-1.5, 1.5), vy: rng(-6, -2),
-                    life: rng(0.4, 0.8), maxLife: 0.8,
-                    r: rng(2, 4), color: pick(['#FF4500', '#FFD700', '#FF6347']), type: 'spark',
+                    x: ex + rng(-12, 12), y: LAVA_Y,
+                    vx: rng(-2, 2), vy: rng(-8, -3),
+                    life: rng(0.5, 1.0), maxLife: 1.0,
+                    r: rng(2, 5), color: pick(['#FF4500', '#FFD700', '#FF6347', '#FFAA00']), type: 'spark',
                 });
             }
+        }
+        // Secondary small bubbles constantly rising
+        if (frameCount % 8 === 0) {
+            particles.push({
+                x: rng(10, GAME_W - 10), y: LAVA_Y + rng(5, 20),
+                vx: rng(-0.5, 0.5), vy: rng(-2, -0.5),
+                life: rng(0.2, 0.5), maxLife: 0.5,
+                r: rng(1, 3), color: '#FFD700', type: 'spark',
+            });
         }
 
         // Draw lava hand if active

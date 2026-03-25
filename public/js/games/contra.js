@@ -1194,15 +1194,24 @@ window.Contra = (() => {
             ctx.translate(rng(-screenShake, screenShake) * SCALE, rng(-screenShake, screenShake) * SCALE);
         }
 
-        // ── Sky gradient ──
+        // ── Sky gradient — richer with warm horizon ──
         const grad = ctx.createLinearGradient(0, 0, 0, H);
-        grad.addColorStop(0, '#050510');
-        grad.addColorStop(0.25, '#0a0a2a');
-        grad.addColorStop(0.5, '#0f1535');
-        grad.addColorStop(0.75, '#1a1a3e');
+        grad.addColorStop(0, '#030308');
+        grad.addColorStop(0.15, '#070718');
+        grad.addColorStop(0.35, '#0a0a2a');
+        grad.addColorStop(0.55, '#0f1535');
+        grad.addColorStop(0.7, '#1a1a3e');
+        grad.addColorStop(0.85, '#1e2848');
+        grad.addColorStop(0.95, '#25303a');
         grad.addColorStop(1, '#1e2d4a');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, W, H);
+        // Warm horizon glow
+        const hrzGrad = ctx.createLinearGradient(0, gy(GAME_H - 80), 0, gy(GAME_H - 30));
+        hrzGrad.addColorStop(0, 'rgba(40,25,15,0)');
+        hrzGrad.addColorStop(1, 'rgba(40,25,15,0.08)');
+        ctx.fillStyle = hrzGrad;
+        ctx.fillRect(0, gy(GAME_H - 80), W, gs(50));
 
         // ── Stars ──
         for (const s of stars) {
@@ -1994,39 +2003,73 @@ window.Contra = (() => {
                     muzzleFlash--;
                     const mx = gunX + player.aimX * gunLen;
                     const my = gunY + player.aimY * gunLen;
+                    const flashIntensity = muzzleFlash / 4;
                     if (muzzleType === 'spread') {
-                        // Wide orange fan flash
-                        drawGlow(mx, my, 16, '#F59E0B', 0.6);
+                        // Wide orange fan flash with spark cone
+                        drawGlow(mx, my, 22, '#F59E0B', 0.6 * flashIntensity);
+                        drawGlow(mx, my, 10, '#FFF', 0.3 * flashIntensity);
                         ctx.fillStyle = '#FFDD44';
-                        for (let fi = -2; fi <= 2; fi++) {
-                            const fAngle = Math.atan2(player.aimY, player.aimX) + fi * 0.3;
-                            ctx.fillRect(gx(mx + Math.cos(fAngle) * 4), gy(my + Math.sin(fAngle) * 4), gs(3), gs(2));
+                        const baseAngle = Math.atan2(player.aimY, player.aimX);
+                        for (let fi = -3; fi <= 3; fi++) {
+                            const fAngle = baseAngle + fi * 0.25;
+                            const fDist = 4 + Math.random() * 6;
+                            ctx.globalAlpha = flashIntensity * (0.5 + Math.random() * 0.5);
+                            ctx.beginPath();
+                            ctx.arc(gx(mx + Math.cos(fAngle) * fDist), gy(my + Math.sin(fAngle) * fDist), gs(1.5 + Math.random()), 0, Math.PI * 2);
+                            ctx.fill();
                         }
+                        ctx.globalAlpha = 1;
                     } else if (muzzleType === 'rapid') {
-                        // Small rapid red flash
-                        drawGlow(mx, my, 8, '#EF4444', 0.5);
-                        ctx.fillStyle = '#FF6666';
+                        // Compact red strobe flash
+                        drawGlow(mx, my, 10, '#EF4444', 0.5 * flashIntensity);
+                        ctx.fillStyle = '#FF8888';
+                        ctx.globalAlpha = flashIntensity;
                         ctx.beginPath();
-                        ctx.arc(gx(mx), gy(my), gs(2 + Math.random() * 2), 0, Math.PI * 2);
+                        ctx.arc(gx(mx), gy(my), gs(2 + Math.random() * 3), 0, Math.PI * 2);
                         ctx.fill();
+                        // Mini sparks
+                        ctx.fillStyle = '#FFCCCC';
+                        for (let si = 0; si < 2; si++) {
+                            ctx.beginPath();
+                            ctx.arc(gx(mx + rng(-4, 4)), gy(my + rng(-4, 4)), gs(1), 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
                     } else if (muzzleType === 'laser') {
-                        // Blue electric flash
-                        drawGlow(mx, my, 14, '#3B82F6', 0.6);
+                        // Blue electric flash with lightning arcs
+                        drawGlow(mx, my, 18, '#3B82F6', 0.6 * flashIntensity);
+                        drawGlow(mx, my, 8, '#FFFFFF', 0.3 * flashIntensity);
                         ctx.strokeStyle = '#88CCFF';
                         ctx.lineWidth = gs(1);
-                        for (let li = 0; li < 3; li++) {
+                        ctx.globalAlpha = flashIntensity;
+                        for (let li = 0; li < 4; li++) {
                             ctx.beginPath();
                             ctx.moveTo(gx(mx), gy(my));
-                            ctx.lineTo(gx(mx + rng(-8, 8)), gy(my + rng(-8, 8)));
+                            const lx = mx + rng(-10, 10), ly = my + rng(-10, 10);
+                            ctx.lineTo(gx(mx + (lx - mx) * 0.5 + rng(-3, 3)), gy(my + (ly - my) * 0.5 + rng(-3, 3)));
+                            ctx.lineTo(gx(lx), gy(ly));
                             ctx.stroke();
                         }
+                        ctx.globalAlpha = 1;
                     } else {
-                        // Default yellow flash
-                        drawGlow(mx, my, 12, '#FBBF24', 0.5);
+                        // Default yellow flash — star burst
+                        drawGlow(mx, my, 14, '#FBBF24', 0.5 * flashIntensity);
                         ctx.fillStyle = '#fff';
+                        ctx.globalAlpha = flashIntensity;
                         ctx.beginPath();
                         ctx.arc(gx(mx), gy(my), gs(3 + Math.random() * 2), 0, Math.PI * 2);
                         ctx.fill();
+                        // Radial lines
+                        ctx.strokeStyle = 'rgba(255,220,100,0.5)';
+                        ctx.lineWidth = gs(0.8);
+                        for (let ri = 0; ri < 4; ri++) {
+                            const ra = ri * Math.PI / 2 + frameCount * 0.2;
+                            ctx.beginPath();
+                            ctx.moveTo(gx(mx + Math.cos(ra) * 3), gy(my + Math.sin(ra) * 3));
+                            ctx.lineTo(gx(mx + Math.cos(ra) * 8), gy(my + Math.sin(ra) * 8));
+                            ctx.stroke();
+                        }
+                        ctx.globalAlpha = 1;
                     }
                 }
             }
@@ -2088,15 +2131,27 @@ window.Contra = (() => {
             }
         }
 
-        // ── Particles ──
+        // ── Particles — with glow halos ──
         for (const p of particles) {
             const alpha = p.life / p.maxLife;
-            ctx.globalAlpha = alpha;
-            ctx.fillStyle = p.color;
+            // Glow halo for larger explosion particles
+            if (p.size > 3) {
+                ctx.globalAlpha = alpha * 0.2;
+                const pg = ctx.createRadialGradient(gx(p.x), gy(p.y), 0, gx(p.x), gy(p.y), gs(p.size * 2));
+                pg.addColorStop(0, p.color);
+                pg.addColorStop(1, 'transparent');
+                ctx.fillStyle = pg;
+                ctx.fillRect(gx(p.x) - gs(p.size * 2), gy(p.y) - gs(p.size * 2), gs(p.size * 4), gs(p.size * 4));
+            }
+            // Trail
             ctx.globalAlpha = alpha * 0.3;
+            ctx.fillStyle = p.color;
             ctx.fillRect(gx(p.x - p.vx), gy(p.y - p.vy), gs(p.size * 0.7), gs(p.size * 0.7));
+            // Core
             ctx.globalAlpha = alpha;
-            ctx.fillRect(gx(p.x), gy(p.y), gs(p.size), gs(p.size));
+            ctx.beginPath();
+            ctx.arc(gx(p.x + p.size/2), gy(p.y + p.size/2), gs(p.size * 0.5), 0, Math.PI * 2);
+            ctx.fill();
         }
         ctx.globalAlpha = 1;
 
@@ -2125,14 +2180,25 @@ window.Contra = (() => {
         }
         ctx.globalAlpha = 1;
 
-        // ── Parallax Foreground (feature 7) ──
+        // ── Parallax Foreground (feature 7) — enhanced depth ──
         for (const fe of foregroundElements) {
             const fx = fe.x - cameraX * 1.1; // slightly faster than camera = foreground
             if (fx < -30 || fx > GAME_W + 30) continue;
             if (fe.type === 'vine') {
-                // Hanging vine from top of screen area
+                // Hanging vine with depth layering
                 const baseY = GAME_H - 40 - fe.h;
-                ctx.strokeStyle = 'rgba(34,120,34,0.3)';
+                // Back vine (darker, less sway)
+                ctx.strokeStyle = 'rgba(20,80,20,0.18)';
+                ctx.lineWidth = gs(3);
+                ctx.beginPath();
+                ctx.moveTo(gs(fx - 3), gy(baseY));
+                for (let vy = 0; vy < fe.h; vy += 8) {
+                    const sway = Math.sin(frameCount * 0.015 + vy * 0.08 + fe.x * 0.04) * 3;
+                    ctx.lineTo(gs(fx - 3 + sway), gy(baseY + vy));
+                }
+                ctx.stroke();
+                // Front vine
+                ctx.strokeStyle = 'rgba(40,130,40,0.35)';
                 ctx.lineWidth = gs(2);
                 ctx.beginPath();
                 ctx.moveTo(gs(fx), gy(baseY));
@@ -2141,17 +2207,36 @@ window.Contra = (() => {
                     ctx.lineTo(gs(fx + sway), gy(baseY + vy));
                 }
                 ctx.stroke();
-                // Leaves
-                ctx.fillStyle = 'rgba(50,140,50,0.25)';
-                for (let ly = 0; ly < fe.h; ly += 15) {
+                // Leaves with depth variation
+                for (let ly = 0; ly < fe.h; ly += 12) {
                     const lsway = Math.sin(frameCount * 0.02 + ly * 0.1 + fe.x * 0.05) * 4;
+                    const leafAlpha = 0.18 + 0.12 * Math.sin(ly * 0.3);
+                    ctx.fillStyle = `rgba(50,140,50,${leafAlpha})`;
                     ctx.beginPath();
-                    ctx.ellipse(gs(fx + lsway + 3), gy(baseY + ly), gs(5), gs(3), 0.3, 0, Math.PI * 2);
+                    ctx.ellipse(gs(fx + lsway + 3), gy(baseY + ly), gs(6), gs(3), 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Second smaller leaf
+                    ctx.fillStyle = `rgba(60,160,60,${leafAlpha * 0.7})`;
+                    ctx.beginPath();
+                    ctx.ellipse(gs(fx + lsway - 2), gy(baseY + ly + 4), gs(4), gs(2), -0.4, 0, Math.PI * 2);
                     ctx.fill();
                 }
-            } else { // tallgrass
+            } else { // tallgrass — more blades, depth layers
                 const baseY = GAME_H - 40;
-                ctx.strokeStyle = 'rgba(60,140,40,0.25)';
+                // Back layer (darker)
+                ctx.strokeStyle = 'rgba(40,100,30,0.15)';
+                ctx.lineWidth = gs(2);
+                for (let gi = 0; gi < 3; gi++) {
+                    const gOffset = gi * 7 - 8;
+                    const sway = Math.sin(frameCount * 0.02 + gi + fe.x * 0.08) * 2;
+                    const grassH = fe.h * (0.5 + gi * 0.12);
+                    ctx.beginPath();
+                    ctx.moveTo(gs(fx + gOffset), gy(baseY));
+                    ctx.quadraticCurveTo(gs(fx + gOffset + sway), gy(baseY - grassH * 0.5), gs(fx + gOffset + sway * 1.5), gy(baseY - grassH));
+                    ctx.stroke();
+                }
+                // Front layer (brighter)
+                ctx.strokeStyle = 'rgba(60,140,40,0.3)';
                 ctx.lineWidth = gs(1.5);
                 for (let gi = 0; gi < 5; gi++) {
                     const gOffset = gi * 5 - 10;

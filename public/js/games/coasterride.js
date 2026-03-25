@@ -1173,9 +1173,9 @@ window.CoasterRide = (() => {
             if (trackPoints[i].x <= viewRight) { endI = Math.min(trackPoints.length - 2, i + 1); break; }
         }
 
-        // Draw ties first (cross-beams)
+        // Draw ties first (cross-beams) — thicker with texture
         ctx.strokeStyle = zone.tie;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         for (let i = startI; i <= endI; i++) {
             for (let t = 0; t < 1; t += 0.3) {
                 const pos = getTrackPos(i, t);
@@ -1196,8 +1196,8 @@ window.CoasterRide = (() => {
             }
         }
 
-        // Draw rails
-        ctx.lineWidth = 2.5;
+        // Draw rails — thicker, more visible
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
 
         for (let rail = -1; rail <= 1; rail += 2) {
@@ -1637,20 +1637,29 @@ window.CoasterRide = (() => {
 
     function drawSpeedLines() {
         const intensity = clamp((speed - BASE_SPEED * 1.6) / (MAX_SPEED - BASE_SPEED * 1.6), 0, 1);
-        ctx.globalAlpha = intensity * 0.25;
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 8; i++) {
-            const ly = rng(20, GAME_H - 20);
-            const lx = rng(GAME_W * 0.3, GAME_W);
-            const len = rng(20, 60) * intensity;
+        if (intensity < 0.05) return;
+        ctx.save();
+        const count = Math.floor(6 + intensity * 20);
+        for (let i = 0; i < count; i++) {
+            const ly = rng(10, GAME_H - 10);
+            const lx = rng(GAME_W * 0.2, GAME_W);
+            const len = rng(30, 90) * intensity;
+            ctx.globalAlpha = intensity * intensity * 0.35 * (0.5 + (i % 3) * 0.2);
+            ctx.strokeStyle = intensity > 0.6 ? '#FFD700' : '#FFFFFF';
+            ctx.lineWidth = 0.5 + intensity * 2;
             ctx.beginPath();
             ctx.moveTo(lx, ly);
             ctx.lineTo(lx - len, ly);
             ctx.stroke();
         }
-        ctx.globalAlpha = 1;
-        ctx.lineWidth = 1;
+        // Edge blur at very high speed
+        if (intensity > 0.5) {
+            ctx.globalAlpha = (intensity - 0.5) * 0.15;
+            ctx.fillStyle = 'rgba(255,255,255,1)';
+            ctx.fillRect(0, 0, GAME_W, 3);
+            ctx.fillRect(0, GAME_H - 3, GAME_W, 3);
+        }
+        ctx.restore();
     }
 
     function drawHUD() {

@@ -1010,18 +1010,41 @@ window.GoofyPogo = (() => {
         for (const tr of trampolines) {
             const tx = tr.x - scrollX;
             if (tx > GAME_W + 10 || tx + tr.w < -10) continue;
-            const squish = tr.bounce * 4;
-            ctx.fillStyle = '#FF4444';
+            const squish = tr.bounce * 6; // more dramatic squash
+
+            // Impact ring when bouncing
+            if (tr.bounce > 0.3) {
+                ctx.save();
+                ctx.globalAlpha = tr.bounce * 0.5;
+                ctx.strokeStyle = '#FFAA00';
+                ctx.lineWidth = 2;
+                const ringR = tr.w * 0.5 + (1 - tr.bounce) * 20;
+                ctx.beginPath();
+                ctx.ellipse(tx + tr.w / 2, tr.y, ringR, ringR * 0.3, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Trampoline pad with gradient
+            const tramGrad = ctx.createLinearGradient(tx, tr.y + squish, tx, tr.y + tr.h);
+            tramGrad.addColorStop(0, '#FF6666');
+            tramGrad.addColorStop(0.5, '#FF4444');
+            tramGrad.addColorStop(1, '#CC2222');
+            ctx.fillStyle = tramGrad;
             ctx.fillRect(tx, tr.y + squish, tr.w, tr.h - squish);
-            // Springs
-            ctx.strokeStyle = '#FFAA00';
-            ctx.lineWidth = 2;
+            // Highlight stripe
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(tx + 3, tr.y + squish + 2, tr.w - 6, 3);
+
+            // Springs with thicker lines
+            ctx.strokeStyle = '#FFCC00';
+            ctx.lineWidth = 2.5;
             for (let i = 0; i < 3; i++) {
                 const sx = tx + 10 + i * 15;
                 ctx.beginPath();
                 ctx.moveTo(sx, tr.y + tr.h);
                 for (let j = 0; j < 4; j++) {
-                    ctx.lineTo(sx + (j % 2 === 0 ? 5 : -5), tr.y + tr.h - (j + 1) * ((tr.h - squish) / 4));
+                    ctx.lineTo(sx + (j % 2 === 0 ? 6 : -6), tr.y + tr.h - (j + 1) * ((tr.h - squish) / 4));
                 }
                 ctx.stroke();
             }
@@ -1081,14 +1104,24 @@ window.GoofyPogo = (() => {
             const cy = c.y + Math.sin(c.bobPhase) * 3;
             if (cx < -10 || cx > GAME_W + 10) continue;
             const sz = COIN_R * 2;
+            // Coin glow aura
+            ctx.save();
+            ctx.globalAlpha = 0.2 + Math.sin(c.bobPhase * 2) * 0.1;
+            ctx.fillStyle = '#FFD700';
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 8;
+            ctx.beginPath(); ctx.arc(cx, cy, COIN_R + 4, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
             if (!drawSprite('coinGold', cx - sz / 2, cy - sz / 2, sz, sz)) {
+                ctx.save();
+                ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 6;
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath(); ctx.arc(cx, cy, COIN_R, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = '#FFA500';
                 ctx.beginPath(); ctx.arc(cx, cy, COIN_R - 2, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#FFD700'; ctx.font = 'bold 8px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText('$', cx, cy + 1);
+                ctx.fillStyle = '#FFFBE8';
+                ctx.beginPath(); ctx.arc(cx - 1, cy - 1, COIN_R * 0.3, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
             }
         }
     }
@@ -1164,22 +1197,42 @@ window.GoofyPogo = (() => {
 
     function drawDust() {
         for (const d of dustParticles) {
-            ctx.globalAlpha = d.life / d.maxLife * 0.6;
+            const lifeRatio = d.life / d.maxLife;
+            ctx.globalAlpha = lifeRatio * 0.6;
             ctx.fillStyle = d.color;
             ctx.beginPath();
-            ctx.arc(d.x, d.y, d.r * (d.life / d.maxLife), 0, Math.PI * 2);
+            ctx.arc(d.x, d.y, d.r * lifeRatio, 0, Math.PI * 2);
             ctx.fill();
+            // Dust sparkle
+            if (lifeRatio > 0.5) {
+                ctx.globalAlpha = lifeRatio * 0.3;
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, d.r * lifeRatio * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
         ctx.globalAlpha = 1;
     }
 
     function drawParticlesFX() {
         for (const p of particles) {
-            ctx.globalAlpha = p.life / p.maxLife * 0.8;
+            const lifeRatio = p.life / p.maxLife;
+            ctx.save();
+            ctx.globalAlpha = lifeRatio * 0.9;
             ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 6;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, p.r * (p.life / p.maxLife), 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, p.r * lifeRatio, 0, Math.PI * 2);
             ctx.fill();
+            // Bright core for sparkle particles
+            ctx.fillStyle = '#FFF';
+            ctx.globalAlpha = lifeRatio * 0.4;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * lifeRatio * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
         }
         ctx.globalAlpha = 1;
     }

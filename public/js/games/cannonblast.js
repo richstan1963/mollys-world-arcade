@@ -212,37 +212,62 @@ window.CannonBlast = (() => {
     }
 
     function drawBackdrop() {
-        // Sky gradient
+        // Sky gradient — warmer carnival night sky
         if (!bgGradient) {
             bgGradient = ctx.createLinearGradient(0, 0, 0, H);
-            bgGradient.addColorStop(0, '#0f0c29');
-            bgGradient.addColorStop(0.4, '#1a0a2e');
+            bgGradient.addColorStop(0, '#0a0820');
+            bgGradient.addColorStop(0.25, '#120a28');
+            bgGradient.addColorStop(0.5, '#1a0c30');
+            bgGradient.addColorStop(0.75, '#251540');
             bgGradient.addColorStop(1, '#2d1b4e');
         }
         ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, W, H);
 
-        // Stars
-        ctx.fillStyle = '#FFF';
+        // Warm ambient carnival glow from below
+        const warmGlow = ctx.createLinearGradient(0, gy(GAME_H * 0.5), 0, gy(GAME_H));
+        warmGlow.addColorStop(0, 'rgba(60,30,10,0)');
+        warmGlow.addColorStop(0.5, 'rgba(60,30,10,0.06)');
+        warmGlow.addColorStop(1, 'rgba(80,40,15,0.12)');
+        ctx.fillStyle = warmGlow;
+        ctx.fillRect(0, gy(GAME_H * 0.5), W, gy(GAME_H * 0.5));
+
+        // Stars with warm tint variety
+        const starTints = ['#FFF', '#FFE4C4', '#FFDAB9', '#E8E0FF'];
         for (let i = 0; i < 60; i++) {
             const sx = (i * 137.5 + 42) % GAME_W;
             const sy = (i * 97.3 + 11) % (GAME_H * 0.35);
             const flicker = 0.3 + 0.7 * Math.sin(frameCount * 0.015 + i * 2.1);
             ctx.globalAlpha = flicker * 0.6;
-            ctx.fillRect(gx(sx), gy(sy), gs(1.5), gs(1.5));
+            ctx.fillStyle = starTints[i % starTints.length];
+            ctx.beginPath();
+            ctx.arc(gx(sx), gy(sy), gs(0.8 + (i % 3) * 0.3), 0, Math.PI * 2);
+            ctx.fill();
         }
         ctx.globalAlpha = 1;
 
-        // Tents
+        // Tents — with fabric shading and warm light
         for (const t of tents) {
-            ctx.fillStyle = t.col;
+            // Tent body with gradient for fabric depth
+            const tentGrad = ctx.createLinearGradient(gx(t.x), 0, gx(t.x + t.w), 0);
+            tentGrad.addColorStop(0, t.col);
+            tentGrad.addColorStop(0.5, hexAlpha(t.col, 0.85));
+            tentGrad.addColorStop(1, t.col);
+            ctx.fillStyle = tentGrad;
             ctx.beginPath();
             ctx.moveTo(gx(t.x), gy(180));
             ctx.lineTo(gx(t.x + t.w / 2), gy(180 - t.h));
             ctx.lineTo(gx(t.x + t.w), gy(180));
             ctx.fill();
-            // stripes
-            ctx.strokeStyle = hexAlpha('#FFF', 0.3);
+            // Shadow side
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.moveTo(gx(t.x + t.w / 2), gy(180 - t.h));
+            ctx.lineTo(gx(t.x + t.w), gy(180));
+            ctx.lineTo(gx(t.x + t.w * 0.65), gy(180));
+            ctx.fill();
+            // Stripes with fabric texture
+            ctx.strokeStyle = hexAlpha('#FFF', 0.25);
             ctx.lineWidth = gs(2);
             for (let s = 0; s < 4; s++) {
                 const sx1 = t.x + t.w * (s + 1) / 5;
@@ -251,14 +276,37 @@ window.CannonBlast = (() => {
                 ctx.lineTo(gx(t.x + t.w / 2), gy(180 - t.h));
                 ctx.stroke();
             }
+            // Warm light spill from tent opening
+            const tlg = ctx.createRadialGradient(gx(t.x + t.w / 2), gy(180), 0, gx(t.x + t.w / 2), gy(180), gs(t.w * 0.6));
+            tlg.addColorStop(0, 'rgba(255,200,100,0.06)');
+            tlg.addColorStop(1, 'rgba(255,200,100,0)');
+            ctx.fillStyle = tlg;
+            ctx.fillRect(gx(t.x - 10), gy(180 - t.h), gs(t.w + 20), gs(t.h + 10));
         }
 
-        // Ground / gallery shelf area
+        // Ground / gallery shelf area — wood grain gradient
         const groundY = GAME_H - 80;
-        ctx.fillStyle = '#3b2510';
+        const groundGrad = ctx.createLinearGradient(0, gy(groundY), 0, gy(GAME_H));
+        groundGrad.addColorStop(0, '#5c3a1e');
+        groundGrad.addColorStop(0.1, '#4a2e16');
+        groundGrad.addColorStop(0.4, '#3b2510');
+        groundGrad.addColorStop(1, '#2a1a0a');
+        ctx.fillStyle = groundGrad;
         ctx.fillRect(0, gy(groundY), W, gy(80));
-        ctx.fillStyle = '#5c3a1e';
-        ctx.fillRect(0, gy(groundY), W, gs(6));
+        // Plank highlight
+        ctx.fillStyle = '#6a4528';
+        ctx.fillRect(0, gy(groundY), W, gs(3));
+        ctx.fillStyle = '#7a5530';
+        ctx.fillRect(0, gy(groundY), W, gs(1));
+        // Subtle wood grain lines
+        ctx.strokeStyle = 'rgba(100,70,40,0.08)';
+        ctx.lineWidth = gs(1);
+        for (let gy2 = groundY + 15; gy2 < GAME_H; gy2 += 20) {
+            ctx.beginPath();
+            ctx.moveTo(0, gy(gy2));
+            ctx.lineTo(W, gy(gy2 + Math.sin(gy2 * 0.1) * 2));
+            ctx.stroke();
+        }
 
         // Bunting string across top
         const buntyY = 30;
@@ -283,16 +331,30 @@ window.CannonBlast = (() => {
             ctx.fill();
         }
 
-        // Light bulbs
+        // Light bulbs — richer carnival glow with radial gradients
         for (const b of bulbs) {
             const glow = 0.5 + 0.5 * Math.sin(frameCount * 0.04 + b.phase);
-            ctx.fillStyle = hexAlpha(b.col, glow * 0.8 + 0.2);
+            // Outer warm glow halo
+            const bg = ctx.createRadialGradient(gx(b.x), gy(52), 0, gx(b.x), gy(52), gs(14));
+            bg.addColorStop(0, hexAlpha(b.col, glow * 0.25));
+            bg.addColorStop(0.4, hexAlpha(b.col, glow * 0.1));
+            bg.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = bg;
+            ctx.fillRect(gx(b.x) - gs(14), gy(52) - gs(14), gs(28), gs(28));
+            // Mid glow
+            ctx.fillStyle = hexAlpha(b.col, glow * 0.35);
+            ctx.beginPath();
+            ctx.arc(gx(b.x), gy(52), gs(6), 0, Math.PI * 2);
+            ctx.fill();
+            // Bright core
+            ctx.fillStyle = hexAlpha(b.col, glow * 0.85 + 0.15);
             ctx.beginPath();
             ctx.arc(gx(b.x), gy(52), gs(3), 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = hexAlpha(b.col, glow * 0.3);
+            // White hot center
+            ctx.fillStyle = `rgba(255,255,255,${glow * 0.4})`;
             ctx.beginPath();
-            ctx.arc(gx(b.x), gy(52), gs(7), 0, Math.PI * 2);
+            ctx.arc(gx(b.x), gy(51.5), gs(1.5), 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -1332,11 +1394,20 @@ window.CannonBlast = (() => {
     function drawPopups() {
         for (const p of scorePopups) {
             const alpha = clamp(p.life / 25, 0, 1);
+            const age = 1 - alpha;
+            const sc = age < 0.2 ? 0.7 + age * 4 : 1.5 - age * 0.6;
             ctx.globalAlpha = alpha;
-            ctx.fillStyle = p.col;
+            ctx.save();
+            ctx.translate(gx(p.x), gy(p.y));
+            ctx.scale(sc, sc);
+            // Drop shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.font = 'bold ' + gs(12) + 'px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(p.text, gx(p.x), gy(p.y));
+            ctx.fillText(p.text, gs(1), gs(1));
+            ctx.fillStyle = p.col;
+            ctx.fillText(p.text, 0, 0);
+            ctx.restore();
         }
         ctx.globalAlpha = 1;
 
@@ -1403,6 +1474,18 @@ window.CannonBlast = (() => {
     //  HUD
     // ═══════════════════════════════════════════
     function drawHUD() {
+        // HUD backdrop panels with rounded corners
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.roundRect(gs(4), gs(6), gs(150), gs(54), gs(6));
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(gx(GAME_W - 130), gs(6), gs(126), gs(18), gs(4));
+        ctx.fill();
+        // Accent edge
+        ctx.fillStyle = 'rgba(251,191,36,0.15)';
+        ctx.fillRect(gs(4), gs(58), gs(150), gs(1));
+
         ctx.fillStyle = COL_HUD;
         ctx.font = 'bold ' + gs(14) + 'px monospace';
         ctx.textAlign = 'left';

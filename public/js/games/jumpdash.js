@@ -614,6 +614,18 @@ window.JumpDash = (() => {
         // Blink when invulnerable
         if (hitInvulnTimer > 0 && Math.floor(t / INVINCIBLE_BLINK) % 2 === 0) return;
 
+        // Drop shadow on ground
+        const shadowY = gs(GROUND_Y);
+        const heightAboveGround = shadowY - gs(py);
+        const shadowScale = Math.max(0.3, 1 - heightAboveGround / gs(120));
+        ctx.save();
+        ctx.globalAlpha = 0.15 * shadowScale;
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.ellipse(gs(px), shadowY + gs(2), gs(12) * shadowScale, gs(3) * shadowScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
         // Try sprite-based rendering
         let sprKey = 'playerStand';
         if (isSliding) sprKey = 'playerDuck';
@@ -870,6 +882,12 @@ window.JumpDash = (() => {
         const env = ENVS[envIndex];
         for (const ob of obstacles) {
             ctx.fillStyle = env.obstacles;
+
+            // Obstacle danger shadow/glow
+            ctx.save();
+            ctx.shadowColor = env.obstacles || '#F44336';
+            ctx.shadowBlur = gs(4);
+
             switch (ob.type) {
                 case OB_HURDLE:
                     if (!drawSprite('spikes', gs(ob.x), gs(ob.y), gs(ob.w), gs(ob.h))) {
@@ -933,6 +951,7 @@ window.JumpDash = (() => {
                     }
                     break;
             }
+            ctx.restore();
         }
     }
 
@@ -951,8 +970,11 @@ window.JumpDash = (() => {
                 case CL_COIN:
                     if (!drawSprite('coinGold', -s, -s, s * 2, s * 2)) {
                         ctx.fillStyle = '#FFD700';
-                        ctx.shadowBlur = gs(4); ctx.shadowColor = '#FFD700';
+                        ctx.shadowBlur = gs(8); ctx.shadowColor = '#FFD700';
                         ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+                        // Bright coin center
+                        ctx.fillStyle = '#FFFBE8';
+                        ctx.beginPath(); ctx.arc(gs(-1), gs(-1), s * 0.35, 0, Math.PI * 2); ctx.fill();
                         ctx.shadowBlur = 0;
                     }
                     break;
@@ -1493,6 +1515,30 @@ window.JumpDash = (() => {
         drawCollectibles();
         drawParticles();
         drawRunner();
+
+        // Speed lines at high velocity
+        if (state === ST_PLAY) {
+            const speedPct = (speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED);
+            if (speedPct > 0.15) {
+                ctx.save();
+                const lineCount = Math.floor(speedPct * 18);
+                const lineAlpha = speedPct * speedPct * 0.25;
+                for (let i = 0; i < lineCount; i++) {
+                    const ly = gs(20 + ((i * 137 + frameCount * 7) % (GROUND_Y - 30)));
+                    const lx = (i * 89 + frameCount * 3) % (GAME_W + 40);
+                    const ll = gs(25 + speedPct * 70 + (i % 5) * 15);
+                    ctx.globalAlpha = lineAlpha * (0.5 + (i % 3) * 0.25);
+                    ctx.strokeStyle = speedPct > 0.6 ? '#FFD700' : '#FFFFFF';
+                    ctx.lineWidth = gs(0.5 + speedPct * 1.5);
+                    ctx.beginPath();
+                    ctx.moveTo(gs(lx), ly);
+                    ctx.lineTo(gs(lx) - ll, ly);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
         drawFloats();
         drawHUD();
 
@@ -1500,8 +1546,11 @@ window.JumpDash = (() => {
             drawGameOver();
         }
         if (state === ST_DEAD) {
-            // Brief freeze
-            ctx.fillStyle = 'rgba(255,0,0,0.1)';
+            // Dramatic red flash + vignette
+            const deathVig = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width * 0.6);
+            deathVig.addColorStop(0, 'rgba(255,0,0,0.05)');
+            deathVig.addColorStop(1, 'rgba(255,0,0,0.25)');
+            ctx.fillStyle = deathVig;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 

@@ -695,17 +695,25 @@ window.Aquarium = (() => {
             ctx.moveTo(px, py);
 
             for (let s = 0; s < p.segments; s++) {
-                const sway = Math.sin(frameCount * 0.02 + p.phase + s * 0.5) * (8 + s * 2);
+                // More dramatic multi-frequency sway
+                const sway = Math.sin(frameCount * 0.025 + p.phase + s * 0.5) * (10 + s * 3)
+                           + Math.sin(frameCount * 0.01 + p.phase * 2) * 4;
                 py -= segH;
                 px = p.x + sway;
+                ctx.lineWidth = p.width * (1 - s * 0.08); // taper toward tip
                 ctx.lineTo(px, py);
             }
             ctx.stroke();
 
-            // Leaf tips
+            // Leaf tips — more visible fronds
             ctx.fillStyle = p.color;
             ctx.beginPath();
-            ctx.ellipse(px, py, p.width * 1.5, 4, 0.3, 0, Math.PI * 2);
+            ctx.ellipse(px, py, p.width * 2, 5, 0.3 + Math.sin(frameCount * 0.02 + p.phase) * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Highlight on tip
+            ctx.fillStyle = 'rgba(100,255,100,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(px - 2, py - 2, p.width, 3, 0.3, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -783,13 +791,37 @@ window.Aquarium = (() => {
         ctx.beginPath();
         ctx.arc(x, y - 15, 3, 0, Math.PI * 2);
         ctx.fill();
-        // Sparkle when open
+        // Sparkle when open — dramatic treasure sparkle
         if (isOpen) {
-            ctx.fillStyle = '#FFD700';
-            ctx.globalAlpha = Math.sin(frameCount * 0.1) * 0.3 + 0.5;
-            ctx.beginPath();
-            ctx.arc(x, y - 20, 2, 0, Math.PI * 2);
-            ctx.fill();
+            // Gold glow emanating from chest
+            const glowGrad = ctx.createRadialGradient(x, y - 18, 0, x, y - 18, 25);
+            glowGrad.addColorStop(0, 'rgba(255,215,0,0.3)');
+            glowGrad.addColorStop(0.5, 'rgba(255,180,0,0.1)');
+            glowGrad.addColorStop(1, 'rgba(255,180,0,0)');
+            ctx.fillStyle = glowGrad;
+            ctx.fillRect(x - 25, y - 43, 50, 30);
+            // Multiple animated sparkle stars
+            for (let i = 0; i < 5; i++) {
+                const angle = frameCount * 0.04 + i * 1.3;
+                const dist = 8 + Math.sin(frameCount * 0.06 + i * 2) * 6;
+                const sx = x + Math.cos(angle) * dist;
+                const sy = y - 22 + Math.sin(angle) * dist * 0.5;
+                const sparkSize = 1.5 + Math.sin(frameCount * 0.1 + i) * 1;
+                ctx.fillStyle = '#FFD700';
+                ctx.globalAlpha = 0.5 + Math.sin(frameCount * 0.08 + i * 1.5) * 0.4;
+                // Star shape
+                ctx.beginPath();
+                ctx.moveTo(sx, sy - sparkSize * 2);
+                ctx.lineTo(sx + sparkSize * 0.5, sy - sparkSize * 0.5);
+                ctx.lineTo(sx + sparkSize * 2, sy);
+                ctx.lineTo(sx + sparkSize * 0.5, sy + sparkSize * 0.5);
+                ctx.lineTo(sx, sy + sparkSize * 2);
+                ctx.lineTo(sx - sparkSize * 0.5, sy + sparkSize * 0.5);
+                ctx.lineTo(sx - sparkSize * 2, sy);
+                ctx.lineTo(sx - sparkSize * 0.5, sy - sparkSize * 0.5);
+                ctx.closePath();
+                ctx.fill();
+            }
             ctx.globalAlpha = 1;
         }
     }
@@ -837,15 +869,33 @@ window.Aquarium = (() => {
 
     function drawBubbles() {
         for (const b of bubbles) {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 1;
+            // Outer glow aura
+            ctx.save();
+            ctx.fillStyle = `rgba(150, 220, 255, 0.08)`;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.size * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            // Bubble body
+            ctx.strokeStyle = 'rgba(200, 240, 255, 0.45)';
+            ctx.lineWidth = 1.2;
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
             ctx.stroke();
-            // Highlight
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            // Inner gradient fill
+            ctx.fillStyle = 'rgba(180, 230, 255, 0.08)';
             ctx.beginPath();
-            ctx.arc(b.x - b.size * 0.3, b.y - b.size * 0.3, b.size * 0.3, 0, Math.PI * 2);
+            ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+            ctx.fill();
+            // Bright specular highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.beginPath();
+            ctx.arc(b.x - b.size * 0.3, b.y - b.size * 0.35, b.size * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            // Secondary small highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.arc(b.x + b.size * 0.15, b.y + b.size * 0.2, b.size * 0.12, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -856,10 +906,24 @@ window.Aquarium = (() => {
     function drawCaustics() {
         causticTime += 0.015;
         const nightFactor = getNightFactor();
-        const intensity = 0.08 * (1 - nightFactor * 0.7);
+        const intensity = 0.15 * (1 - nightFactor * 0.7);
 
         ctx.globalAlpha = intensity;
         ctx.fillStyle = '#FFFFFF';
+
+        // Extra bright caustic patches (signature shimmer)
+        for (let i = 0; i < 6; i++) {
+            const bx = (Math.sin(causticTime * 1.3 + i * 2.5) * 0.5 + 0.5) * GAME_W;
+            const by = WATER_TOP + 20 + Math.sin(causticTime * 0.9 + i * 1.2) * 30;
+            const bw = 50 + Math.sin(causticTime * 0.6 + i) * 20;
+            ctx.globalAlpha = intensity * 0.6;
+            ctx.fillStyle = 'rgba(100,200,255,1)';
+            ctx.beginPath();
+            ctx.ellipse(bx, by, bw, 6, Math.sin(causticTime * 0.4 + i) * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.fillStyle = '#FFFFFF';
+        ctx.globalAlpha = intensity;
 
         for (let i = 0; i < 12; i++) {
             const cx = (Math.sin(causticTime + i * 1.3) * 0.5 + 0.5) * GAME_W;

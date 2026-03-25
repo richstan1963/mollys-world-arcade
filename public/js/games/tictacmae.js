@@ -238,12 +238,25 @@ window.TicTacMae = (() => {
     }
 
     function spawnBurstRing(x, y, color) {
-        // Expanding ring effect on piece placement
+        // Expanding ring effect on piece placement — MORE dramatic
         particles.push({
             x, y, vx: 0, vy: 0,
-            r: 5, color, life: 1.0, decay: 1.8,
+            r: 5, color, life: 1.0, decay: 1.5,
             kind: 'shockwave', rotation: 0, spin: 0,
-            maxR: cellSize * 0.5,
+            maxR: cellSize * 0.7,
+        });
+        // Second delayed ring (double impact)
+        particles.push({
+            x, y, vx: 0, vy: 0,
+            r: 3, color, life: 0.8, decay: 1.8,
+            kind: 'shockwave', rotation: 0, spin: 0,
+            maxR: cellSize * 0.45,
+        });
+        // Flash overlay particle
+        particles.push({
+            x: W / 2, y: H / 2, vx: 0, vy: 0,
+            r: 0, color, life: 0.5, decay: 3.0,
+            kind: 'flash', rotation: 0, spin: 0,
         });
     }
 
@@ -264,14 +277,23 @@ window.TicTacMae = (() => {
             ctx.save();
             ctx.globalAlpha = p.life * p.life; // quadratic fade for smoother disappearance
 
+            if (p.kind === 'flash') {
+                // Screen-wide color flash on impact
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life * 0.08;
+                ctx.fillRect(0, 0, W, H);
+                ctx.restore();
+                continue;
+            }
+
             if (p.kind === 'shockwave') {
                 const progress = 1 - p.life;
                 const ringR = p.r + progress * p.maxR;
                 ctx.strokeStyle = p.color;
                 ctx.shadowColor = p.color;
-                ctx.shadowBlur = 12;
-                ctx.lineWidth = Math.max(1, 3 * p.life);
-                ctx.globalAlpha = p.life * 0.6;
+                ctx.shadowBlur = 18;
+                ctx.lineWidth = Math.max(1.5, 4 * p.life);
+                ctx.globalAlpha = p.life * 0.7;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, ringR, 0, Math.PI * 2);
                 ctx.stroke();
@@ -878,14 +900,29 @@ window.TicTacMae = (() => {
         ctx.lineTo(ex, ey);
         ctx.stroke();
 
-        // Bright endpoint dot as it animates across
+        // Bright endpoint dot as it animates across — BIGGER with trail
         if (prog < 1) {
+            // Trailing comet glow
+            const prevX = ax + (cx2 - ax) * Math.max(0, prog - 0.1);
+            const prevY = ay + (cy2 - ay) * Math.max(0, prog - 0.1);
+            const trailGrad = ctx.createLinearGradient(prevX, prevY, ex, ey);
+            trailGrad.addColorStop(0, 'rgba(255,255,255,0)');
+            trailGrad.addColorStop(1, `rgba(255,255,255,0.4)`);
+            ctx.strokeStyle = trailGrad;
+            ctx.lineWidth = Math.max(8, 14 * SCALE);
+            ctx.shadowBlur = 25;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(prevX, prevY);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+            // Core dot
             ctx.fillStyle = '#FFF';
             ctx.shadowColor = color;
-            ctx.shadowBlur = 15;
-            ctx.globalAlpha = 0.9;
+            ctx.shadowBlur = 25;
+            ctx.globalAlpha = 1;
             ctx.beginPath();
-            ctx.arc(ex, ey, Math.max(3, 5 * SCALE), 0, Math.PI * 2);
+            ctx.arc(ex, ey, Math.max(5, 8 * SCALE), 0, Math.PI * 2);
             ctx.fill();
         }
 

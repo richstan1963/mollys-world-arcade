@@ -758,8 +758,8 @@ window.Snake = (() => {
 
     // ── Rainbow color cycling ──
     function getRainbowColor(offset) {
-        const hue = (frameCount * 3 + offset * 20) % 360;
-        return hslToHex(hue, 85, 55);
+        const hue = (frameCount * 4 + offset * 30) % 360;
+        return hslToHex(hue, 100, 58);
     }
 
     // ── Rendering ──
@@ -828,7 +828,7 @@ window.Snake = (() => {
                 continue;
             }
 
-            // Fallback: dark brick with subtle texture
+            // Fallback: textured brick wall
             const brickGrad = ctx.createLinearGradient(px, py, px + sz, py + sz);
             brickGrad.addColorStop(0, '#64748B');
             brickGrad.addColorStop(0.5, COL_OBSTACLE);
@@ -838,21 +838,36 @@ window.Snake = (() => {
             ctx.fillStyle = brickGrad;
             ctx.fill();
 
-            ctx.beginPath();
-            ctx.roundRect(px + pad + gs(2), py + pad + gs(1), sz * 0.4, sz * 0.2, gs(1));
-            ctx.fillStyle = 'rgba(255,255,255,0.08)';
-            ctx.fill();
-
-            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            // Top highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.fillRect(px + pad, py + pad, sz - pad * 2, gs(2));
+            // Bottom shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.fillRect(px + pad, py + sz - pad - gs(2), sz - pad * 2, gs(2));
+            // Brick mortar lines
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
             ctx.lineWidth = gs(0.5);
             ctx.beginPath();
-            ctx.moveTo(px + pad, py + pad);
-            ctx.lineTo(px + sz - pad, py + sz - pad);
+            ctx.moveTo(px + pad, py + sz / 2);
+            ctx.lineTo(px + sz - pad, py + sz / 2);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(px + sz - pad, py + pad);
-            ctx.lineTo(px + pad, py + sz - pad);
+            ctx.moveTo(px + sz / 2, py + pad);
+            ctx.lineTo(px + sz / 2, py + sz / 2);
             ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(px + sz / 4, py + sz / 2);
+            ctx.lineTo(px + sz / 4, py + sz - pad);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(px + sz * 3 / 4, py + sz / 2);
+            ctx.lineTo(px + sz * 3 / 4, py + sz - pad);
+            ctx.stroke();
+            // Specular highlight dot
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.beginPath();
+            ctx.arc(px + sz * 0.3, py + sz * 0.3, gs(2), 0, Math.PI * 2);
+            ctx.fill();
         }
     }
 
@@ -1039,8 +1054,9 @@ window.Snake = (() => {
             const hpx = gs(hDrawX);
             const hpy = gs(hDrawY);
             const glowCol = rainbowMode ? getRainbowColor(0) : COL_SNAKE;
-            const glow = ctx.createRadialGradient(hpx, hpy, 0, hpx, hpy, gs(CELL));
-            glow.addColorStop(0, withAlpha(glowCol, 0.25));
+            const glowRadius = rainbowMode ? gs(CELL * 1.5) : gs(CELL);
+            const glow = ctx.createRadialGradient(hpx, hpy, 0, hpx, hpy, glowRadius);
+            glow.addColorStop(0, withAlpha(glowCol, rainbowMode ? 0.4 : 0.25));
             glow.addColorStop(1, 'transparent');
             ctx.fillStyle = glow;
             ctx.fillRect(hpx - gs(CELL), hpy - gs(CELL), gs(CELL * 2), gs(CELL * 2));
@@ -1156,7 +1172,20 @@ window.Snake = (() => {
         if (!food) return;
         const fpx = gs(food.x * CELL + CELL / 2), fpy = gs(food.y * CELL + CELL / 2);
         const fsz = gs(CELL * 0.8);
-        const pulse = 1 + Math.sin(frameCount * 0.08) * 0.1;
+        const pulse = 1 + Math.sin(frameCount * 0.08) * 0.15;
+
+        // Pulsing glow ring around food
+        ctx.save();
+        ctx.globalAlpha = 0.2 + Math.sin(frameCount * 0.06) * 0.15;
+        const foodGlow = ctx.createRadialGradient(fpx, fpy, 0, fpx, fpy, gs(CELL * 1.2));
+        foodGlow.addColorStop(0, COL_FOOD);
+        foodGlow.addColorStop(1, 'transparent');
+        ctx.fillStyle = foodGlow;
+        ctx.beginPath();
+        ctx.arc(fpx, fpy, gs(CELL * 1.2 * pulse), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
         if (sprites.food) {
             ctx.save();
             ctx.translate(fpx, fpy);
@@ -1167,7 +1196,7 @@ window.Snake = (() => {
             drawFoodOrb(food.x, food.y, COL_FOOD, lighten(COL_FOOD, -60), 0.35, 4, '#FFAAAA');
         }
 
-        if (frameCount % 6 === 0) {
+        if (frameCount % 5 === 0) {
             spawnParticles(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, COL_FOOD, 1, 1);
         }
     }

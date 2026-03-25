@@ -883,10 +883,27 @@ window.MemoryMatch = (() => {
 
         const drawX = x + sx;
 
-        // Flip animation: scaleX goes 1 -> 0 (back) -> 1 (front) or reverse
+        // Flip animation: scaleX goes 1 -> 0 (back) -> 1 (front) with 3D perspective
         const progress = card.flipProgress;
         const scaleX = Math.abs(Math.cos(progress * Math.PI));
         const showFront = progress > 0.5;
+
+        // 3D perspective skew effect during flip
+        const flipAngle = progress * Math.PI;
+        const perspSkew = Math.sin(flipAngle) * 0.08;
+        if (progress > 0.05 && progress < 0.95) {
+            ctx.save();
+            const cx = drawX + w / 2;
+            const cy = y + h / 2;
+            ctx.translate(cx, cy);
+            ctx.transform(1, perspSkew, 0, 1 + Math.abs(perspSkew) * 0.1, 0, 0);
+            ctx.translate(-cx, -cy);
+            // Shadow grows during flip for depth
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(drawX + 4, y + h - 2, w, 6 * Math.sin(flipAngle), [3]) : ctx.fillRect(drawX + 4, y + h - 2, w, 6 * Math.sin(flipAngle));
+            ctx.fill();
+        }
 
         // Match glow
         if (card.matched && card.matchGlow > 0) {
@@ -906,6 +923,27 @@ window.MemoryMatch = (() => {
             drawCardBack(drawX, y, w, h, scaleX);
         }
 
+        // Close 3D perspective transform
+        if (progress > 0.05 && progress < 0.95) {
+            ctx.restore();
+        }
+
+        // Hover shimmer effect (signature visual — light sweep)
+        if (idx === selectedIdx && !card.matched && !showFront) {
+            const shimmerT = (Date.now() * 0.003) % 1;
+            const shimmerX = drawX + shimmerT * w * 1.5 - w * 0.25;
+            const shimGrad = ctx.createLinearGradient(shimmerX - 20, 0, shimmerX + 20, 0);
+            shimGrad.addColorStop(0, 'rgba(255,255,255,0)');
+            shimGrad.addColorStop(0.5, 'rgba(255,255,255,0.12)');
+            shimGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.save();
+            roundRect(ctx, drawX, y, w, h, CARD_RADIUS);
+            ctx.clip();
+            ctx.fillStyle = shimGrad;
+            ctx.fillRect(drawX, y, w, h);
+            ctx.restore();
+        }
+
         // Keyboard selection highlight
         if (idx === selectedIdx && phase === 'playing') {
             ctx.strokeStyle = '#FFF';
@@ -916,24 +954,41 @@ window.MemoryMatch = (() => {
             ctx.globalAlpha = 1;
         }
 
-        // Matched sparkle
+        // Matched celebration — expanding particles and star bursts
         if (card.matched) {
             const elapsed = Date.now() - card.matchTime;
-            if (elapsed < 2000) {
-                const alpha = Math.max(0, 1 - elapsed / 2000);
+            if (elapsed < 2500) {
+                const alpha = Math.max(0, 1 - elapsed / 2500);
                 const cx = drawX + w / 2;
                 const cy = y + h / 2;
+                const matchColor = ICON_COLORS[card.icon % ICON_COLORS.length] || ACCENT;
                 ctx.save();
-                ctx.globalAlpha = alpha * 0.6;
-                const sparkleR = Math.min(w, h) * 0.08;
-                for (let i = 0; i < 4; i++) {
-                    const a = (frameCount * 0.03 + i * Math.PI / 2);
-                    const sr = Math.min(w, h) * 0.35;
+                // Expanding ring burst
+                if (elapsed < 600) {
+                    const ringProg = elapsed / 600;
+                    ctx.strokeStyle = matchColor;
+                    ctx.lineWidth = 3 * (1 - ringProg);
+                    ctx.globalAlpha = (1 - ringProg) * 0.7;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, Math.min(w, h) * 0.3 + ringProg * Math.min(w, h) * 0.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                // Rotating sparkle stars (more numerous)
+                ctx.globalAlpha = alpha * 0.8;
+                for (let i = 0; i < 8; i++) {
+                    const a = (frameCount * 0.04 + i * Math.PI / 4);
+                    const sr = Math.min(w, h) * (0.25 + elapsed * 0.0002);
                     const sx2 = cx + Math.cos(a) * sr;
                     const sy = cy + Math.sin(a) * sr;
-                    ctx.fillStyle = '#FFF';
+                    const sparkSz = Math.min(w, h) * 0.06 * (1 - elapsed / 2500);
+                    ctx.fillStyle = i % 2 === 0 ? '#FFF' : matchColor;
+                    // 4-point star shape
                     ctx.beginPath();
-                    ctx.arc(sx2, sy, sparkleR, 0, Math.PI * 2);
+                    ctx.moveTo(sx2, sy - sparkSz * 1.5);
+                    ctx.lineTo(sx2 + sparkSz * 0.4, sy);
+                    ctx.lineTo(sx2, sy + sparkSz * 1.5);
+                    ctx.lineTo(sx2 - sparkSz * 0.4, sy);
+                    ctx.closePath();
                     ctx.fill();
                 }
                 ctx.restore();

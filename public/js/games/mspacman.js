@@ -1017,23 +1017,31 @@ window.MsPacMan = (() => {
         }
         ctx.globalAlpha = 1;
 
-        // Particles
+        // Particles — with glow
         for (const p of particles) {
+            ctx.save();
             ctx.globalAlpha = p.life;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = gs(4);
             ctx.fillStyle = p.color;
             ctx.beginPath();
             ctx.arc(gx(p.x), gy(p.y), gs(p.size), 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
         }
         ctx.globalAlpha = 1;
 
         // HUD
         drawHUD();
 
-        // Screen flash
+        // Screen flash — brighter radial burst
         if (screenFlash > 0) {
-            ctx.globalAlpha = screenFlash * 0.15;
-            ctx.fillStyle = '#FFFFFF';
+            ctx.globalAlpha = screenFlash * 0.35;
+            const sfGrad = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width * 0.6);
+            sfGrad.addColorStop(0, '#FFFFFF');
+            sfGrad.addColorStop(0.4, '#FBBF24');
+            sfGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = sfGrad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.globalAlpha = 1;
         }
@@ -1301,10 +1309,43 @@ window.MsPacMan = (() => {
         const def = fruit.type;
 
         ctx.save();
-        ctx.shadowColor = def.color;
-        ctx.shadowBlur = gs(8);
 
-        // Simple fruit shape
+        // Sparkle trail behind roaming fruit
+        if (fruit.roaming) {
+            for (let i = 0; i < 4; i++) {
+                const sparkAngle = frameCount * 0.15 + i * Math.PI * 0.5;
+                const sparkDist = r * 1.2 + Math.sin(frameCount * 0.08 + i) * r * 0.4;
+                const sx = px + Math.cos(sparkAngle) * sparkDist;
+                const sy = py + Math.sin(sparkAngle) * sparkDist;
+                const sparkSize = gs(1.5 + Math.sin(frameCount * 0.1 + i * 2) * 1);
+                ctx.globalAlpha = 0.5 + Math.sin(frameCount * 0.12 + i) * 0.3;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.shadowColor = def.color;
+                ctx.shadowBlur = gs(6);
+                ctx.beginPath();
+                ctx.arc(sx, sy, sparkSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // Sparkle ring around fruit (always visible)
+        for (let i = 0; i < 6; i++) {
+            const sa = frameCount * 0.06 + i * Math.PI / 3;
+            const sd = r * 1.5;
+            const ssz = gs(1 + Math.sin(frameCount * 0.1 + i) * 0.5);
+            ctx.globalAlpha = 0.3 + Math.sin(frameCount * 0.08 + i * 1.5) * 0.3;
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(px + Math.cos(sa) * sd, py + Math.sin(sa) * sd, ssz, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.shadowColor = def.color;
+        ctx.shadowBlur = gs(12);
+
+        // Fruit body
         ctx.fillStyle = def.color;
         ctx.beginPath();
         ctx.arc(px, py, r, 0, Math.PI * 2);
@@ -1316,7 +1357,7 @@ window.MsPacMan = (() => {
         ctx.arc(px - r * 0.2, py - r * 0.3, r * 0.3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Stem for applicable fruits
+        // Stem
         ctx.strokeStyle = def.accent;
         ctx.lineWidth = gs(1.5);
         ctx.beginPath();
@@ -1429,50 +1470,98 @@ window.MsPacMan = (() => {
     }
 
     function drawIntermission() {
-        ctx.fillStyle = 'rgba(10,5,21,0.9)';
+        ctx.fillStyle = 'rgba(10,5,21,0.95)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const cx = gx(GAME_W / 2), cy = gy(GAME_H / 2);
         const t = 1 - intermissionTimer / 3000;
 
-        // Simple cutscene: Ms. Pac-Man and Pac-Man meet
+        // Ambient sparkle stars in background
+        for (let i = 0; i < 20; i++) {
+            const sx = gx((Math.sin(i * 7.3 + frameCount * 0.003) * 0.5 + 0.5) * GAME_W);
+            const sy = gy((Math.cos(i * 5.1 + frameCount * 0.004) * 0.5 + 0.5) * GAME_H);
+            const sb = 0.2 + Math.sin(frameCount * 0.05 + i * 2) * 0.2;
+            ctx.globalAlpha = sb;
+            ctx.fillStyle = '#F9A8D4';
+            ctx.beginPath();
+            ctx.arc(sx, sy, gs(1), 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Spotlight gradient behind characters
+        const spotlight = ctx.createRadialGradient(cx, cy, 0, cx, cy, gs(80));
+        spotlight.addColorStop(0, 'rgba(251,191,36,0.08)');
+        spotlight.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = spotlight;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Ms. Pac-Man and Pac-Man meet
         const msPx = gx(GAME_W * 0.3 + t * GAME_W * 0.15);
         const pPx = gx(GAME_W * 0.7 - t * GAME_W * 0.15);
 
-        // Ms. Pac-Man (moving right)
+        // Ms. Pac-Man (moving right) with glow
+        ctx.save();
+        ctx.shadowColor = '#FBBF24';
+        ctx.shadowBlur = gs(12);
         ctx.fillStyle = '#FBBF24';
         ctx.beginPath();
         ctx.arc(msPx, cy, gs(18), 0.15 * Math.PI, 1.85 * Math.PI);
         ctx.lineTo(msPx, cy);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
         drawBow(msPx + gs(2), cy - gs(18), gs(8));
 
-        // Pac-Man (moving left)
+        // Pac-Man (moving left) with glow
+        ctx.save();
+        ctx.shadowColor = '#FBBF24';
+        ctx.shadowBlur = gs(12);
         ctx.fillStyle = '#FBBF24';
         ctx.beginPath();
         ctx.arc(pPx, cy, gs(18), 1.15 * Math.PI, 0.85 * Math.PI + Math.PI * 2);
         ctx.lineTo(pPx, cy);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
 
-        // Heart between them when close
+        // Heart between them when close — pulsing with glow
         if (t > 0.6) {
             const heartX = (msPx + pPx) / 2;
             const heartY = cy - gs(30) + Math.sin(frameCount * 0.1) * gs(3);
+            const heartScale = 1 + Math.sin(frameCount * 0.15) * 0.15;
+            ctx.save();
+            ctx.shadowColor = '#EF4444';
+            ctx.shadowBlur = gs(15);
             ctx.fillStyle = '#EF4444';
-            ctx.font = `${gs(20)}px sans-serif`;
+            ctx.font = `${gs(20 * heartScale)}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillText('\u2665', heartX, heartY);
+            ctx.restore();
+            // Tiny heart particles
+            for (let i = 0; i < 3; i++) {
+                const hp = (t - 0.6) / 0.4;
+                const hx = heartX + Math.sin(frameCount * 0.08 + i * 2.5) * gs(15);
+                const hy = heartY - gs(10 + hp * 20 + i * 8);
+                ctx.globalAlpha = 0.4 * (1 - hp * 0.5);
+                ctx.fillStyle = '#F9A8D4';
+                ctx.font = `${gs(8)}px sans-serif`;
+                ctx.fillText('\u2665', hx, hy);
+            }
+            ctx.globalAlpha = 1;
         }
 
-        // Title text
+        // Title text with glow
+        ctx.save();
+        ctx.shadowColor = '#F472B6';
+        ctx.shadowBlur = gs(10);
         ctx.fillStyle = '#F472B6';
         ctx.font = `bold ${gs(12)}px monospace`;
         ctx.textAlign = 'center';
         const acts = ['ACT I: THEY MEET', 'ACT II: THE CHASE', 'ACT III: JUNIOR'];
         const actIdx = level <= 3 ? 0 : level <= 6 ? 1 : 2;
         ctx.fillText(acts[actIdx], cx, gy(GAME_H * 0.25));
+        ctx.restore();
     }
 
     function drawLevelClear() {

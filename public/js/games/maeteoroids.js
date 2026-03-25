@@ -338,17 +338,19 @@ window.Maeteoroids = (() => {
             // Engine glow when thrusting — still canvas for animation
             if (ship.thrusting) {
                 ctx.shadowColor = '#F59E0B';
-                ctx.shadowBlur = Math.round(22 * SCALE);
+                ctx.shadowBlur = Math.round(30 * SCALE);
                 const t = ship.flameTime;
-                const flicker1 = 0.7 + Math.sin(t * 15) * 0.15 + Math.sin(t * 23) * 0.15;
-                const outerGrad = ctx.createRadialGradient(-S * 0.8, 0, 0, -S * 0.8, 0, S * flicker1 * 0.8);
-                outerGrad.addColorStop(0, 'rgba(239,68,68,0.8)');
-                outerGrad.addColorStop(0.6, 'rgba(245,158,11,0.4)');
+                const flicker1 = 0.8 + Math.sin(t * 15) * 0.15 + Math.sin(t * 23) * 0.15;
+                // Bigger outer flame
+                const outerGrad = ctx.createRadialGradient(-S * 0.8, 0, 0, -S * 0.8, 0, S * flicker1 * 1.1);
+                outerGrad.addColorStop(0, 'rgba(255,255,200,0.9)');
+                outerGrad.addColorStop(0.3, 'rgba(239,68,68,0.7)');
+                outerGrad.addColorStop(0.7, 'rgba(245,158,11,0.35)');
                 outerGrad.addColorStop(1, 'rgba(239,68,68,0)');
                 ctx.fillStyle = outerGrad;
                 ctx.beginPath();
-                ctx.moveTo(-S * 0.6, -S * 0.35);
-                ctx.quadraticCurveTo(-S * (1.1 + flicker1 * 0.5), 0, -S * 0.6, S * 0.35);
+                ctx.moveTo(-S * 0.6, -S * 0.4);
+                ctx.quadraticCurveTo(-S * (1.3 + flicker1 * 0.6), 0, -S * 0.6, S * 0.4);
                 ctx.closePath();
                 ctx.fill();
             }
@@ -837,7 +839,7 @@ window.Maeteoroids = (() => {
         for (const p of particles) {
             const alpha = Math.max(0, p.life);
             ctx.shadowColor = p.color;
-            ctx.shadowBlur = Math.round(6 * SCALE * alpha);
+            ctx.shadowBlur = Math.round(10 * SCALE * alpha);
             if (p.isLine) {
                 ctx.save();
                 ctx.translate(p.x, p.y);

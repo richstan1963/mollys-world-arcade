@@ -1030,7 +1030,7 @@ window.Galaga = (() => {
             }
         });
 
-        // Flash effect (smart bomb)
+        // Flash effect (smart bomb) + richer particle explosions
         particles.forEach(p => {
             if (p.type === 'flash') {
                 ctx.globalAlpha = p.life * 0.6;
@@ -1038,12 +1038,22 @@ window.Galaga = (() => {
                 ctx.fillRect(0, 0, W, H);
                 return;
             }
+            const sz = p.size * p.life;
+            // Outer glow ring for larger particles
+            if (sz > 2) {
+                ctx.globalAlpha = p.life * 0.3;
+                const rg = ctx.createRadialGradient(gx(p.x), gy(p.y), 0, gx(p.x), gy(p.y), gs(sz * 2.5));
+                rg.addColorStop(0, p.color);
+                rg.addColorStop(1, 'transparent');
+                ctx.fillStyle = rg;
+                ctx.fillRect(gx(p.x) - gs(sz * 2.5), gy(p.y) - gs(sz * 2.5), gs(sz * 5), gs(sz * 5));
+            }
             ctx.globalAlpha = p.life;
             ctx.fillStyle = p.color;
             ctx.shadowColor = p.color;
-            ctx.shadowBlur = gs(4);
+            ctx.shadowBlur = gs(6);
             ctx.beginPath();
-            ctx.arc(gx(p.x), gy(p.y), gs(p.size * p.life), 0, Math.PI * 2);
+            ctx.arc(gx(p.x), gy(p.y), gs(sz), 0, Math.PI * 2);
             ctx.fill();
         });
         ctx.shadowBlur = 0;
@@ -1052,13 +1062,21 @@ window.Galaga = (() => {
         // Sprite-based explosions
         drawSpriteExplosions();
 
-        // Score popups
+        // Score popups — scale up then fade
         scorePopups.forEach(sp => {
+            const age = 1 - sp.life;
+            const sc = age < 0.15 ? 0.8 + age * 4 : 1.4 - age * 0.5;
             ctx.globalAlpha = sp.life;
-            ctx.fillStyle = sp.color;
+            ctx.save();
+            ctx.translate(gx(sp.x), gy(sp.y));
+            ctx.scale(sc, sc);
+            ctx.fillStyle = '#000';
             ctx.font = `bold ${gs(13)}px monospace`;
             ctx.textAlign = 'center';
-            ctx.fillText(sp.text, gx(sp.x), gy(sp.y));
+            ctx.fillText(sp.text, gs(1), gs(1));
+            ctx.fillStyle = sp.color;
+            ctx.fillText(sp.text, 0, 0);
+            ctx.restore();
         });
         ctx.globalAlpha = 1;
     }
@@ -1078,12 +1096,19 @@ window.Galaga = (() => {
             } else {
                 ctx.save();
                 ctx.shadowColor = BULLET_COLOR;
-                ctx.shadowBlur = gs(6);
+                ctx.shadowBlur = gs(8);
                 ctx.fillStyle = BULLET_COLOR;
                 ctx.fillRect(gx(bx - BULLET_W / 2), gy(by - BULLET_H / 2), gs(BULLET_W), gs(BULLET_H));
                 ctx.shadowBlur = 0;
                 ctx.restore();
             }
+            // Gradient trail behind player bullet
+            const tg = ctx.createLinearGradient(gx(bx), gy(by + BULLET_H), gx(bx), gy(by + BULLET_H + 18));
+            tg.addColorStop(0, 'rgba(56,189,248,0.3)');
+            tg.addColorStop(0.5, 'rgba(56,189,248,0.1)');
+            tg.addColorStop(1, 'rgba(56,189,248,0)');
+            ctx.fillStyle = tg;
+            ctx.fillRect(gx(bx - BULLET_W / 2), gy(by + BULLET_H / 2), gs(BULLET_W), gs(18));
         } else {
             const img = sprites.laserRed;
             if (img) {
@@ -1097,6 +1122,12 @@ window.Galaga = (() => {
                 ctx.fill();
                 ctx.shadowBlur = 0;
             }
+            // Enemy bullet trail
+            const etg = ctx.createLinearGradient(gx(bx), gy(by - 10), gx(bx), gy(by));
+            etg.addColorStop(0, 'rgba(239,68,68,0)');
+            etg.addColorStop(1, 'rgba(239,68,68,0.15)');
+            ctx.fillStyle = etg;
+            ctx.fillRect(gx(bx - 2), gy(by - 10), gs(4), gs(10));
         }
     }
 
@@ -1627,8 +1658,27 @@ window.Galaga = (() => {
             ctx.translate(rand(-screenShake, screenShake) * SCALE, rand(-screenShake, screenShake) * SCALE);
         }
 
-        // Background
-        ctx.fillStyle = '#050510';
+        // Background — deeper space gradient
+        if (!this._bgGrad) {
+            this._bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+            this._bgGrad.addColorStop(0, '#020208');
+            this._bgGrad.addColorStop(0.35, '#04040f');
+            this._bgGrad.addColorStop(0.65, '#030312');
+            this._bgGrad.addColorStop(1, '#020206');
+        }
+        ctx.fillStyle = this._bgGrad;
+        ctx.fillRect(0, 0, W, H);
+        // Deep space nebula wash
+        const nbPulse = 0.5 + 0.2 * Math.sin(frameCount * 0.004);
+        const nb1 = ctx.createRadialGradient(W * 0.7, H * 0.3, 0, W * 0.7, H * 0.3, W * 0.45);
+        nb1.addColorStop(0, `rgba(40,15,70,${0.05 * nbPulse})`);
+        nb1.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = nb1;
+        ctx.fillRect(0, 0, W, H);
+        const nb2 = ctx.createRadialGradient(W * 0.2, H * 0.6, 0, W * 0.2, H * 0.6, W * 0.35);
+        nb2.addColorStop(0, `rgba(10,20,60,${0.04 * nbPulse})`);
+        nb2.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = nb2;
         ctx.fillRect(0, 0, W, H);
         drawStars();
 
@@ -1641,13 +1691,21 @@ window.Galaga = (() => {
 
         if (state === ST_TITLE) { drawTitle(); ctx.restore(); return; }
 
-        // Formation grid dots
+        // Formation grid dots with subtle glow
         if (state === ST_PLAYING || state === ST_LEVEL_SPLASH) {
-            ctx.fillStyle = 'rgba(255,255,255,0.04)';
             for (let r = 0; r < FORMATION_ROWS; r++) {
                 for (let c = 0; c < FORMATION_COLS; c++) {
+                    const gxp = gx(formationX(c)), gyp = gy(formationY(r));
+                    // Soft glow
+                    const dg = ctx.createRadialGradient(gxp, gyp, 0, gxp, gyp, gs(4));
+                    dg.addColorStop(0, 'rgba(100,120,255,0.06)');
+                    dg.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = dg;
+                    ctx.fillRect(gxp - gs(4), gyp - gs(4), gs(8), gs(8));
+                    // Dot
+                    ctx.fillStyle = 'rgba(255,255,255,0.05)';
                     ctx.beginPath();
-                    ctx.arc(gx(formationX(c)), gy(formationY(r)), gs(1), 0, Math.PI * 2);
+                    ctx.arc(gxp, gyp, gs(1), 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
@@ -1780,6 +1838,15 @@ window.Galaga = (() => {
     }
 
     function drawHUD() {
+        // HUD backdrop panels
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.roundRect(gx(4), gy(6), gs(160), gs(18), gs(4));
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(gx(GAME_W - 100), gy(6), gs(96), gs(18), gs(4));
+        ctx.fill();
+
         ctx.textAlign = 'left';
         ctx.fillStyle = HUD_COLOR;
         ctx.font = `bold ${gs(14)}px monospace`;

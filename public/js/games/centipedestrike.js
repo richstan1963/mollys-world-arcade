@@ -961,24 +961,44 @@ window.CentipedeStrike = (() => {
                     continue;
                 }
 
-                // Canvas fallback — simple small capped mushroom
-                const stemW = sz * 0.25, stemH = sz * 0.4;
-                const capR = sz * 0.4;
+                // Canvas fallback — varied mushrooms with color/size variety
+                const variety = (c * 7 + r * 13) % 5;
+                const stemW = sz * (0.2 + variety * 0.02), stemH = sz * (0.35 + variety * 0.03);
+                const capR = sz * (0.35 + variety * 0.03);
 
-                // Stem
-                ctx.fillStyle = CLR_MUSH_STEM;
+                // Stem with gradient
+                const stemGrad = ctx.createLinearGradient(cx, cy, cx, cy + stemH);
+                stemGrad.addColorStop(0, CLR_MUSH_STEM);
+                stemGrad.addColorStop(1, 'rgba(180,160,120,0.6)');
+                ctx.fillStyle = stemGrad;
                 ctx.fillRect(cx - stemW / 2, cy, stemW, stemH);
 
-                // Cap (semicircle)
+                // Cap (semicircle) with color variety
                 const capColor = m.poisoned ? CLR_MUSH_POISON : CLR_MUSH_CAP;
+                const hueShift = variety * 8;
                 ctx.fillStyle = capColor;
                 ctx.beginPath();
                 ctx.arc(cx, cy, capR, Math.PI, 0, false);
                 ctx.fill();
+                // Cap shading (darker edge for depth)
+                const capShade = ctx.createRadialGradient(cx - capR * 0.2, cy - capR * 0.3, 0, cx, cy, capR);
+                capShade.addColorStop(0, `rgba(255,255,255,0.2)`);
+                capShade.addColorStop(0.7, 'rgba(0,0,0,0)');
+                capShade.addColorStop(1, 'rgba(0,0,0,0.2)');
+                ctx.fillStyle = capShade;
+                ctx.beginPath();
+                ctx.arc(cx, cy, capR, Math.PI, 0, false);
+                ctx.fill();
 
-                // Small spot
+                // Multiple spots (varied placement per mushroom)
                 ctx.fillStyle = 'rgba(255,255,255,0.35)';
                 ctx.beginPath(); ctx.arc(cx - capR * 0.25, cy - capR * 0.3, capR * 0.15, 0, Math.PI * 2); ctx.fill();
+                if (variety > 1) {
+                    ctx.beginPath(); ctx.arc(cx + capR * 0.2, cy - capR * 0.15, capR * 0.1, 0, Math.PI * 2); ctx.fill();
+                }
+                if (variety > 3) {
+                    ctx.beginPath(); ctx.arc(cx - capR * 0.05, cy - capR * 0.45, capR * 0.08, 0, Math.PI * 2); ctx.fill();
+                }
 
                 // Poison glow
                 if (m.poisoned) {
@@ -997,14 +1017,30 @@ window.CentipedeStrike = (() => {
     function drawCentipedes() {
         centipedes.forEach(centi => {
             const segs = centi.segments.filter(s => !s.dead);
-            // Draw connecting joints between segments
-            ctx.strokeStyle = CLR_JOINT;
-            ctx.lineWidth = gs(2);
+            // Draw connecting links between segments — visible sinew/tendons
             for (let i = 1; i < segs.length; i++) {
+                const x1 = gx(segs[i - 1].x), y1 = gy(segs[i - 1].y);
+                const x2 = gx(segs[i].x), y2 = gy(segs[i].y);
+                // Outer glow link
+                ctx.strokeStyle = 'rgba(100,150,255,0.15)';
+                ctx.lineWidth = gs(6);
                 ctx.beginPath();
-                ctx.moveTo(gx(segs[i - 1].x), gy(segs[i - 1].y));
-                ctx.lineTo(gx(segs[i].x), gy(segs[i].y));
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
                 ctx.stroke();
+                // Core link
+                ctx.strokeStyle = CLR_JOINT;
+                ctx.lineWidth = gs(3);
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                // Joint node at midpoint
+                const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+                ctx.fillStyle = CLR_JOINT;
+                ctx.beginPath();
+                ctx.arc(mx, my, gs(2), 0, Math.PI * 2);
+                ctx.fill();
             }
             // Draw segments
             segs.forEach(seg => {
@@ -1241,10 +1277,19 @@ window.CentipedeStrike = (() => {
             ctx.fillStyle = `rgba(255,255,255,${alpha * 0.4})`;
             ctx.beginPath(); ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2); ctx.fill();
 
-            // Ring outline
-            ctx.strokeStyle = `rgba(251,191,36,${alpha * 0.4})`;
-            ctx.lineWidth = gs(2);
+            // Expanding outer glow ring (signature visual)
+            ctx.save();
+            ctx.strokeStyle = `rgba(255,200,50,${alpha * 0.6})`;
+            ctx.lineWidth = gs(3);
+            ctx.shadowColor = 'rgba(255,180,30,0.8)';
+            ctx.shadowBlur = gs(12) * alpha;
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+            // Secondary pulsing ring
+            ctx.strokeStyle = `rgba(255,100,20,${alpha * 0.3})`;
+            ctx.lineWidth = gs(1.5);
+            ctx.shadowBlur = gs(8) * alpha;
+            ctx.beginPath(); ctx.arc(cx, cy, r * 1.3, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
         });
     }
 

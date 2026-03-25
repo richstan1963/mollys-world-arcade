@@ -538,7 +538,7 @@ window.WordleGame = (() => {
                 ctx.save();
 
                 if (flipAnim) {
-                    // Flip animation: scale Y
+                    // Flip animation: scale Y with satisfying reveal
                     const elapsed = now - flipAnim.startTime;
                     const halfDur = FLIP_DURATION / 2;
                     let scaleY;
@@ -567,13 +567,29 @@ window.WordleGame = (() => {
                     ctx.scale(1, Math.max(0.01, scaleY));
                     ctx.translate(0, -cy);
 
-                    // Draw tile
-                    roundRect(x, y, w, h, 4);
-                    ctx.fillStyle = bgColor;
+                    // Draw tile with gradient for depth
+                    roundRect(x, y, w, h, 5);
+                    if (elapsed >= halfDur) {
+                        const tileGrad = ctx.createLinearGradient(x, y, x, y + h);
+                        const lighterBg = flipAnim.state === 'correct' ? '#34D399' :
+                                          flipAnim.state === 'present' ? '#FCD34D' : '#6B7280';
+                        tileGrad.addColorStop(0, lighterBg);
+                        tileGrad.addColorStop(1, bgColor);
+                        ctx.fillStyle = tileGrad;
+                    } else {
+                        ctx.fillStyle = bgColor;
+                    }
                     ctx.fill();
                     ctx.strokeStyle = borderColor;
                     ctx.lineWidth = 2;
                     ctx.stroke();
+                    // Reveal flash at the halfway point
+                    if (elapsed >= halfDur && elapsed < halfDur + 150) {
+                        const flashAlpha = 1 - (elapsed - halfDur) / 150;
+                        ctx.fillStyle = `rgba(255,255,255,${flashAlpha * 0.3})`;
+                        roundRect(x, y, w, h, 5);
+                        ctx.fill();
+                    }
 
                     // Letter
                     if (letter && scaleY > 0.3) {
@@ -581,7 +597,10 @@ window.WordleGame = (() => {
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillStyle = '#FFFFFF';
+                        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                        ctx.shadowBlur = 3;
                         ctx.fillText(letter, x + w / 2, y + h / 2);
+                        ctx.shadowBlur = 0;
                     }
                 } else {
                     // Bounce animation for winning row
@@ -590,8 +609,9 @@ window.WordleGame = (() => {
                         const elapsed = now - bounceAnim.startTime;
                         if (elapsed < BOUNCE_DURATION) {
                             const progress = elapsed / BOUNCE_DURATION;
-                            const bounce = Math.sin(progress * Math.PI) * 15;
-                            y -= bounce;
+                            // More satisfying multi-bounce (2 bounces)
+                            const bounce = Math.sin(progress * Math.PI * 2.5) * 18 * (1 - progress * 0.6);
+                            y -= Math.abs(bounce);
                         } else {
                             bounceAnims = bounceAnims.filter(b => b !== bounceAnim);
                         }
@@ -613,26 +633,42 @@ window.WordleGame = (() => {
                     const tileSpr = wgSpr(sprKey);
                     if (tileSpr && (isRevealed || letter)) {
                         ctx.drawImage(tileSpr, x, y, w, h);
-                        // Color overlay for revealed tiles
                         if (isRevealed) {
                             ctx.globalAlpha = 0.3;
                             ctx.fillStyle = bgColor;
-                            roundRect(x, y, w, h, 4);
+                            roundRect(x, y, w, h, 5);
                             ctx.fill();
                             ctx.globalAlpha = 1;
                         }
                         ctx.strokeStyle = borderColor;
                         ctx.lineWidth = 1;
-                        roundRect(x, y, w, h, 4);
+                        roundRect(x, y, w, h, 5);
                         ctx.stroke();
                     } else {
-                        // FALLBACK
-                        roundRect(x, y, w, h, 4);
-                        ctx.fillStyle = bgColor;
-                        ctx.fill();
+                        // Polished tile with gradient
+                        if (isRevealed) {
+                            const tileGrad = ctx.createLinearGradient(x, y, x, y + h);
+                            const lighterBg = result === 'correct' ? '#34D399' :
+                                              result === 'present' ? '#FCD34D' : '#6B7280';
+                            tileGrad.addColorStop(0, lighterBg);
+                            tileGrad.addColorStop(1, bgColor);
+                            roundRect(x, y, w, h, 5);
+                            ctx.fillStyle = tileGrad;
+                            ctx.fill();
+                        } else {
+                            roundRect(x, y, w, h, 5);
+                            ctx.fillStyle = bgColor;
+                            ctx.fill();
+                        }
                         ctx.strokeStyle = borderColor;
                         ctx.lineWidth = 2;
                         ctx.stroke();
+                        // Top highlight for 3D feel
+                        if (isRevealed) {
+                            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                            roundRect(x + 1, y + 1, w - 2, h * 0.3, 4);
+                            ctx.fill();
+                        }
                     }
 
                     // Letter
@@ -662,14 +698,35 @@ window.WordleGame = (() => {
 
                 // Key color based on letter state
                 let bgColor = '#6B7280';
+                let topColor = '#7B8290';
+                let bottomColor = '#555D68';
                 let textColor = '#FFFFFF';
 
                 if (key.length === 1 && letterStates[key]) {
                     bgColor = getStateColor(letterStates[key]);
+                    // Lighten/darken for 3D
+                    topColor = letterStates[key] === 'correct' ? '#34D399' :
+                               letterStates[key] === 'present' ? '#FCD34D' : '#6B7280';
+                    bottomColor = letterStates[key] === 'correct' ? '#15803D' :
+                                  letterStates[key] === 'present' ? '#A16207' : '#374151';
                 }
 
-                roundRect(x, y, w, h, 6);
-                ctx.fillStyle = bgColor;
+                // 3D key effect - bottom shadow
+                roundRect(x, y + 2, w, h, 6);
+                ctx.fillStyle = bottomColor;
+                ctx.fill();
+
+                // Main key face
+                const keyGrad = ctx.createLinearGradient(x, y, x, y + h - 2);
+                keyGrad.addColorStop(0, topColor);
+                keyGrad.addColorStop(1, bgColor);
+                roundRect(x, y, w, h - 2, 6);
+                ctx.fillStyle = keyGrad;
+                ctx.fill();
+
+                // Top highlight for pressed/3D feel
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                roundRect(x + 1, y + 1, w - 2, h * 0.35, 5);
                 ctx.fill();
 
                 // Key label
@@ -677,8 +734,11 @@ window.WordleGame = (() => {
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = textColor;
-                const label = key === 'DEL' ? '⌫' : key;
-                ctx.fillText(label, x + w / 2, y + h / 2);
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = 2;
+                const label = key === 'DEL' ? '\u232B' : key;
+                ctx.fillText(label, x + w / 2, y + h / 2 - 1);
+                ctx.shadowBlur = 0;
             }
         }
     }

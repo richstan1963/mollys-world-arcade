@@ -127,6 +127,7 @@ window.MinniePac = (() => {
     let lastTime = 0;
     let startTime = 0;
     let scorePopups = [];
+    let dotParticles = [];
     let keys = {};
 
     // Minnie
@@ -362,10 +363,15 @@ window.MinniePac = (() => {
 
     function drawScreenFlash(w, h) {
         if (screenFlashTimer <= 0) return;
-        const alpha = (screenFlashTimer / SCREEN_FLASH_DURATION) * 0.3;
+        const progress = screenFlashTimer / SCREEN_FLASH_DURATION;
+        const alpha = progress * 0.5;
         ctx.save();
         ctx.globalAlpha = alpha;
-        ctx.fillStyle = '#FF69B4';
+        const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.7);
+        grad.addColorStop(0, '#FFFFFF');
+        grad.addColorStop(0.3, '#FF69B4');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
         ctx.restore();
     }
@@ -586,10 +592,24 @@ window.MinniePac = (() => {
                 score += DOT_SCORE;
                 dotsEaten++;
                 if (frameCount % 3 === 0) playWaka();
+                // Pink dot particle burst
+                const { px: dpx, py: dpy } = toPixel(eatX, eatY);
+                for (let i = 0; i < 5; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 0.5 + Math.random() * 1.5;
+                    dotParticles.push({ x: dpx, y: dpy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.4, color: ['#FF69B4','#FFB6C1','#FF1493','#FFC0CB'][i % 4], size: tileSize * 0.08 });
+                }
             } else if (tile === TILE_POWER) {
                 maze[eatY][eatX] = TILE_EMPTY;
                 score += POWER_SCORE;
                 dotsEaten++;
+                // Big pink particle burst
+                const { px: ppx, py: ppy } = toPixel(eatX, eatY);
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * Math.PI * 2;
+                    const speed = 1 + Math.random() * 2;
+                    dotParticles.push({ x: ppx, y: ppy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.6, color: ['#FF69B4','#FFB6C1','#FF1493','#FFC0CB','#FF85C2','#FFD1DC'][i % 6], size: tileSize * 0.12 });
+                }
                 frightenGhosts();
                 playPowerSound();
             }
@@ -705,17 +725,17 @@ window.MinniePac = (() => {
         const wallRgb = hexToRgb(WALL_COLOR);
         const wallLight = lightenColor(WALL_COLOR, 80);
 
-        // Outer glow
-        oc.strokeStyle = `rgba(${wallRgb.r},${wallRgb.g},${wallRgb.b},0.3)`;
-        oc.lineWidth = wallLineW + 4;
+        // Outer glow — brighter pink neon
+        oc.strokeStyle = `rgba(${wallRgb.r},${wallRgb.g},${wallRgb.b},0.45)`;
+        oc.lineWidth = wallLineW + 6;
         oc.lineCap = 'round';
         oc.lineJoin = 'round';
         oc.shadowColor = WALL_COLOR;
-        oc.shadowBlur = 12;
-        drawWallLines(oc, isW, wallLineW + 4);
+        oc.shadowBlur = 20;
+        drawWallLines(oc, isW, wallLineW + 6);
 
         // Main wall with gradient
-        oc.shadowBlur = 6;
+        oc.shadowBlur = 10;
         oc.shadowColor = wallLight;
         oc.lineWidth = wallLineW;
 
@@ -937,6 +957,24 @@ window.MinniePac = (() => {
             ctx.shadowBlur = tileSize * 0.3;
             ctx.beginPath();
             ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function drawDotParticles(dt) {
+        for (let i = dotParticles.length - 1; i >= 0; i--) {
+            const p = dotParticles[i];
+            p.x += p.vx; p.y += p.vy;
+            p.life -= dt * 2;
+            if (p.life <= 0) { dotParticles.splice(i, 1); continue; }
+            ctx.save();
+            ctx.globalAlpha = p.life * 1.5;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = tileSize * 0.3;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
@@ -1169,7 +1207,17 @@ window.MinniePac = (() => {
         ctx.save();
 
         ctx.shadowColor = color;
-        ctx.shadowBlur = frightened ? tileSize * 0.3 : tileSize * 0.2;
+        ctx.shadowBlur = frightened ? tileSize * 0.7 : tileSize * 0.2;
+        if (frightened) {
+            const pulse = 0.6 + Math.sin(Date.now() * 0.01) * 0.4;
+            ctx.save();
+            ctx.globalAlpha = 0.3 * pulse;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(px, py, tileSize * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
 
         const bodyGrad = ctx.createLinearGradient(px - r, py - r, px + r, bodyBot);
         bodyGrad.addColorStop(0, lightenColor(color, 50));
@@ -1856,6 +1904,7 @@ window.MinniePac = (() => {
         drawMaze();
         drawFruit();
         drawPacTrail();
+        drawDotParticles(dt);
         drawPacMae();
         ghosts.forEach(g => drawGhost(g));
         drawScorePopups(dt);

@@ -619,24 +619,24 @@ window.PixelRacer = (() => {
             ctx.fillRect(ROAD_X + ROAD_W, 0, 6, GAME_H);
         }
 
-        // Lane stripes
+        // Lane stripes — sharper, more visible
         const stripeTotal = STRIPE_H + STRIPE_GAP;
         const offset = stripeOffset % stripeTotal;
         ctx.fillStyle = '#FFFFFF';
         for (let l = 1; l < NUM_LANES; l++) {
             const sx = ROAD_X + l * LANE_W - 1;
             for (let y = -stripeTotal + offset; y < GAME_H + stripeTotal; y += stripeTotal) {
-                ctx.globalAlpha = 0.5;
-                ctx.fillRect(sx, y, 2, STRIPE_H);
+                ctx.globalAlpha = 0.7;
+                ctx.fillRect(sx, y, 3, STRIPE_H);
             }
         }
         ctx.globalAlpha = 1;
 
-        // Road edge lines (solid white)
+        // Road edge lines (solid white — brighter, thicker)
         ctx.fillStyle = '#FFFFFF';
-        ctx.globalAlpha = 0.7;
-        ctx.fillRect(ROAD_X + 2, 0, 3, GAME_H);
-        ctx.fillRect(ROAD_X + ROAD_W - 5, 0, 3, GAME_H);
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(ROAD_X + 1, 0, 4, GAME_H);
+        ctx.fillRect(ROAD_X + ROAD_W - 5, 0, 4, GAME_H);
         ctx.globalAlpha = 1;
     }
 
@@ -1221,8 +1221,51 @@ window.PixelRacer = (() => {
             // Draw traffic
             for (const c of traffic) drawTrafficCar(c.x, c.y, c.type, c.spriteKey);
 
+            // Player car shadow
+            ctx.save();
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.ellipse(playerX + 2, playerY + PLAYER_H / 2 + 4, PLAYER_W / 2 + 2, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
             // Draw player
             drawPlayerCar(playerX, playerY);
+
+            // Speed streaks at high velocity
+            if (state === ST_PLAY) {
+                const spdPct = (speed - 2) / 8;
+                if (spdPct > 0.2) {
+                    ctx.save();
+                    const lineCount = Math.floor(spdPct * 15);
+                    for (let i = 0; i < lineCount; i++) {
+                        const lx = ROAD_X + 10 + ((i * 47 + frameCount) % (ROAD_W - 20));
+                        const ly = ((i * 89 + frameCount * 6) % (GAME_H + 40)) - 20;
+                        const ll = 15 + spdPct * 40;
+                        ctx.globalAlpha = spdPct * spdPct * 0.18 * (0.3 + (i % 4) * 0.2);
+                        ctx.strokeStyle = spdPct > 0.7 ? '#FFD700' : '#FFFFFF';
+                        ctx.lineWidth = 0.5 + spdPct;
+                        ctx.beginPath();
+                        ctx.moveTo(lx, ly);
+                        ctx.lineTo(lx, ly + ll);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            }
+
+            // Traffic car shadows
+            for (const c of traffic) {
+                ctx.save();
+                ctx.globalAlpha = 0.12;
+                ctx.fillStyle = '#000';
+                const ct = CAR_TYPES[c.type];
+                ctx.beginPath();
+                ctx.ellipse(c.x + 2, c.y + ct.h / 2 + 3, ct.w / 2 + 1, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
 
             // Draw particles
             drawParticles();

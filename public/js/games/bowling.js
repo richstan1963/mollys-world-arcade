@@ -135,8 +135,8 @@ window.Bowling = (() => {
     // Theme colors (fallbacks)
     let BG_CLR     = '#1A1A2E';
     let ACCENT_CLR = '#F472B6';
-    let LANE_CLR   = '#C8A06E';
-    let LANE_CLR2  = '#B8925E';
+    let LANE_CLR   = '#D4A868';
+    let LANE_CLR2  = '#B8924A';
 
     // Ball state
     let ballX, ballY, ballVX, ballVY;
@@ -342,58 +342,72 @@ window.Bowling = (() => {
     }
 
     function buildLanePattern() {
-        // Create a tiled wood pattern from sprites for the lane
         const pw = LANE_W;
         const ph = FOUL_LINE_Y;
         const c = document.createElement('canvas');
         c.width = pw; c.height = ph;
         const lc = c.getContext('2d');
 
-        // Base wood color
-        lc.fillStyle = LANE_CLR;
+        // Rich amber base (polished maple)
+        const baseGrad = lc.createLinearGradient(0, 0, pw, 0);
+        baseGrad.addColorStop(0, '#A07040');
+        baseGrad.addColorStop(0.08, '#C89860');
+        baseGrad.addColorStop(0.2, '#D4A868');
+        baseGrad.addColorStop(0.5, '#DCBA78');
+        baseGrad.addColorStop(0.8, '#D4A868');
+        baseGrad.addColorStop(0.92, '#C89860');
+        baseGrad.addColorStop(1, '#A07040');
+        lc.fillStyle = baseGrad;
         lc.fillRect(0, 0, pw, ph);
 
-        // Tile wood sprites across the lane
+        // Wood plank lines (vertical seams between boards)
+        const boardW = pw / 39; // ~39 boards on a real lane
+        lc.strokeStyle = 'rgba(120,80,30,0.12)';
+        lc.lineWidth = 0.5;
+        for (let lx = boardW; lx < pw; lx += boardW) {
+            lc.beginPath(); lc.moveTo(lx, 0); lc.lineTo(lx, ph); lc.stroke();
+        }
+
+        // Subtle grain variation per board
+        for (let bx = 0; bx < pw; bx += boardW) {
+            const grainAlpha = 0.02 + ((bx * 7.3) % 3) * 0.008;
+            lc.fillStyle = `rgba(80,50,15,${grainAlpha})`;
+            lc.fillRect(bx, 0, boardW, ph);
+        }
+
+        // Tile wood sprites if available (very subtle)
         const woodKeys = ['woodPlank70', 'woodSquare', 'woodBlock1', 'woodBlock2', 'woodBlock3', 'woodBlock4'];
         const tileSize = 35;
-
         for (let ty = 0; ty < ph; ty += tileSize) {
             for (let tx = 0; tx < pw; tx += tileSize) {
                 const key = woodKeys[(tx + ty * 7) % woodKeys.length];
                 const img = sprites[key];
                 if (img) {
-                    lc.globalAlpha = 0.35;
+                    lc.globalAlpha = 0.15;
                     lc.drawImage(img, tx, ty, tileSize, tileSize);
                 }
             }
         }
         lc.globalAlpha = 1.0;
 
-        // Overlay gradient for depth (darker edges)
-        const edgeGrad = lc.createLinearGradient(0, 0, pw, 0);
-        edgeGrad.addColorStop(0, 'rgba(80,50,20,0.18)');
-        edgeGrad.addColorStop(0.08, 'rgba(80,50,20,0)');
-        edgeGrad.addColorStop(0.92, 'rgba(80,50,20,0)');
-        edgeGrad.addColorStop(1, 'rgba(80,50,20,0.18)');
-        lc.fillStyle = edgeGrad;
+        // Polished reflection sheen (horizontal gloss band)
+        const sheenGrad = lc.createLinearGradient(0, 0, 0, ph);
+        sheenGrad.addColorStop(0, 'rgba(255,245,220,0.08)');
+        sheenGrad.addColorStop(0.15, 'rgba(255,255,240,0.12)');
+        sheenGrad.addColorStop(0.3, 'rgba(255,255,255,0.04)');
+        sheenGrad.addColorStop(0.5, 'rgba(255,255,240,0)');
+        sheenGrad.addColorStop(0.85, 'rgba(255,230,180,0.06)');
+        sheenGrad.addColorStop(1, 'rgba(255,220,160,0.1)');
+        lc.fillStyle = sheenGrad;
         lc.fillRect(0, 0, pw, ph);
 
-        // Vertical grain lines
-        lc.strokeStyle = 'rgba(100,60,20,0.06)';
-        lc.lineWidth = 1;
-        for (let lx = 14; lx < pw; lx += 14) {
-            lc.beginPath();
-            lc.moveTo(lx, 0);
-            lc.lineTo(lx, ph);
-            lc.stroke();
-        }
-
-        // Subtle perspective gradient (lighter near foul line)
-        const perspGrad = lc.createLinearGradient(0, 0, 0, ph);
-        perspGrad.addColorStop(0, 'rgba(0,0,0,0.06)');
-        perspGrad.addColorStop(0.7, 'rgba(0,0,0,0)');
-        perspGrad.addColorStop(1, 'rgba(255,220,160,0.08)');
-        lc.fillStyle = perspGrad;
+        // Oil pattern zone (slightly darker in the "head" area, lighter in "backend")
+        const oilGrad = lc.createLinearGradient(0, 0, 0, ph);
+        oilGrad.addColorStop(0, 'rgba(0,0,0,0.04)');
+        oilGrad.addColorStop(0.4, 'rgba(0,0,0,0.02)');
+        oilGrad.addColorStop(0.65, 'rgba(0,0,0,0)');
+        oilGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        lc.fillStyle = oilGrad;
         lc.fillRect(0, 0, pw, ph);
 
         lanePatternCanvas = c;
@@ -406,39 +420,49 @@ window.Bowling = (() => {
         c.width = pw; c.height = ph;
         const gc = c.getContext('2d');
 
-        // Base metal color
-        gc.fillStyle = '#4A4A4A';
+        // Brushed steel base
+        const baseGrad = gc.createLinearGradient(0, 0, pw, 0);
+        baseGrad.addColorStop(0, '#3A3A3E');
+        baseGrad.addColorStop(0.15, '#55555A');
+        baseGrad.addColorStop(0.35, '#6A6A70');
+        baseGrad.addColorStop(0.5, '#757580');
+        baseGrad.addColorStop(0.65, '#6A6A70');
+        baseGrad.addColorStop(0.85, '#55555A');
+        baseGrad.addColorStop(1, '#3A3A3E');
+        gc.fillStyle = baseGrad;
         gc.fillRect(0, 0, pw, ph);
 
-        // Tile metal sprites
+        // Tile metal sprites (very subtle)
         const metalKeys = ['metalSquare', 'metalBlock1', 'metalBlock2', 'metalBlock3'];
         const tileH = 18;
         for (let ty = 0; ty < ph; ty += tileH) {
             const key = metalKeys[(ty / tileH | 0) % metalKeys.length];
             const img = sprites[key];
-            if (img) {
-                gc.globalAlpha = 0.4;
-                gc.drawImage(img, 0, ty, pw, tileH);
-            }
+            if (img) { gc.globalAlpha = 0.2; gc.drawImage(img, 0, ty, pw, tileH); }
         }
         gc.globalAlpha = 1.0;
 
-        // Metallic sheen
-        const sheenGrad = gc.createLinearGradient(0, 0, pw, 0);
-        sheenGrad.addColorStop(0, 'rgba(120,120,130,0.25)');
-        sheenGrad.addColorStop(0.4, 'rgba(180,180,190,0.15)');
-        sheenGrad.addColorStop(0.6, 'rgba(180,180,190,0.15)');
-        sheenGrad.addColorStop(1, 'rgba(80,80,90,0.3)');
-        gc.fillStyle = sheenGrad;
+        // Brushed metal horizontal lines
+        gc.strokeStyle = 'rgba(200,200,210,0.04)';
+        gc.lineWidth = 0.5;
+        for (let ly = 0; ly < ph; ly += 2) {
+            gc.beginPath(); gc.moveTo(0, ly); gc.lineTo(pw, ly); gc.stroke();
+        }
+
+        // Center groove (concave depression)
+        const grooveGrad = gc.createLinearGradient(pw * 0.3, 0, pw * 0.7, 0);
+        grooveGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+        grooveGrad.addColorStop(0.3, 'rgba(0,0,0,0.06)');
+        grooveGrad.addColorStop(0.5, 'rgba(200,200,210,0.08)');
+        grooveGrad.addColorStop(0.7, 'rgba(0,0,0,0.06)');
+        grooveGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
+        gc.fillStyle = grooveGrad;
         gc.fillRect(0, 0, pw, ph);
 
-        // Groove line in center
-        gc.strokeStyle = 'rgba(0,0,0,0.2)';
-        gc.lineWidth = 1.5;
-        gc.beginPath();
-        gc.moveTo(pw / 2, 0);
-        gc.lineTo(pw / 2, ph);
-        gc.stroke();
+        // Lip edges (raised metal rim)
+        gc.fillStyle = 'rgba(160,160,170,0.2)';
+        gc.fillRect(0, 0, 1, ph);
+        gc.fillRect(pw - 1, 0, 1, ph);
 
         gutterPatternCanvas = c;
     }
@@ -1135,63 +1159,102 @@ window.Bowling = (() => {
     function drawLane() {
         drawBackground();
         drawAlleyEnvironment();
-        // Approach area with wood texture
+
+        // Approach area (polished darker wood behind foul line)
+        const approachGrad = ctx.createLinearGradient(LANE_L - GUTTER_W, 0, LANE_R + GUTTER_W, 0);
+        approachGrad.addColorStop(0, '#6B4E30');
+        approachGrad.addColorStop(0.1, '#8B6840');
+        approachGrad.addColorStop(0.5, '#9B7848');
+        approachGrad.addColorStop(0.9, '#8B6840');
+        approachGrad.addColorStop(1, '#6B4E30');
+        ctx.fillStyle = approachGrad;
+        ctx.fillRect(LANE_L - GUTTER_W, FOUL_LINE_Y, LANE_W + GUTTER_W * 2, GAME_H - FOUL_LINE_Y);
+        // Approach wood sprites (subtle)
         const woodSq = sprites['woodSquare'];
         if (woodSq) {
-            ctx.globalAlpha = 0.4;
+            ctx.globalAlpha = 0.2;
             for (let ty = FOUL_LINE_Y; ty < GAME_H; ty += 30)
                 for (let tx = LANE_L - GUTTER_W; tx < LANE_R + GUTTER_W; tx += 30)
                     ctx.drawImage(woodSq, tx, ty, 30, 30);
             ctx.globalAlpha = 1.0;
         }
-        ctx.fillStyle = 'rgba(110,82,55,0.7)';
-        ctx.fillRect(LANE_L - GUTTER_W, FOUL_LINE_Y, LANE_W + GUTTER_W * 2, GAME_H - FOUL_LINE_Y);
-        // Gutters
+
+        // Gutters (brushed metal)
         if (gutterPatternCanvas) {
             ctx.drawImage(gutterPatternCanvas, LANE_L - GUTTER_W, 0);
             ctx.drawImage(gutterPatternCanvas, LANE_R, 0);
         } else {
-            ctx.fillStyle = '#4A4A4A';
+            const gg = ctx.createLinearGradient(LANE_L - GUTTER_W, 0, LANE_L, 0);
+            gg.addColorStop(0, '#3A3A3E'); gg.addColorStop(0.3, '#60606A');
+            gg.addColorStop(0.5, '#75757F'); gg.addColorStop(0.7, '#60606A'); gg.addColorStop(1, '#3A3A3E');
+            ctx.fillStyle = gg;
             ctx.fillRect(LANE_L - GUTTER_W, 0, GUTTER_W, FOUL_LINE_Y);
             ctx.fillRect(LANE_R, 0, GUTTER_W, FOUL_LINE_Y);
         }
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.fillRect(LANE_L - GUTTER_W, 0, 2, FOUL_LINE_Y);
-        ctx.fillRect(LANE_R + GUTTER_W - 2, 0, 2, FOUL_LINE_Y);
-        // Lane surface
+        // Gutter edge shadows
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(LANE_L - GUTTER_W, 0, 1, FOUL_LINE_Y);
+        ctx.fillRect(LANE_R + GUTTER_W - 1, 0, 1, FOUL_LINE_Y);
+        // Gutter-lane transition highlight
+        ctx.fillStyle = 'rgba(200,200,210,0.12)';
+        ctx.fillRect(LANE_L - 1, 0, 1, FOUL_LINE_Y);
+        ctx.fillRect(LANE_R, 0, 1, FOUL_LINE_Y);
+
+        // Lane surface (polished maple)
         if (lanePatternCanvas) { ctx.drawImage(lanePatternCanvas, LANE_L, 0); }
         else {
             const lg = ctx.createLinearGradient(LANE_L, 0, LANE_R, 0);
-            lg.addColorStop(0, LANE_CLR2); lg.addColorStop(0.3, LANE_CLR);
-            lg.addColorStop(0.7, LANE_CLR); lg.addColorStop(1, LANE_CLR2);
+            lg.addColorStop(0, '#A07040'); lg.addColorStop(0.08, '#C89860');
+            lg.addColorStop(0.2, '#D4A868'); lg.addColorStop(0.5, '#DCBA78');
+            lg.addColorStop(0.8, '#D4A868'); lg.addColorStop(0.92, '#C89860');
+            lg.addColorStop(1, '#A07040');
             ctx.fillStyle = lg; ctx.fillRect(LANE_L, 0, LANE_W, FOUL_LINE_Y);
         }
-        // Lane wax sheen
+
+        // Wax sheen (polished reflection)
         const wg = ctx.createLinearGradient(0, 0, 0, FOUL_LINE_Y);
-        wg.addColorStop(0, 'rgba(255,255,240,0.06)'); wg.addColorStop(0.3, 'rgba(255,255,240,0.02)');
-        wg.addColorStop(0.7, 'rgba(255,255,240,0)'); wg.addColorStop(1, 'rgba(255,220,160,0.05)');
+        wg.addColorStop(0, 'rgba(255,245,220,0.07)');
+        wg.addColorStop(0.15, 'rgba(255,255,240,0.1)');
+        wg.addColorStop(0.35, 'rgba(255,255,255,0.03)');
+        wg.addColorStop(0.55, 'rgba(255,255,240,0)');
+        wg.addColorStop(0.85, 'rgba(255,230,180,0.05)');
+        wg.addColorStop(1, 'rgba(255,220,160,0.08)');
         ctx.fillStyle = wg; ctx.fillRect(LANE_L, 0, LANE_W, FOUL_LINE_Y);
+
         // Lane arrows and dots
         const arrowSpacing = LANE_W / 8;
-        ctx.fillStyle = 'rgba(139,69,19,0.3)';
+        ctx.fillStyle = 'rgba(120,60,15,0.25)';
         for (let i = 1; i <= 7; i++) drawArrow(LANE_L + i * arrowSpacing, 300, 6);
-        ctx.fillStyle = 'rgba(139,69,19,0.25)';
+        ctx.fillStyle = 'rgba(120,60,15,0.2)';
         for (let i = 1; i <= 7; i++) {
             const dx = LANE_L + i * arrowSpacing;
             for (const dy of [380, 420]) { ctx.beginPath(); ctx.arc(dx, dy, 2.5, 0, Math.PI * 2); ctx.fill(); }
         }
-        // Foul line
+
+        // Foul line (polished chrome strip)
         const fg = ctx.createLinearGradient(0, FOUL_LINE_Y - 3, 0, FOUL_LINE_Y + 3);
-        fg.addColorStop(0, '#555'); fg.addColorStop(0.3, '#888'); fg.addColorStop(0.5, '#AAA');
-        fg.addColorStop(0.7, '#888'); fg.addColorStop(1, '#444');
+        fg.addColorStop(0, '#444'); fg.addColorStop(0.2, '#888');
+        fg.addColorStop(0.4, '#BBB'); fg.addColorStop(0.5, '#DDD');
+        fg.addColorStop(0.6, '#BBB'); fg.addColorStop(0.8, '#888');
+        fg.addColorStop(1, '#444');
         ctx.fillStyle = fg; ctx.fillRect(LANE_L - GUTTER_W, FOUL_LINE_Y - 3, LANE_W + GUTTER_W * 2, 6);
-        // Rails
+
+        // Lane edge rails (thin chrome)
         const rg = ctx.createLinearGradient(LANE_L - 2, 0, LANE_L + 2, 0);
-        rg.addColorStop(0, '#3A3A3A'); rg.addColorStop(0.5, '#6A6A6A'); rg.addColorStop(1, '#3A3A3A');
-        ctx.fillStyle = rg; ctx.fillRect(LANE_L - 1, 0, 2, FOUL_LINE_Y); ctx.fillRect(LANE_R - 1, 0, 2, FOUL_LINE_Y);
-        // Pin deck
-        ctx.fillStyle = 'rgba(200,160,110,0.12)'; ctx.fillRect(LANE_L, PIN_START_Y - 25, LANE_W, 80);
-        ctx.fillStyle = 'rgba(139,69,19,0.15)';
+        rg.addColorStop(0, '#333'); rg.addColorStop(0.3, '#777');
+        rg.addColorStop(0.5, '#AAA'); rg.addColorStop(0.7, '#777'); rg.addColorStop(1, '#333');
+        ctx.fillStyle = rg;
+        ctx.fillRect(LANE_L - 1, 0, 2, FOUL_LINE_Y);
+        ctx.fillRect(LANE_R - 1, 0, 2, FOUL_LINE_Y);
+
+        // Pin deck (lighter wood area)
+        const deckGrad = ctx.createRadialGradient(LANE_L + LANE_W / 2, PIN_START_Y + 15, 10, LANE_L + LANE_W / 2, PIN_START_Y + 15, 60);
+        deckGrad.addColorStop(0, 'rgba(220,180,130,0.15)');
+        deckGrad.addColorStop(1, 'rgba(200,160,110,0.05)');
+        ctx.fillStyle = deckGrad;
+        ctx.fillRect(LANE_L, PIN_START_Y - 25, LANE_W, 80);
+        // Pin spots
+        ctx.fillStyle = 'rgba(120,60,15,0.12)';
         const centerX = LANE_L + LANE_W / 2;
         for (let row = 0; row < 4; row++) {
             const count = row + 1, rowY = PIN_START_Y + row * PIN_SPACING;

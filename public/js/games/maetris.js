@@ -612,15 +612,15 @@ window.Maetris = (() => {
                             const scale = 1 + progress * 0.4;
                             const alpha = 1 - progress;
                             drawNeonBlock(boardX + c * cellSize, boardY + r * cellSize, cellSize, board[r][c], alpha, scale);
-                            // Intense white flash that fades
-                            ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - progress)})`;
+                            // Intense white flash that fades — brighter
+                            ctx.fillStyle = `rgba(255,255,255,${(1 - progress)})`;
                             ctx.fillRect(boardX + c * cellSize, boardY + r * cellSize, cellSize, cellSize);
-                            // Row-wide flash bar
+                            // Row-wide flash bar — wider glow
                             if (c === 0) {
                                 ctx.save();
-                                ctx.globalAlpha = 0.3 * (1 - progress);
+                                ctx.globalAlpha = 0.5 * (1 - progress);
                                 ctx.fillStyle = '#FFFFFF';
-                                ctx.fillRect(boardX, boardY + r * cellSize, boardW, cellSize);
+                                ctx.fillRect(boardX - 5, boardY + r * cellSize - 2, boardW + 10, cellSize + 4);
                                 ctx.restore();
                             }
                         }
@@ -757,7 +757,7 @@ window.Maetris = (() => {
         if (gy === current.y) return;
         const col = COLORS[current.type];
         const t = (Date.now() - startTime) / 1000;
-        const pulse = 0.12 + Math.sin(t * 4) * 0.06;
+        const pulse = 0.2 + Math.sin(t * 4) * 0.1;
 
         for (const [cx, cy] of cells(current.type, current.rot)) {
             const px = boardX + (current.x + cx) * cellSize;
@@ -778,7 +778,7 @@ window.Maetris = (() => {
 
             // Dashed outline border
             ctx.save();
-            ctx.globalAlpha = 0.4 + Math.sin(t * 3) * 0.1;
+            ctx.globalAlpha = 0.55 + Math.sin(t * 3) * 0.15;
             ctx.strokeStyle = col.light;
             ctx.lineWidth = 1.5;
             ctx.setLineDash([4, 3]);
