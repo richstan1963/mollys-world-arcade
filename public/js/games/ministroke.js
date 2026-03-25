@@ -26,12 +26,18 @@ window.MiniStroke = (() => {
     const POCKET_R = 14;
     const BALL_R = 7;
     const CUE_BALL_R = 7;
-    const FRICTION = 0.985;
-    const SAND_FRICTION = 0.94;
+    const FRICTION = 0.992;
+    const SAND_FRICTION = 0.96;
     const ICE_FRICTION = 0.998;
     const MIN_SPEED = 0.08;
     const MAX_POWER = 18;
-    const BUMPER_BOUNCE = 1.3;
+    const BUMPER_BOUNCE = 1.25;
+    const WALL_PUSH_BUFFER = 2;       // extra px to push ball out of wall
+    const STUCK_SPEED_THRESH = 0.1;   // velocity threshold for stuck detection
+    const STUCK_FRAME_LIMIT = 120;    // frames before auto-nudge
+    const POCKET_SUCTION_RADIUS_MULT = 2; // suction activates within 2x pocket radius
+    const POCKET_SUCTION_SPEED = 2;   // max ball speed for suction to engage
+    const POCKET_SUCTION_FORCE = 0.08; // gentle pull strength
     const PI2 = Math.PI * 2;
 
     // Kenney Physics Pack base path
@@ -184,6 +190,10 @@ window.MiniStroke = (() => {
     const ST_POCKET_ANIM = 3;
     const ST_COURSE_COMPLETE = 4;
     const ST_TITLE = 5;
+
+    // Hi-res ball cache (4x resolution)
+    const BALL_CACHE_SCALE = 4;
+    let ballCanvasCache = {};
 
     // ── Module-level variables ──
     let canvas, ctx, W, H, scale, dpr;
@@ -729,7 +739,7 @@ window.MiniStroke = (() => {
     // ── Ball setup (standard 8-ball rack: 15 balls, 8 in center) ──
     function setupBalls(count) {
         balls = [];
-        cueBall = { x: 160, y: GAME_H / 2, vx: 0, vy: 0, r: CUE_BALL_R, color: BALL_COLORS[0], number: 0, active: true, pocketed: false };
+        cueBall = { x: 160, y: GAME_H / 2, vx: 0, vy: 0, r: CUE_BALL_R, color: BALL_COLORS[0], number: 0, active: true, pocketed: false, stuckFrames: 0 };
         balls.push(cueBall);
 
         const startX = GAME_W * 0.65;
@@ -789,7 +799,8 @@ window.MiniStroke = (() => {
                     x: fx, y: fy, vx: 0, vy: 0, r: BALL_R,
                     color: BALL_COLORS[num],
                     number: num, active: true, pocketed: false,
-                    striped: num >= 9 && num <= 15
+                    striped: num >= 9 && num <= 15,
+                    stuckFrames: 0
                 });
             }
         }
@@ -897,15 +908,81 @@ window.MiniStroke = (() => {
             const spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
             if (spd < MIN_SPEED) { b.vx = 0; b.vy = 0; }
 
-            // Cushion bounce
+            // Cushion bounce with proper push-out
             const left = RAIL_W + b.r;
             const right = GAME_W - RAIL_W - b.r;
             const top = RAIL_W + b.r;
             const bottom = GAME_H - RAIL_W - b.r;
-            if (b.x < left) { b.x = left; b.vx = Math.abs(b.vx) * 0.8; playSound('cushion'); }
-            if (b.x > right) { b.x = right; b.vx = -Math.abs(b.vx) * 0.8; playSound('cushion'); }
-            if (b.y < top) { b.y = top; b.vy = Math.abs(b.vy) * 0.8; playSound('cushion'); }
-            if (b.y > bottom) { b.y = bottom; b.vy = -Math.abs(b.vy) * 0.8; playSound('cushion'); }
+            let hitWallThisFrame = false;
+            if (b.x < left)   { b.x = left + WALL_PUSH_BUFFER;   b.vx = Math.abs(b.vx) * 0.8; hitWallThisFrame = true; playSound('cushion'); }
+            if (b.x > right)  { b.x = right - WALL_PUSH_BUFFER;  b.vx = -Math.abs(b.vx) * 0.8; hitWallThisFrame = true; playSound('cushion'); }
+            if (b.y < top)    { b.y = top + WALL_PUSH_BUFFER;    b.vy = Math.abs(b.vy) * 0.8; hitWallThisFrame = true; playSound('cushion'); }
+            if (b.y > bottom) { b.y = bottom - WALL_PUSH_BUFFER; b.vy = -Math.abs(b.vy) * 0.8; hitWallThisFrame = true; playSound('cushion'); }
+
+            // Corner trapping: if ball hit two rail walls, push diagonally inward
+            if (hitWallThisFrame) {
+                const nearLeft = b.x - left < 4;
+                const nearRight = right - b.x < 4;
+                const nearTop = b.y - top < 4;
+                const nearBottom = bottom - b.y < 4;
+                const inCorner = (nearLeft || nearRight) && (nearTop || nearBottom);
+                if (inCorner) {
+                    // Push diagonally toward center
+                    const pushX = nearLeft ? 5 : -5;
+                    const pushY = nearTop ? 5 : -5;
+                    b.x += pushX;
+                    b.y += pushY;
+                    // Give a little velocity kick if nearly stopped
+                    if (Math.abs(b.vx) < STUCK_SPEED_THRESH) b.vx += pushX * 0.3;
+                    if (Math.abs(b.vy) < STUCK_SPEED_THRESH) b.vy += pushY * 0.3;
+                }
+            }
+
+            // Pocket suction — gently pull slow balls toward nearby pockets
+            for (const p of POCKETS) {
+                const pDist = dist(b.x, b.y, p.x, p.y);
+                if (pDist < POCKET_R * POCKET_SUCTION_RADIUS_MULT && pDist > POCKET_R * 0.5 && spd < POCKET_SUCTION_SPEED && spd > 0) {
+                    const pullNx = (p.x - b.x) / pDist;
+                    const pullNy = (p.y - b.y) / pDist;
+                    // Stronger pull the closer to the pocket and the slower the ball
+                    const pullStrength = POCKET_SUCTION_FORCE * (1 - pDist / (POCKET_R * POCKET_SUCTION_RADIUS_MULT));
+                    b.vx += pullNx * pullStrength;
+                    b.vy += pullNy * pullStrength;
+                }
+            }
+
+            // Stuck detection — track frames ball is nearly stationary near a wall
+            {
+                const nearRail = b.x < left + 5 || b.x > right - 5 || b.y < top + 5 || b.y > bottom - 5;
+                let nearObstacle = false;
+                for (const obs of obstacles) {
+                    if (obs.type === 'wall' || obs.type === 'movingWall') {
+                        const closX = clamp(b.x, obs.x, obs.x + obs.w);
+                        const closY = clamp(b.y, obs.y, obs.y + obs.h);
+                        if (dist(b.x, b.y, closX, closY) < b.r + 4) { nearObstacle = true; break; }
+                    }
+                    if (obs.type === 'windmill' && dist(b.x, b.y, obs.x, obs.y) < obs.armLen + b.r + 4) {
+                        nearObstacle = true; break;
+                    }
+                }
+                if (spd < STUCK_SPEED_THRESH && (nearRail || nearObstacle)) {
+                    b.stuckFrames = (b.stuckFrames || 0) + 1;
+                } else {
+                    b.stuckFrames = 0;
+                }
+                // Auto-nudge after being stuck too long
+                if (b.stuckFrames >= STUCK_FRAME_LIMIT) {
+                    // Push toward table center
+                    const toCenterX = GAME_W / 2 - b.x;
+                    const toCenterY = GAME_H / 2 - b.y;
+                    const toCenterD = Math.sqrt(toCenterX * toCenterX + toCenterY * toCenterY) || 1;
+                    b.x += (toCenterX / toCenterD) * 5;
+                    b.y += (toCenterY / toCenterD) * 5;
+                    b.vx += (toCenterX / toCenterD) * 0.5;
+                    b.vy += (toCenterY / toCenterD) * 0.5;
+                    b.stuckFrames = 0;
+                }
+            }
 
             // Pocket check
             for (const p of POCKETS) {
@@ -937,19 +1014,29 @@ window.MiniStroke = (() => {
             for (const obs of obstacles) {
                 if (obs.type === 'bumper') {
                     const d = dist(b.x, b.y, obs.x, obs.y);
-                    if (d < obs.r + b.r) {
+                    if (d < obs.r + b.r && d > 0) {
                         const nx = (b.x - obs.x) / d;
                         const ny = (b.y - obs.y) / d;
+                        // Push ball out of bumper first
+                        const overlap = (obs.r + b.r) - d + WALL_PUSH_BUFFER;
+                        b.x += nx * overlap;
+                        b.y += ny * overlap;
+                        // Reflect velocity along normal
                         const dot = b.vx * nx + b.vy * ny;
                         b.vx -= 2 * dot * nx;
                         b.vy -= 2 * dot * ny;
+                        // Apply COR boost (1.2-1.3 range, like pinball)
                         b.vx *= BUMPER_BOUNCE;
                         b.vy *= BUMPER_BOUNCE;
-                        b.x = obs.x + nx * (obs.r + b.r + 1);
-                        b.y = obs.y + ny * (obs.r + b.r + 1);
-                        obs.glowTimer = 15; // trigger glow ring
+                        // Ensure minimum bounce speed so balls don't stick
+                        const postSpd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+                        if (postSpd < 1.5) {
+                            b.vx = nx * 1.5;
+                            b.vy = ny * 1.5;
+                        }
+                        obs.glowTimer = 20; // trigger glow ring (slightly longer flash)
                         playSound('bumper');
-                        spawnParticles(b.x, b.y, '#FFFFFF', 4);
+                        spawnParticles(b.x, b.y, '#FFFFFF', 5);
                     }
                 }
                 if (obs.type === 'wall') {
@@ -1035,36 +1122,46 @@ window.MiniStroke = (() => {
     }
 
     function resolveWallCollision(b, wx, wy, ww, wh) {
+        // Find closest point on wall rect to ball center
         const cx = clamp(b.x, wx, wx + ww);
         const cy = clamp(b.y, wy, wy + wh);
         const d = dist(b.x, b.y, cx, cy);
+
         if (d < b.r && d > 0) {
+            // Ball overlaps wall edge — push out along normal
             const nx = (b.x - cx) / d;
             const ny = (b.y - cy) / d;
+            const overlap = b.r - d + WALL_PUSH_BUFFER;
+            // Push position out of wall first
+            b.x += nx * overlap;
+            b.y += ny * overlap;
+            // Reflect velocity
             const dot = b.vx * nx + b.vy * ny;
-            b.vx -= 2 * dot * nx;
-            b.vy -= 2 * dot * ny;
+            if (dot < 0) {
+                b.vx -= 2 * dot * nx;
+                b.vy -= 2 * dot * ny;
+            }
             b.vx *= 0.85;
             b.vy *= 0.85;
-            b.x = cx + nx * (b.r + 1);
-            b.y = cy + ny * (b.r + 1);
             playSound('cushion');
         } else if (d === 0 && b.x >= wx && b.x <= wx + ww && b.y >= wy && b.y <= wy + wh) {
+            // Ball center is fully inside wall — eject via nearest face
             const dLeft = b.x - wx;
             const dRight = wx + ww - b.x;
             const dTop = b.y - wy;
             const dBottom = wy + wh - b.y;
             const minD = Math.min(dLeft, dRight, dTop, dBottom);
-            if (minD === dLeft) { b.x = wx - b.r - 1; b.vx = -Math.abs(b.vx); }
-            else if (minD === dRight) { b.x = wx + ww + b.r + 1; b.vx = Math.abs(b.vx); }
-            else if (minD === dTop) { b.y = wy - b.r - 1; b.vy = -Math.abs(b.vy); }
-            else { b.y = wy + wh + b.r + 1; b.vy = Math.abs(b.vy); }
+            if (minD === dLeft)       { b.x = wx - b.r - WALL_PUSH_BUFFER; b.vx = -Math.abs(b.vx) * 0.85; }
+            else if (minD === dRight) { b.x = wx + ww + b.r + WALL_PUSH_BUFFER; b.vx = Math.abs(b.vx) * 0.85; }
+            else if (minD === dTop)   { b.y = wy - b.r - WALL_PUSH_BUFFER; b.vy = -Math.abs(b.vy) * 0.85; }
+            else                      { b.y = wy + wh + b.r + WALL_PUSH_BUFFER; b.vy = Math.abs(b.vy) * 0.85; }
             playSound('cushion');
         }
     }
 
     function resolveWindmillCollision(b, obs) {
         const armW = 6;
+        const armHalf = armW / 2;
         for (let i = 0; i < 4; i++) {
             const a = obs.angle + (Math.PI / 2) * i;
             const ax = Math.cos(a);
@@ -1079,24 +1176,38 @@ window.MiniStroke = (() => {
             const closestX = obs.x + t * dx;
             const closestY = obs.y + t * dy;
             const d = dist(b.x, b.y, closestX, closestY);
-            if (d < b.r + armW / 2) {
+            const minDist = b.r + armHalf;
+            if (d < minDist) {
                 const nx = (b.x - closestX) / (d || 1);
                 const ny = (b.y - closestY) / (d || 1);
+                // Always push the ball out of the arm first
+                const overlap = minDist - d + WALL_PUSH_BUFFER;
+                b.x += nx * overlap;
+                b.y += ny * overlap;
+                // Compute arm rotational velocity at contact point
                 const contactR = t * obs.armLen;
                 const rotSpeed = obs.speed * contactR;
-                const rotVx = -ay * rotSpeed * 5;
-                const rotVy = ax * rotSpeed * 5;
-                const dot = (b.vx - rotVx) * nx + (b.vy - rotVy) * ny;
-                if (dot < 0) {
-                    b.vx -= 2 * dot * nx;
-                    b.vy -= 2 * dot * ny;
-                    b.vx += rotVx * 0.3;
-                    b.vy += rotVy * 0.3;
-                    b.x = closestX + nx * (b.r + armW / 2 + 1);
-                    b.y = closestY + ny * (b.r + armW / 2 + 1);
-                    playSound('windmill');
-                    spawnParticles(b.x, b.y, '#AAAAAA', 3);
+                // Perpendicular to arm direction = tangent velocity
+                const rotVx = -ay * rotSpeed * 6;
+                const rotVy = ax * rotSpeed * 6;
+                // Reflect relative velocity
+                const relVx = b.vx - rotVx;
+                const relVy = b.vy - rotVy;
+                const dot = relVx * nx + relVy * ny;
+                // Always resolve (remove the dot < 0 gate that trapped balls)
+                b.vx -= 2 * dot * nx;
+                b.vy -= 2 * dot * ny;
+                // Impart rotational velocity from arm spin
+                b.vx += rotVx * 0.4;
+                b.vy += rotVy * 0.4;
+                // Minimum push-away speed so balls don't linger
+                const postSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+                if (postSpeed < 1.5) {
+                    b.vx += nx * 1.5;
+                    b.vy += ny * 1.5;
                 }
+                playSound('windmill');
+                spawnParticles(b.x, b.y, '#AAAAAA', 3);
             }
         }
         // Center hub collision
@@ -1105,11 +1216,19 @@ window.MiniStroke = (() => {
         if (d < hubR + b.r) {
             const nx = (b.x - obs.x) / (d || 1);
             const ny = (b.y - obs.y) / (d || 1);
+            // Push out
+            const overlap = (hubR + b.r) - d + WALL_PUSH_BUFFER;
+            b.x += nx * overlap;
+            b.y += ny * overlap;
             const dot = b.vx * nx + b.vy * ny;
             b.vx -= 2 * dot * nx;
             b.vy -= 2 * dot * ny;
-            b.x = obs.x + nx * (hubR + b.r + 1);
-            b.y = obs.y + ny * (hubR + b.r + 1);
+            // Ensure minimum bounce-away speed
+            const postSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+            if (postSpeed < 1.5) {
+                b.vx += nx * 1.5;
+                b.vy += ny * 1.5;
+            }
             playSound('bumper');
         }
     }
@@ -1381,7 +1500,7 @@ window.MiniStroke = (() => {
         ctx.stroke();
 
         // Glow ring on hit (animated)
-        const glowAlpha = obs.glowTimer > 0 ? obs.glowTimer / 15 : 0;
+        const glowAlpha = obs.glowTimer > 0 ? obs.glowTimer / 20 : 0;
         if (glowAlpha > 0) {
             ctx.strokeStyle = `rgba(100,200,255,${glowAlpha * 0.7})`;
             ctx.lineWidth = 3 + glowAlpha * 2;
@@ -1788,7 +1907,196 @@ window.MiniStroke = (() => {
         }
     }
 
-    // ── Balls with rich gradients + number circles + specular highlights ──
+    // ═══════════════════════════════════════════════════════════════
+    //  PRE-RENDERED BALL CACHE (4x resolution for crisp rendering)
+    // ═══════════════════════════════════════════════════════════════
+    function buildBallCanvas(num) {
+        const color = BALL_COLORS[num] || '#888';
+        const isStripe = num >= 9 && num <= 15;
+        const sz = BALL_R * 2 * BALL_CACHE_SCALE;
+        const cen = sz / 2;
+        const r = sz / 2 - 2;
+        const c = document.createElement('canvas');
+        c.width = sz; c.height = sz;
+        const cx = c.getContext('2d');
+
+        // Drop shadow
+        cx.fillStyle = 'rgba(0,0,0,0.35)';
+        cx.beginPath();
+        cx.ellipse(cen + 2, cen + 3, r * 0.95, r * 0.7, 0, 0, Math.PI * 2);
+        cx.fill();
+
+        if (isStripe) {
+            // White base
+            const baseGrad = cx.createRadialGradient(
+                cen - r * 0.28, cen - r * 0.28, r * 0.05,
+                cen + r * 0.05, cen + r * 0.05, r
+            );
+            baseGrad.addColorStop(0, '#FFFFFF');
+            baseGrad.addColorStop(0.45, '#F8F8F2');
+            baseGrad.addColorStop(0.75, '#E8E8E0');
+            baseGrad.addColorStop(1, '#CCCCC4');
+            cx.fillStyle = baseGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+
+            // Colored stripe band
+            cx.save();
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.clip();
+            const bandH = r * 1.1;
+            const bandGrad = cx.createLinearGradient(cen - r, cen - bandH / 2, cen + r, cen + bandH / 2);
+            bandGrad.addColorStop(0, darkenColor(color, 40));
+            bandGrad.addColorStop(0.15, color);
+            bandGrad.addColorStop(0.35, lightenColor(color, 30));
+            bandGrad.addColorStop(0.5, color);
+            bandGrad.addColorStop(0.65, lightenColor(color, 30));
+            bandGrad.addColorStop(0.85, color);
+            bandGrad.addColorStop(1, darkenColor(color, 40));
+            cx.fillStyle = bandGrad;
+            cx.fillRect(cen - r, cen - bandH / 2, r * 2, bandH);
+            // Edge darkening
+            const edgeFade = cx.createLinearGradient(0, cen - bandH / 2, 0, cen + bandH / 2);
+            edgeFade.addColorStop(0, 'rgba(0,0,0,0.2)');
+            edgeFade.addColorStop(0.12, 'rgba(0,0,0,0)');
+            edgeFade.addColorStop(0.88, 'rgba(0,0,0,0)');
+            edgeFade.addColorStop(1, 'rgba(0,0,0,0.2)');
+            cx.fillStyle = edgeFade;
+            cx.fillRect(cen - r, cen - bandH / 2, r * 2, bandH);
+            cx.restore();
+        } else if (num === 0) {
+            // Cue ball: white with subtle blue tint
+            const grad = cx.createRadialGradient(
+                cen - r * 0.3, cen - r * 0.3, r * 0.05,
+                cen + r * 0.05, cen + r * 0.05, r
+            );
+            grad.addColorStop(0, '#FFFFFF');
+            grad.addColorStop(0.3, '#FCFCF8');
+            grad.addColorStop(0.6, '#F0F0EA');
+            grad.addColorStop(0.85, '#D8D8D4');
+            grad.addColorStop(1, '#B8B8B4');
+            cx.fillStyle = grad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+            // Subtle blue tint
+            cx.fillStyle = 'rgba(200,210,255,0.06)';
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+        } else {
+            // Solid ball with rich gradient
+            const grad = cx.createRadialGradient(
+                cen - r * 0.3, cen - r * 0.3, r * 0.05,
+                cen + r * 0.05, cen + r * 0.05, r
+            );
+            grad.addColorStop(0, lightenColor(color, 60));
+            grad.addColorStop(0.25, lightenColor(color, 20));
+            grad.addColorStop(0.55, color);
+            grad.addColorStop(0.8, darkenColor(color, 25));
+            grad.addColorStop(1, darkenColor(color, 50));
+            cx.fillStyle = grad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+        }
+
+        // Subsurface glow
+        if (num > 0 && num !== 8) {
+            cx.save();
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.clip();
+            const glowGrad = cx.createRadialGradient(cen + r * 0.15, cen + r * 0.2, 0, cen, cen, r);
+            glowGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+            glowGrad.addColorStop(1, 'rgba(0,0,0,0.12)');
+            cx.fillStyle = glowGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+            cx.restore();
+        }
+
+        // Number circle
+        if (num > 0) {
+            const ncr = r * 0.42;
+            cx.shadowColor = 'rgba(0,0,0,0.3)';
+            cx.shadowBlur = 3;
+            cx.fillStyle = '#FFFFFF';
+            cx.beginPath();
+            cx.arc(cen, cen, ncr, 0, Math.PI * 2);
+            cx.fill();
+            cx.shadowBlur = 0;
+            const ncGrad = cx.createRadialGradient(cen - ncr * 0.2, cen - ncr * 0.2, 0, cen, cen, ncr);
+            ncGrad.addColorStop(0, '#FFFFFF');
+            ncGrad.addColorStop(0.7, '#F8F8F4');
+            ncGrad.addColorStop(1, '#E8E8E0');
+            cx.fillStyle = ncGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, ncr - 0.5, 0, Math.PI * 2);
+            cx.fill();
+            cx.fillStyle = '#111111';
+            cx.font = `bold ${r * 0.58}px "Segoe UI", system-ui, sans-serif`;
+            cx.textAlign = 'center';
+            cx.textBaseline = 'middle';
+            cx.fillText(num.toString(), cen, cen + 1);
+        }
+
+        // Primary specular
+        const specAlpha = num === 0 ? 0.85 : 0.7;
+        const specGrad = cx.createRadialGradient(
+            cen - r * 0.32, cen - r * 0.38, 0,
+            cen - r * 0.2, cen - r * 0.25, r * 0.55
+        );
+        specGrad.addColorStop(0, `rgba(255,255,255,${specAlpha})`);
+        specGrad.addColorStop(0.3, `rgba(255,255,255,${specAlpha * 0.5})`);
+        specGrad.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+        specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = specGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+
+        // Secondary specular dot
+        cx.fillStyle = num === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.85)';
+        cx.beginPath();
+        cx.arc(cen - r * 0.28, cen - r * 0.32, r * 0.1, 0, Math.PI * 2);
+        cx.fill();
+
+        // Rim light
+        cx.save();
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.clip();
+        const rimGrad = cx.createRadialGradient(cen + r * 0.1, cen + r * 0.5, r * 0.3, cen, cen, r);
+        rimGrad.addColorStop(0, 'rgba(255,255,255,0.12)');
+        rimGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = rimGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+        cx.restore();
+
+        // Edge ring
+        cx.strokeStyle = 'rgba(0,0,0,0.18)';
+        cx.lineWidth = 1.2;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.stroke();
+
+        return c;
+    }
+
+    function prebuildBallCanvases() {
+        ballCanvasCache = {};
+        for (let n = 0; n <= 15; n++) {
+            ballCanvasCache[n] = buildBallCanvas(n);
+        }
+    }
+
+    // ── Balls with hi-res cached rendering ──
     function drawBalls() {
         for (const b of balls) {
             if (!b.active) continue;
@@ -1797,72 +2105,27 @@ window.MiniStroke = (() => {
     }
 
     function drawBall(x, y, r, color, num, striped) {
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.beginPath();
-        ctx.arc(x + 1.5, y + 2, r, 0, PI2);
-        ctx.fill();
-
-        // Main body: rich radial gradient
-        const bg = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x + r * 0.1, y + r * 0.1, r * 1.1);
-        bg.addColorStop(0, lightenColor(color, 60));
-        bg.addColorStop(0.35, lightenColor(color, 20));
-        bg.addColorStop(0.7, color);
-        bg.addColorStop(1, darkenColor(color, 50));
-        ctx.fillStyle = bg;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, PI2);
-        ctx.fill();
-
-        // Stripe band for balls 9+ (colored band on white base)
-        if (striped) {
-            ctx.save();
+        const cached = ballCanvasCache[num];
+        if (!cached) {
+            // Fallback for unknown balls
+            ctx.fillStyle = color;
             ctx.beginPath();
             ctx.arc(x, y, r, 0, PI2);
-            ctx.clip();
-            // White base visible as stripe
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(x - r, y - r * 0.35, r * 2, r * 0.7);
-            ctx.restore();
-        }
-
-        // Number circle (not for cue ball)
-        if (num > 0 && r >= 6) {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(x, y, r * 0.45, 0, PI2);
             ctx.fill();
-            // Slight shadow on number circle
-            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.arc(x, y, r * 0.45, 0, PI2);
-            ctx.stroke();
-            // Number text
-            ctx.fillStyle = '#111';
-            ctx.font = `bold ${Math.round(r * 0.7)}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('' + num, x, y + 0.5);
+            return;
         }
 
-        // Specular highlight (bright white)
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.beginPath();
-        ctx.arc(x - r * 0.28, y - r * 0.28, r * 0.25, 0, PI2);
-        ctx.fill();
-        // Secondary softer highlight
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.beginPath();
-        ctx.arc(x - r * 0.1, y - r * 0.35, r * 0.15, 0, PI2);
-        ctx.fill();
+        const drawSize = r * 2;
+        ctx.save();
 
-        // Rim light
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.arc(x, y, r - 0.5, 0, PI2);
-        ctx.stroke();
+        // Subtle rolling rotation
+        const spd = 0; // Balls have vx/vy on the ball objects, use position-based wobble
+        ctx.translate(x, y);
+        if (num > 0) {
+            ctx.rotate(Math.sin((x + y) * 0.05) * 0.04);
+        }
+        ctx.drawImage(cached, -drawSize / 2 - 0.5, -drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
+        ctx.restore();
     }
 
     // ── Cue stick: Wood element sprite stretched and rotated ──
@@ -2624,6 +2887,9 @@ window.MiniStroke = (() => {
         drawLoadingScreen();
 
         await preloadAllSprites();
+
+        // Pre-render hi-res ball sprites
+        prebuildBallCanvases();
 
         state = ST_COURSE_SELECT;
         animFrame = requestAnimationFrame(loop);

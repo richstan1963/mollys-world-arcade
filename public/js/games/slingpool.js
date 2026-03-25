@@ -105,6 +105,10 @@ window.SlingPool = (() => {
     let RAIL_LIGHT = '#A0744A';
     let CUSHION_CLR = '#2d8c52';
 
+    // Hi-res ball cache (4x resolution)
+    const BALL_CACHE_SCALE = 4;
+    let ballCanvasCache = {};
+
     // Game data
     let score, level, shotsLeft, ballsPotted, totalBallsPotted;
     let combo, comboTimer;
@@ -1584,71 +1588,286 @@ window.SlingPool = (() => {
         ctx.fillText('\u23f3', sand.x + sand.w / 2, sand.y + sand.h / 2 + 3);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  PRE-RENDERED BALL CACHE (4x resolution for crisp rendering)
+    // ═══════════════════════════════════════════════════════════════
+    function buildBallCanvas(num) {
+        const color = BALL_COLORS[(num - 1) % BALL_COLORS.length] || '#888';
+        const isStripe = num >= 9 && num <= 15;
+        const sz = BALL_R * 2 * BALL_CACHE_SCALE;
+        const cen = sz / 2;
+        const r = sz / 2 - 2;
+        const c = document.createElement('canvas');
+        c.width = sz; c.height = sz;
+        const cx = c.getContext('2d');
+
+        // Drop shadow
+        cx.fillStyle = 'rgba(0,0,0,0.3)';
+        cx.beginPath();
+        cx.ellipse(cen + 2, cen + 3, r * 0.95, r * 0.7, 0, 0, Math.PI * 2);
+        cx.fill();
+
+        if (isStripe) {
+            // White base
+            const baseGrad = cx.createRadialGradient(
+                cen - r * 0.28, cen - r * 0.28, r * 0.05,
+                cen + r * 0.05, cen + r * 0.05, r
+            );
+            baseGrad.addColorStop(0, '#FFFFFF');
+            baseGrad.addColorStop(0.45, '#F8F8F2');
+            baseGrad.addColorStop(0.75, '#E8E8E0');
+            baseGrad.addColorStop(1, '#CCCCC4');
+            cx.fillStyle = baseGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+
+            // Colored stripe band
+            cx.save();
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.clip();
+            const bandH = r * 1.1;
+            const bandGrad = cx.createLinearGradient(cen - r, cen - bandH / 2, cen + r, cen + bandH / 2);
+            bandGrad.addColorStop(0, darkenColor(color, 40));
+            bandGrad.addColorStop(0.15, color);
+            bandGrad.addColorStop(0.35, lightenColor(color, 30));
+            bandGrad.addColorStop(0.5, color);
+            bandGrad.addColorStop(0.65, lightenColor(color, 30));
+            bandGrad.addColorStop(0.85, color);
+            bandGrad.addColorStop(1, darkenColor(color, 40));
+            cx.fillStyle = bandGrad;
+            cx.fillRect(cen - r, cen - bandH / 2, r * 2, bandH);
+            // Subtle edge darkening
+            const edgeFade = cx.createLinearGradient(0, cen - bandH / 2, 0, cen + bandH / 2);
+            edgeFade.addColorStop(0, 'rgba(0,0,0,0.2)');
+            edgeFade.addColorStop(0.12, 'rgba(0,0,0,0)');
+            edgeFade.addColorStop(0.88, 'rgba(0,0,0,0)');
+            edgeFade.addColorStop(1, 'rgba(0,0,0,0.2)');
+            cx.fillStyle = edgeFade;
+            cx.fillRect(cen - r, cen - bandH / 2, r * 2, bandH);
+            cx.restore();
+        } else {
+            // Solid ball with rich gradient
+            const grad = cx.createRadialGradient(
+                cen - r * 0.3, cen - r * 0.3, r * 0.05,
+                cen + r * 0.05, cen + r * 0.05, r
+            );
+            grad.addColorStop(0, lightenColor(color, 60));
+            grad.addColorStop(0.25, lightenColor(color, 20));
+            grad.addColorStop(0.55, color);
+            grad.addColorStop(0.8, darkenColor(color, 25));
+            grad.addColorStop(1, darkenColor(color, 50));
+            cx.fillStyle = grad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+        }
+
+        // Subsurface glow
+        if (num !== 8) {
+            cx.save();
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.clip();
+            const glowGrad = cx.createRadialGradient(cen + r * 0.15, cen + r * 0.2, 0, cen, cen, r);
+            glowGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+            glowGrad.addColorStop(1, 'rgba(0,0,0,0.12)');
+            cx.fillStyle = glowGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+            cx.restore();
+        }
+
+        // Number circle
+        if (num > 0) {
+            const ncr = r * 0.42;
+            cx.shadowColor = 'rgba(0,0,0,0.3)';
+            cx.shadowBlur = 3;
+            cx.fillStyle = '#FFFFFF';
+            cx.beginPath();
+            cx.arc(cen, cen, ncr, 0, Math.PI * 2);
+            cx.fill();
+            cx.shadowBlur = 0;
+            // Inner white circle
+            const ncGrad = cx.createRadialGradient(cen - ncr * 0.2, cen - ncr * 0.2, 0, cen, cen, ncr);
+            ncGrad.addColorStop(0, '#FFFFFF');
+            ncGrad.addColorStop(0.7, '#F8F8F4');
+            ncGrad.addColorStop(1, '#E8E8E0');
+            cx.fillStyle = ncGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, ncr - 0.5, 0, Math.PI * 2);
+            cx.fill();
+            // Number text
+            cx.fillStyle = '#111111';
+            cx.font = `bold ${r * 0.58}px "Segoe UI", system-ui, sans-serif`;
+            cx.textAlign = 'center';
+            cx.textBaseline = 'middle';
+            cx.fillText(num.toString(), cen, cen + 1);
+        }
+
+        // Primary specular highlight
+        const specGrad = cx.createRadialGradient(
+            cen - r * 0.32, cen - r * 0.38, 0,
+            cen - r * 0.2, cen - r * 0.25, r * 0.55
+        );
+        specGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
+        specGrad.addColorStop(0.3, 'rgba(255,255,255,0.35)');
+        specGrad.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+        specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = specGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+
+        // Secondary specular dot
+        cx.fillStyle = 'rgba(255,255,255,0.85)';
+        cx.beginPath();
+        cx.arc(cen - r * 0.28, cen - r * 0.32, r * 0.1, 0, Math.PI * 2);
+        cx.fill();
+
+        // Rim light
+        cx.save();
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.clip();
+        const rimGrad = cx.createRadialGradient(cen + r * 0.1, cen + r * 0.5, r * 0.3, cen, cen, r);
+        rimGrad.addColorStop(0, 'rgba(255,255,255,0.12)');
+        rimGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = rimGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+        cx.restore();
+
+        // Edge ring
+        cx.strokeStyle = 'rgba(0,0,0,0.18)';
+        cx.lineWidth = 1.2;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.stroke();
+
+        return c;
+    }
+
+    function buildCueBallCanvas() {
+        const sz = CUE_R * 2 * BALL_CACHE_SCALE;
+        const cen = sz / 2;
+        const r = sz / 2 - 2;
+        const c = document.createElement('canvas');
+        c.width = sz; c.height = sz;
+        const cx = c.getContext('2d');
+
+        // Drop shadow
+        cx.fillStyle = 'rgba(0,0,0,0.3)';
+        cx.beginPath();
+        cx.ellipse(cen + 2, cen + 3, r * 0.95, r * 0.7, 0, 0, Math.PI * 2);
+        cx.fill();
+
+        // White ball with blue tint
+        const grad = cx.createRadialGradient(
+            cen - r * 0.3, cen - r * 0.3, r * 0.05,
+            cen + r * 0.05, cen + r * 0.05, r
+        );
+        grad.addColorStop(0, '#FFFFFF');
+        grad.addColorStop(0.3, '#FCFCF8');
+        grad.addColorStop(0.6, '#F0F0EA');
+        grad.addColorStop(0.85, '#D8D8D4');
+        grad.addColorStop(1, '#B8B8B4');
+        cx.fillStyle = grad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+
+        // Subtle blue tint
+        cx.fillStyle = 'rgba(200,210,255,0.06)';
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+
+        // Extra-bright specular
+        const specGrad = cx.createRadialGradient(
+            cen - r * 0.32, cen - r * 0.38, 0,
+            cen - r * 0.2, cen - r * 0.25, r * 0.55
+        );
+        specGrad.addColorStop(0, 'rgba(255,255,255,0.85)');
+        specGrad.addColorStop(0.3, 'rgba(255,255,255,0.45)');
+        specGrad.addColorStop(0.6, 'rgba(255,255,255,0.1)');
+        specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = specGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+
+        // Sharp specular dot
+        cx.fillStyle = 'rgba(255,255,255,0.9)';
+        cx.beginPath();
+        cx.arc(cen - r * 0.28, cen - r * 0.32, r * 0.12, 0, Math.PI * 2);
+        cx.fill();
+
+        // Rim light
+        cx.save();
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.clip();
+        const rimGrad = cx.createRadialGradient(cen + r * 0.1, cen + r * 0.5, r * 0.3, cen, cen, r);
+        rimGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
+        rimGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = rimGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+        cx.restore();
+
+        // Edge ring
+        cx.strokeStyle = 'rgba(0,0,0,0.12)';
+        cx.lineWidth = 1;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.stroke();
+
+        return c;
+    }
+
+    function prebuildBallCanvases() {
+        ballCanvasCache = {};
+        for (let n = 1; n <= 15; n++) {
+            ballCanvasCache[n] = buildBallCanvas(n);
+        }
+        ballCanvasCache[0] = buildCueBallCanvas();
+    }
+
     function drawBall(b) {
         if (!b.active) return;
 
         const alpha = b.potting ? Math.max(0, b.pottingTimer / 20) : 1;
-        const r = b.potting ? BALL_R * (b.pottingTimer / 20) : BALL_R;
+        const scaleFactor = b.potting ? (b.pottingTimer / 20) : 1;
+
+        const cached = ballCanvasCache[b.num];
+        if (!cached) return;
+
+        const drawSize = BALL_R * 2 * scaleFactor;
 
         ctx.save();
         ctx.globalAlpha = alpha;
 
-        // Shadow
-        ctx.beginPath();
-        ctx.arc(b.x + 1.5, b.y + 1.5, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.fill();
-
-        // Main ball
-        const grad = ctx.createRadialGradient(
-            b.x - r * 0.3, b.y - r * 0.3, r * 0.1,
-            b.x, b.y, r
-        );
-        grad.addColorStop(0, lightenColor(b.color, 60));
-        grad.addColorStop(0.5, b.color);
-        grad.addColorStop(1, darkenColor(b.color, 40));
-
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        // Stripe
-        if (b.stripe) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(b.x - r, b.y - 2.5, r * 2, 5);
-            ctx.restore();
+        // Rolling rotation based on velocity
+        const spd = Math.sqrt((b.vx || 0) * (b.vx || 0) + (b.vy || 0) * (b.vy || 0));
+        if (spd > 0.3 && b.num > 0) {
+            ctx.translate(b.x, b.y);
+            ctx.rotate(Math.sin((b.x + b.y) * 0.05) * 0.06);
+            ctx.drawImage(cached, -drawSize / 2 - 0.5, -drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
+        } else {
+            ctx.drawImage(cached, b.x - drawSize / 2 - 0.5, b.y - drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
         }
-
-        // Number circle
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, r * 0.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
-        ctx.fill();
-
-        // Number text
-        ctx.fillStyle = '#111';
-        ctx.font = `bold ${Math.round(r * 0.8)}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(b.num.toString(), b.x, b.y + 0.5);
-
-        // Shine
-        ctx.beginPath();
-        ctx.arc(b.x - r * 0.25, b.y - r * 0.3, r * 0.25, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
-        ctx.fill();
 
         ctx.restore();
 
         // Flash effect
         if (b.flashTimer > 0) {
             ctx.beginPath();
-            ctx.arc(b.x, b.y, r + 4, 0, Math.PI * 2);
+            ctx.arc(b.x, b.y, BALL_R + 4, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(255,255,255,${b.flashTimer / 10})`;
             ctx.fill();
             b.flashTimer--;
@@ -1667,37 +1886,16 @@ window.SlingPool = (() => {
         }
 
         const alpha = cueBall.potting ? Math.max(0, cueBall.pottingTimer / 20) : 1;
-        const r = cueBall.potting ? CUE_R * (cueBall.pottingTimer / 20) : CUE_R;
+        const scaleFactor = cueBall.potting ? (cueBall.pottingTimer / 20) : 1;
+
+        const cached = ballCanvasCache[0];
+        if (!cached) return;
+
+        const drawSize = CUE_R * 2 * scaleFactor;
 
         ctx.save();
         ctx.globalAlpha = alpha;
-
-        // Shadow
-        ctx.beginPath();
-        ctx.arc(drawX + 1.5, drawY + 1.5, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.fill();
-
-        // Main ball
-        const grad = ctx.createRadialGradient(
-            drawX - r * 0.3, drawY - r * 0.3, r * 0.1,
-            drawX, drawY, r
-        );
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.6, '#e8e8e8');
-        grad.addColorStop(1, '#b0b0b0');
-
-        ctx.beginPath();
-        ctx.arc(drawX, drawY, r, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        // Shine
-        ctx.beginPath();
-        ctx.arc(drawX - r * 0.25, drawY - r * 0.3, r * 0.3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fill();
-
+        ctx.drawImage(cached, drawX - drawSize / 2 - 0.5, drawY - drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
         ctx.restore();
     }
 
@@ -2424,6 +2622,9 @@ window.SlingPool = (() => {
         loadSprites();
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
+
+        // Pre-render hi-res ball sprites
+        prebuildBallCanvases();
 
         // Build pockets for title screen
         buildPockets();

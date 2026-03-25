@@ -168,6 +168,12 @@ window.MiniGolf = (() => {
     let ballInWater = false;
     let ballSunk = false;
 
+    // Stuck detection
+    let stuckFrames = 0;            // frames ball has been slow + overlapping wall
+    let stuckShowReset = false;     // show "TAP TO RESET" prompt
+    let stuckTimestamp = 0;         // when stuck detection started
+    let lastValidX = 0, lastValidY = 0; // last known good position (not overlapping wall)
+
     // Course
     let currentHole = 0;   // 0-indexed
     let strokes = 0;
@@ -620,6 +626,11 @@ window.MiniGolf = (() => {
         ballSunk = false;
         ballInWater = false;
         strokes = 0;
+        stuckFrames = 0;
+        stuckShowReset = false;
+        stuckTimestamp = 0;
+        lastValidX = teePos.x;
+        lastValidY = teePos.y;
     }
 
     // ── Physics ─────────────────────────────────────────────────
@@ -641,6 +652,18 @@ window.MiniGolf = (() => {
             if (ballX >= w.x && ballX <= w.x + w.w && ballY >= w.y && ballY <= w.y + w.h) {
                 return true;
             }
+        }
+        return false;
+    }
+
+    function isOverlappingAnyWall() {
+        for (const w of walls) {
+            const closestX = Math.max(w.x, Math.min(ballX, w.x + w.w));
+            const closestY = Math.max(w.y, Math.min(ballY, w.y + w.h));
+            const dx = ballX - closestX;
+            const dy = ballY - closestY;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < BALL_R) return true;
         }
         return false;
     }
@@ -685,35 +708,53 @@ window.MiniGolf = (() => {
             return;
         }
 
-        // Wall collisions
-        for (const w of walls) {
-            collideWall(w);
+        // Wall collisions — multi-pass to resolve corners
+        for (let pass = 0; pass < 3; pass++) {
+            let anyHit = false;
+            for (const w of walls) {
+                if (collideWall(w)) anyHit = true;
+            }
+            if (!anyHit) break; // no more overlaps
         }
 
-        // Bumper collisions
+        // Bumper collisions — with proper overlap push-out
         for (const b of bumpers) {
             const dx = ballX - b.x;
             const dy = ballY - b.y;
             const d = Math.sqrt(dx * dx + dy * dy);
             const minD = BALL_R + b.r;
-            if (d < minD && d > 0.1) {
-                const nx = dx / d;
-                const ny = dy / d;
-                const overlap = minD - d;
+            if (d < minD) {
+                let nx, ny;
+                if (d > 0.1) {
+                    nx = dx / d;
+                    ny = dy / d;
+                } else {
+                    // Ball right on top of bumper — push toward play area center
+                    nx = (ballX - GAME_W / 2) > 0 ? 1 : -1;
+                    ny = 0;
+                }
+                // Push out fully + 2px buffer
+                const overlap = minD - d + 2;
                 ballX += nx * overlap;
                 ballY += ny * overlap;
 
                 // Reflect with boost
                 const dot = ballVX * nx + ballVY * ny;
-                ballVX = (ballVX - 2 * dot * nx) * 1.1;
-                ballVY = (ballVY - 2 * dot * ny) * 1.1;
+                if (dot < 0) {
+                    ballVX = (ballVX - 2 * dot * nx) * 1.1;
+                    ballVY = (ballVY - 2 * dot * ny) * 1.1;
+                } else {
+                    // Ball not moving into bumper but overlapping — give a kick away
+                    ballVX += nx * 1.5;
+                    ballVY += ny * 1.5;
+                }
 
                 playBumperHit();
                 spawnBurst(b.x + nx * b.r, b.y + ny * b.r, 6, '#FF6B6B');
             }
         }
 
-        // Windmill arm collision
+        // Windmill arm collision — with overlap push-out
         for (const wm of windmills) {
             const armEndX = wm.x + Math.cos(wm.angle) * wm.armLen;
             const armEndY = wm.y + Math.sin(wm.angle) * wm.armLen;
@@ -732,37 +773,59 @@ window.MiniGolf = (() => {
                 const closestY = wm.y + t * dy;
                 const bd = Math.sqrt((ballX - closestX) ** 2 + (ballY - closestY) ** 2);
 
-                if (bd < BALL_R + 4) {
-                    // Push ball away from arm
-                    const nx = (ballX - closestX) / (bd || 1);
-                    const ny = (ballY - closestY) / (bd || 1);
-                    ballX = closestX + nx * (BALL_R + 5);
-                    ballY = closestY + ny * (BALL_R + 5);
+                const armCollideR = BALL_R + 5;
+                if (bd < armCollideR) {
+                    // Push ball fully out of arm + buffer
+                    let nx, ny;
+                    if (bd > 0.1) {
+                        nx = (ballX - closestX) / bd;
+                        ny = (ballY - closestY) / bd;
+                    } else {
+                        // Perpendicular to arm direction
+                        nx = -dy / len;
+                        ny = dx / len;
+                    }
+                    const pushDist = armCollideR - bd + 3;
+                    ballX += nx * pushDist;
+                    ballY += ny * pushDist;
 
                     const dot = ballVX * nx + ballVY * ny;
-                    ballVX = (ballVX - 2 * dot * nx) * 0.7;
-                    ballVY = (ballVY - 2 * dot * ny) * 0.7;
+                    if (dot < 0) {
+                        ballVX = (ballVX - 2 * dot * nx) * 0.7;
+                        ballVY = (ballVY - 2 * dot * ny) * 0.7;
+                    }
 
-                    // Add arm's rotational velocity
+                    // Add arm's rotational velocity to push ball away
                     const tangentX = -Math.sin(wm.angle) * wm.speed * 60;
                     const tangentY = Math.cos(wm.angle) * wm.speed * 60;
-                    ballVX += tangentX * 0.3;
-                    ballVY += tangentY * 0.3;
+                    ballVX += tangentX * 0.4;
+                    ballVY += tangentY * 0.4;
+
+                    // Ensure minimum kick-away speed
+                    if (ballSpeed() < 0.5) {
+                        ballVX += nx * 1.0;
+                        ballVY += ny * 1.0;
+                    }
 
                     playWallBounce();
                 }
             }
 
-            // Center hub collision
+            // Center hub collision — with overlap push-out
+            const hubR = 9;
             const hubD = Math.sqrt((ballX - wm.x) ** 2 + (ballY - wm.y) ** 2);
-            if (hubD < BALL_R + 8) {
+            const hubMinD = BALL_R + hubR;
+            if (hubD < hubMinD) {
                 const nx = (ballX - wm.x) / (hubD || 1);
                 const ny = (ballY - wm.y) / (hubD || 1);
-                ballX = wm.x + nx * (BALL_R + 9);
-                ballY = wm.y + ny * (BALL_R + 9);
+                const overlap = hubMinD - hubD + 2;
+                ballX += nx * overlap;
+                ballY += ny * overlap;
                 const dot = ballVX * nx + ballVY * ny;
-                ballVX -= 2 * dot * nx * WALL_COR;
-                ballVY -= 2 * dot * ny * WALL_COR;
+                if (dot < 0) {
+                    ballVX -= 2 * dot * nx * WALL_COR;
+                    ballVY -= 2 * dot * ny * WALL_COR;
+                }
                 playWallBounce();
             }
         }
@@ -772,14 +835,68 @@ window.MiniGolf = (() => {
         if (holeDist < HOLE_R - 2 && ballSpeed() < HOLE_CAPTURE_SPEED) {
             sinkBall();
         }
-        // Edge of hole - gravitational pull
-        if (holeDist < HOLE_R + 5 && holeDist > HOLE_R - 3) {
-            const pullStrength = 0.15;
+        // Hole gravity — gentle pull when within 1.5x hole radius and slow enough
+        if (holeDist < HOLE_R * 1.5 && ballSpeed() < 1.5 && holeDist > 1) {
+            const pullStrength = 0.12 * (1 - holeDist / (HOLE_R * 1.5)); // stronger as you get closer
             const nx = (holePos.x - ballX) / holeDist;
             const ny = (holePos.y - ballY) / holeDist;
             ballVX += nx * pullStrength;
             ballVY += ny * pullStrength;
         }
+
+        // -- Stuck detection --
+        const overlapping = isOverlappingAnyWall();
+        if (!overlapping && ballSpeed() >= 0.05) {
+            // Save last valid position
+            lastValidX = ballX;
+            lastValidY = ballY;
+            stuckFrames = 0;
+            stuckShowReset = false;
+            stuckTimestamp = 0;
+        }
+        if (ballSpeed() < 0.05 && overlapping) {
+            stuckFrames++;
+            if (stuckTimestamp === 0) stuckTimestamp = Date.now();
+
+            // After 90 frames stuck (~1.5 sec), nudge 8px toward center of play area
+            if (stuckFrames === 90) {
+                const cx = GAME_W / 2;
+                const cy = GAME_H / 2;
+                const toCX = cx - ballX;
+                const toCY = cy - ballY;
+                const toCLen = Math.sqrt(toCX * toCX + toCY * toCY) || 1;
+                ballX += (toCX / toCLen) * 8;
+                ballY += (toCY / toCLen) * 8;
+                ballVX = 0;
+                ballVY = 0;
+            }
+
+            // After 3 seconds stuck, show reset prompt
+            if (Date.now() - stuckTimestamp >= 3000 && !stuckShowReset) {
+                stuckShowReset = true;
+            }
+        } else if (!overlapping) {
+            stuckFrames = 0;
+            stuckShowReset = false;
+            stuckTimestamp = 0;
+        }
+    }
+
+    function resetBallFromStuck() {
+        // Move ball back to last valid position, or tee if none
+        if (lastValidX && lastValidY && !isNaN(lastValidX)) {
+            ballX = lastValidX;
+            ballY = lastValidY;
+        } else {
+            ballX = teePos.x;
+            ballY = teePos.y;
+        }
+        ballVX = 0;
+        ballVY = 0;
+        stuckFrames = 0;
+        stuckShowReset = false;
+        stuckTimestamp = 0;
+        state = ST_AIMING;
     }
 
     function collideWall(w) {
@@ -790,19 +907,40 @@ window.MiniGolf = (() => {
         const dy = ballY - closestY;
         const d = Math.sqrt(dx * dx + dy * dy);
 
-        if (d < BALL_R && d > 0.01) {
-            const nx = dx / d;
-            const ny = dy / d;
-            const overlap = BALL_R - d;
+        if (d < BALL_R) {
+            let nx, ny;
+            if (d > 0.01) {
+                nx = dx / d;
+                ny = dy / d;
+            } else {
+                // Ball center is exactly on/inside wall edge — push toward nearest edge
+                const toLeft   = ballX - w.x;
+                const toRight  = (w.x + w.w) - ballX;
+                const toTop    = ballY - w.y;
+                const toBottom = (w.y + w.h) - ballY;
+                const minDist  = Math.min(toLeft, toRight, toTop, toBottom);
+                if (minDist === toLeft)       { nx = -1; ny =  0; }
+                else if (minDist === toRight)  { nx =  1; ny =  0; }
+                else if (minDist === toTop)    { nx =  0; ny = -1; }
+                else                           { nx =  0; ny =  1; }
+            }
+
+            // Push out by overlap + 2px buffer
+            const overlap = BALL_R - d + 2;
             ballX += nx * overlap;
             ballY += ny * overlap;
 
+            // Reflect velocity
             const dot = ballVX * nx + ballVY * ny;
-            ballVX = (ballVX - 2 * dot * nx) * WALL_COR;
-            ballVY = (ballVY - 2 * dot * ny) * WALL_COR;
+            if (dot < 0) { // only reflect if moving into wall
+                ballVX = (ballVX - 2 * dot * nx) * WALL_COR;
+                ballVY = (ballVY - 2 * dot * ny) * WALL_COR;
+            }
 
             if (ballSpeed() > 0.5) playWallBounce();
+            return true; // signal collision happened
         }
+        return false;
     }
 
     function sinkBall() {
@@ -1493,6 +1631,27 @@ window.MiniGolf = (() => {
             drawHUD();
         }
 
+        // Stuck reset prompt
+        if (stuckShowReset && state === ST_ROLLING) {
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const pulse = 0.5 + Math.sin(Date.now() * 0.008) * 0.4;
+            ctx.globalAlpha = pulse;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.beginPath();
+            ctx.roundRect(GAME_W / 2 - 90, GAME_H / 2 - 22, 180, 44, 10);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.font = 'bold 18px "Segoe UI", system-ui, sans-serif';
+            ctx.fillStyle = '#F43F5E';
+            ctx.shadowColor = '#F43F5E';
+            ctx.shadowBlur = 10;
+            ctx.fillText('TAP TO RESET', GAME_W / 2, GAME_H / 2);
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+
         drawScoreCard();
 
         if (state === ST_TITLE)  drawTitleScreen(time);
@@ -1598,6 +1757,8 @@ window.MiniGolf = (() => {
             if (state === ST_TITLE) { startGame(); return; }
             if (state === ST_OVER) { state = ST_TITLE; return; }
             if (state === ST_SCORECARD) { nextHole(); return; }
+            // Stuck reset on spacebar
+            if (stuckShowReset && state === ST_ROLLING) { resetBallFromStuck(); return; }
             if ((state === ST_AIMING || state === ST_POWER) && aimPower > 0.3) {
                 shootBall();
                 return;
@@ -1624,6 +1785,12 @@ window.MiniGolf = (() => {
         if (state === ST_TITLE) { startGame(); return; }
         if (state === ST_OVER) { state = ST_TITLE; return; }
         if (state === ST_SCORECARD) { nextHole(); return; }
+
+        // Stuck reset on tap
+        if (stuckShowReset && state === ST_ROLLING) {
+            resetBallFromStuck();
+            return;
+        }
 
         if (state === ST_AIMING) {
             aimDragging = true;
@@ -1668,6 +1835,12 @@ window.MiniGolf = (() => {
         if (state === ST_TITLE) { startGame(); return; }
         if (state === ST_OVER) { state = ST_TITLE; return; }
         if (state === ST_SCORECARD) { nextHole(); return; }
+
+        // Stuck reset on tap
+        if (stuckShowReset && state === ST_ROLLING) {
+            resetBallFromStuck();
+            return;
+        }
 
         if (state === ST_AIMING) {
             aimDragging = true;

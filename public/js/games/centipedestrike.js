@@ -4,35 +4,27 @@
 window.CentipedeStrike = (() => {
 
     // ── Sprite Atlas ──
-    const SPRITE_BASE = '/img/game-assets/kenney-space';
+    const SPRITE_BASE = '/img/game-assets/kenney-platform';
     const _sprites = {};
     let _spritesLoaded = 0, _spritesTotal = 0, _allSpritesReady = false;
     let _spriteExplosions = [];
 
     const _SPRITE_MANIFEST = {
-        // Centipede segments (enemy sprites)
-        segHead:     `${SPRITE_BASE}/enemies/enemyRed4.png`,
-        segBody:     `${SPRITE_BASE}/enemies/enemyBlue3.png`,
-        segBoss:     `${SPRITE_BASE}/enemies/enemyGreen5.png`,
-        // Other enemies
-        spider:      `${SPRITE_BASE}/enemies/enemyBlack4.png`,
-        flea:        `${SPRITE_BASE}/enemies/enemyRed2.png`,
-        scorpion:    `${SPRITE_BASE}/enemies/enemyGreen3.png`,
-        // Power-ups
-        puMega:      `${SPRITE_BASE}/powerups/powerupRed_bolt.png`,
-        puAmmo:      `${SPRITE_BASE}/powerups/powerupBlue_bolt.png`,
-        puSlow:      `${SPRITE_BASE}/powerups/powerupGreen_star.png`,
-        puChain:     `${SPRITE_BASE}/powerups/powerupRed_shield.png`,
+        // Centipede segments — bug/worm sprites from kenney-platform
+        segHead:     `${SPRITE_BASE}/enemies/wormGreen.png`,
+        segBody:     `${SPRITE_BASE}/enemies/slimeGreen_move.png`,
+        segBoss:     `${SPRITE_BASE}/enemies/wormPink.png`,
+        // Other enemies — small bugs
+        spider:      `${SPRITE_BASE}/enemies/ladybug.png`,
+        flea:        `${SPRITE_BASE}/enemies/fly.png`,
+        scorpion:    `${SPRITE_BASE}/enemies/snail.png`,
+        // Mushrooms
+        mushNormal:  `${SPRITE_BASE}/tiles/mushroomRed.png`,
+        mushPoison:  `${SPRITE_BASE}/tiles/mushroomBrown.png`,
     };
 
+    // No explosion sprite frames — we use canvas radial gradients only
     const _EXPLOSION_FRAME_IDS = [];
-    const _EXPLOSION_FRAME_COUNT = 8;
-    for (let i = 0; i < 20; i += Math.floor(20 / _EXPLOSION_FRAME_COUNT)) {
-        const id = `fire${String(i).padStart(2, '0')}`;
-        _SPRITE_MANIFEST[id] = `${SPRITE_BASE}/effects/fire${String(i).padStart(2, '0')}.png`;
-        _EXPLOSION_FRAME_IDS.push(id);
-        if (_EXPLOSION_FRAME_IDS.length >= _EXPLOSION_FRAME_COUNT) break;
-    }
 
     function _loadSprites(onDone) {
         const keys = Object.keys(_SPRITE_MANIFEST);
@@ -190,10 +182,10 @@ window.CentipedeStrike = (() => {
             for (let r = 0; r < ROWS; r++) mushrooms[c][r] = null;
         }
         // populate — avoid very top 2 rows and bottom 4 rows (base area)
-        const density = 0.07 + wave * 0.008;
+        const density = 0.05 + wave * 0.005;
         for (let c = 0; c < COLS; c++) {
             for (let r = 2; r < ROWS - 4; r++) {
-                if (Math.random() < Math.min(density, 0.15)) {
+                if (Math.random() < Math.min(density, 0.10)) {
                     mushrooms[c][r] = { hp: MUSH_HP, poisoned: false };
                 }
             }
@@ -895,14 +887,12 @@ window.CentipedeStrike = (() => {
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
 
-        // Subtle grid lines
-        ctx.strokeStyle = 'rgba(255,255,255,0.02)';
-        ctx.lineWidth = 1;
-        for (let c = 0; c <= COLS; c++) {
-            ctx.beginPath(); ctx.moveTo(gx(c * CELL), 0); ctx.lineTo(gx(c * CELL), H); ctx.stroke();
-        }
-        for (let r = 0; r <= ROWS; r++) {
-            ctx.beginPath(); ctx.moveTo(0, gy(r * CELL)); ctx.lineTo(W, gy(r * CELL)); ctx.stroke();
+        // Subtle grid dots at intersections (less cluttered than full grid lines)
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        for (let c = 0; c <= COLS; c += 4) {
+            for (let r = 0; r <= ROWS; r += 4) {
+                ctx.fillRect(gx(c * CELL) - 0.5, gy(r * CELL) - 0.5, 1, 1);
+            }
         }
 
         drawMushrooms();
@@ -919,10 +909,10 @@ window.CentipedeStrike = (() => {
         drawCrosshair();
         drawHUD();
 
-        // Vignette overlay
-        const vigGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.75);
+        // Vignette overlay (subtle)
+        const vigGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.8);
         vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
-        vigGrad.addColorStop(1, 'rgba(0,0,0,0.4)');
+        vigGrad.addColorStop(1, 'rgba(0,0,0,0.25)');
         ctx.fillStyle = vigGrad;
         ctx.fillRect(0, 0, W, H);
 
@@ -941,40 +931,63 @@ window.CentipedeStrike = (() => {
     }
 
     function drawMushrooms() {
+        const mushSz = gs(CELL * 0.9); // small, grid-cell sized (~18px)
         for (let c = 0; c < COLS; c++) {
             for (let r = 0; r < ROWS; r++) {
                 const m = mushrooms[c][r];
                 if (!m) continue;
                 const cx = gx(c * CELL + CELL / 2), cy = gy(r * CELL + CELL / 2);
-                const sz = gs(CELL * 0.4) * (m.hp / MUSH_HP * 0.3 + 0.7);
+                const hpScale = m.hp / MUSH_HP * 0.3 + 0.7;
+                const sz = mushSz * hpScale;
+                const halfSz = sz / 2;
+
+                // Sprite rendering
+                const mushKey = m.poisoned ? 'mushPoison' : 'mushNormal';
+                const mushSprite = _sprites[mushKey];
+                if (mushSprite && _allSpritesReady) {
+                    ctx.globalAlpha = hpScale;
+                    ctx.drawImage(mushSprite, cx - halfSz, cy - halfSz, sz, sz);
+                    ctx.globalAlpha = 1;
+                    // Poison glow
+                    if (m.poisoned) {
+                        ctx.save();
+                        ctx.shadowColor = CLR_MUSH_POISON;
+                        ctx.shadowBlur = gs(4);
+                        ctx.globalAlpha = 0.25 + 0.15 * Math.sin(frameCount * 0.1);
+                        ctx.fillStyle = CLR_MUSH_POISON;
+                        ctx.beginPath(); ctx.arc(cx, cy, halfSz, 0, Math.PI * 2); ctx.fill();
+                        ctx.restore();
+                    }
+                    continue;
+                }
+
+                // Canvas fallback — simple small capped mushroom
+                const stemW = sz * 0.25, stemH = sz * 0.4;
+                const capR = sz * 0.4;
 
                 // Stem
                 ctx.fillStyle = CLR_MUSH_STEM;
-                ctx.fillRect(cx - sz * 0.25, cy, sz * 0.5, sz * 0.8);
+                ctx.fillRect(cx - stemW / 2, cy, stemW, stemH);
 
-                // Cap
+                // Cap (semicircle)
                 const capColor = m.poisoned ? CLR_MUSH_POISON : CLR_MUSH_CAP;
-                const capGrad = ctx.createRadialGradient(cx - sz * 0.2, cy - sz * 0.3, 0, cx, cy, sz);
-                capGrad.addColorStop(0, '#fff');
-                capGrad.addColorStop(0.3, capColor);
-                capGrad.addColorStop(1, m.poisoned ? '#7C3AED' : '#166534');
-                ctx.fillStyle = capGrad;
+                ctx.fillStyle = capColor;
                 ctx.beginPath();
-                ctx.arc(cx, cy, sz, Math.PI, 0, false);
+                ctx.arc(cx, cy, capR, Math.PI, 0, false);
                 ctx.fill();
 
-                // Spots
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.beginPath(); ctx.arc(cx - sz * 0.3, cy - sz * 0.3, sz * 0.15, 0, Math.PI * 2); ctx.fill();
-                ctx.beginPath(); ctx.arc(cx + sz * 0.2, cy - sz * 0.15, sz * 0.1, 0, Math.PI * 2); ctx.fill();
+                // Small spot
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.beginPath(); ctx.arc(cx - capR * 0.25, cy - capR * 0.3, capR * 0.15, 0, Math.PI * 2); ctx.fill();
 
                 // Poison glow
                 if (m.poisoned) {
                     ctx.save();
                     ctx.shadowColor = CLR_MUSH_POISON;
-                    ctx.shadowBlur = gs(6);
-                    ctx.globalAlpha = 0.3 + 0.2 * Math.sin(frameCount * 0.1);
-                    ctx.beginPath(); ctx.arc(cx, cy, sz * 1.2, 0, Math.PI * 2); ctx.fill();
+                    ctx.shadowBlur = gs(4);
+                    ctx.globalAlpha = 0.25 + 0.15 * Math.sin(frameCount * 0.1);
+                    ctx.fillStyle = CLR_MUSH_POISON;
+                    ctx.beginPath(); ctx.arc(cx, cy, halfSz, 0, Math.PI * 2); ctx.fill();
                     ctx.restore();
                 }
             }
@@ -1181,22 +1194,26 @@ window.CentipedeStrike = (() => {
 
     function drawInterceptors() {
         interceptors.forEach(m => {
-            // Trail
-            ctx.lineWidth = gs(2);
-            m.trail.forEach((t, i) => {
-                const a = t.a * 0.6;
-                ctx.fillStyle = `rgba(148,163,184,${a})`;
-                ctx.beginPath();
-                ctx.arc(gx(t.x), gy(t.y), gs(1.5 + i * 0.1), 0, Math.PI * 2);
-                ctx.fill();
-            });
+            // Trail — thin fading line, not blobs
+            if (m.trail.length > 1) {
+                ctx.lineWidth = gs(1.5);
+                for (let i = 1; i < m.trail.length; i++) {
+                    const a = m.trail[i].a * 0.4;
+                    if (a <= 0) continue;
+                    ctx.strokeStyle = `rgba(148,163,184,${a})`;
+                    ctx.beginPath();
+                    ctx.moveTo(gx(m.trail[i - 1].x), gy(m.trail[i - 1].y));
+                    ctx.lineTo(gx(m.trail[i].x), gy(m.trail[i].y));
+                    ctx.stroke();
+                }
+            }
             // Interceptor head
             if (m.alive) {
                 ctx.fillStyle = '#FFF';
                 ctx.shadowColor = '#FFF';
-                ctx.shadowBlur = gs(6);
+                ctx.shadowBlur = gs(4);
                 ctx.beginPath();
-                ctx.arc(gx(m.x), gy(m.y), gs(3), 0, Math.PI * 2);
+                ctx.arc(gx(m.x), gy(m.y), gs(2.5), 0, Math.PI * 2);
                 ctx.fill();
                 ctx.shadowBlur = 0;
             }
@@ -1209,19 +1226,6 @@ window.CentipedeStrike = (() => {
             if (e.phase === 'fade') alpha = 1 - e.timer / EXPLOSION_FADE;
             const r = gs(e.r);
             const cx = gx(e.x), cy = gy(e.y);
-
-            // Sprite fire overlay (pick frame based on explosion phase progress)
-            if (_allSpritesReady && _EXPLOSION_FRAME_IDS.length > 0 && e.phase !== 'fade') {
-                const progressPct = e.r / (e.maxR || EXPLOSION_MAX_R);
-                const frameIdx = Math.min(Math.floor(progressPct * _EXPLOSION_FRAME_IDS.length), _EXPLOSION_FRAME_IDS.length - 1);
-                const fid = _EXPLOSION_FRAME_IDS[frameIdx];
-                const fSprite = fid ? _sprites[fid] : null;
-                if (fSprite) {
-                    ctx.globalAlpha = alpha;
-                    ctx.drawImage(fSprite, cx - r, cy - r, r * 2, r * 2);
-                    ctx.globalAlpha = 1;
-                }
-            }
 
             // Outer ring (gradient overlay)
             const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
@@ -1306,7 +1310,23 @@ window.CentipedeStrike = (() => {
     function drawCrosshair() {
         if (state !== ST_PLAYING) return;
         const cx = gx(mouseX), cy = gy(mouseY);
-        const s = gs(10) + Math.sin(frameCount * 0.15) * gs(2);
+        const s = gs(8) + Math.sin(frameCount * 0.15) * gs(1.5);
+
+        // Single dotted aim line from closest base to cursor
+        const bi = closestBase(mouseX, mouseY);
+        if (bi >= 0 && bases[bi].alive) {
+            const bx = gx(bases[bi].x), by = gy(bases[bi].y);
+            ctx.save();
+            ctx.strokeStyle = 'rgba(224,231,255,0.25)';
+            ctx.lineWidth = gs(1);
+            ctx.setLineDash([gs(3), gs(5)]);
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
+            ctx.lineTo(cx, cy);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
 
         ctx.strokeStyle = CLR_CROSSHAIR;
         ctx.lineWidth = gs(1.5);
@@ -1347,20 +1367,12 @@ window.CentipedeStrike = (() => {
     }
 
     function drawPowerups() {
-        const puKeyMap = ['puMega', 'puAmmo', 'puSlow', 'puChain'];
         powerups.forEach(p => {
             const px = gx(p.x), py = gy(p.y), sz = gs(POWERUP_SIZE);
             const pulse = 1 + Math.sin(frameCount * 0.15) * 0.15;
-            // Sprite rendering
-            const puSprite = _sprites[puKeyMap[p.type]];
-            if (puSprite && _allSpritesReady) {
-                ctx.drawImage(puSprite, px - sz / 2 * pulse, py - sz / 2 * pulse, sz * pulse, sz * pulse);
-                return;
-            }
-            // Canvas fallback
             ctx.save();
             ctx.shadowColor = PW_COLORS[p.type];
-            ctx.shadowBlur = gs(8);
+            ctx.shadowBlur = gs(6);
             ctx.fillStyle = PW_COLORS[p.type];
             ctx.beginPath();
             ctx.arc(px, py, sz / 2 * pulse, 0, Math.PI * 2);

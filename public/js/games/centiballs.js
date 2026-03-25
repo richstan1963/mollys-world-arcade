@@ -61,6 +61,10 @@ window.CentiBalls = (() => {
     let CLR_CUE = '#F5F5F0';
     let CLR_CHAIN_LINK = 'rgba(255,255,255,0.25)';
 
+    // Hi-res ball cache (4x resolution)
+    const BALL_CACHE_SCALE = 4;
+    let ballCanvasCache = {};
+
     // Sprites
     const SPRITE_BASE = '/img/game-assets';
     const sprites = {};
@@ -1144,111 +1148,281 @@ window.CentiBalls = (() => {
         }
     }
 
-    function drawBilliardBall(cx, cy, r, num, highlight) {
+    // ═══════════════════════════════════════════════════════════════
+    //  PRE-RENDERED BALL CACHE (4x resolution for crisp rendering)
+    // ═══════════════════════════════════════════════════════════════
+    function buildBallCanvas(num) {
         const color = BALL_COLORS[num] || '#888';
         const isStripe = num >= 9;
+        const sz = BALL_R * 2 * BALL_CACHE_SCALE;
+        const cen = sz / 2;
+        const r = sz / 2 - 2;
+        const c = document.createElement('canvas');
+        c.width = sz; c.height = sz;
+        const cx = c.getContext('2d');
 
-        ctx.save();
-        ctx.translate(cx, cy);
+        // Drop shadow
+        cx.fillStyle = 'rgba(0,0,0,0.25)';
+        cx.beginPath();
+        cx.ellipse(cen + 2, cen + 3, r * 0.95, r * 0.7, 0, 0, Math.PI * 2);
+        cx.fill();
 
-        // Ball shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.beginPath();
-        ctx.ellipse(2, 3, r * 0.95, r * 0.7, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Ball body
         if (isStripe) {
-            // White base for stripe ball
-            ctx.fillStyle = '#FFFEF7';
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.fill();
+            // White base
+            const baseGrad = cx.createRadialGradient(
+                cen - r * 0.28, cen - r * 0.28, r * 0.05,
+                cen + r * 0.05, cen + r * 0.05, r
+            );
+            baseGrad.addColorStop(0, '#FFFFFF');
+            baseGrad.addColorStop(0.45, '#F8F8F2');
+            baseGrad.addColorStop(0.75, '#E8E8E0');
+            baseGrad.addColorStop(1, '#CCCCC4');
+            cx.fillStyle = baseGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
 
-            // Color stripe band (center band)
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.fillStyle = color;
-            ctx.fillRect(-r, -r * 0.55, r * 2, r * 1.1);
-            ctx.restore();
-
-            // Gradient shading over stripe
-            const stripeGrd = ctx.createRadialGradient(-r * 0.25, -r * 0.25, 0, 0, 0, r);
-            stripeGrd.addColorStop(0, 'rgba(255,255,255,0.2)');
-            stripeGrd.addColorStop(0.6, 'rgba(0,0,0,0)');
-            stripeGrd.addColorStop(1, 'rgba(0,0,0,0.15)');
-            ctx.fillStyle = stripeGrd;
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.fill();
+            // Colored stripe band
+            cx.save();
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.clip();
+            const bandH = r * 1.1;
+            const bandGrad = cx.createLinearGradient(cen - r, cen - bandH / 2, cen + r, cen + bandH / 2);
+            bandGrad.addColorStop(0, darkenColor(color, 40));
+            bandGrad.addColorStop(0.15, color);
+            bandGrad.addColorStop(0.35, lightenColor(color, 30));
+            bandGrad.addColorStop(0.5, color);
+            bandGrad.addColorStop(0.65, lightenColor(color, 30));
+            bandGrad.addColorStop(0.85, color);
+            bandGrad.addColorStop(1, darkenColor(color, 40));
+            cx.fillStyle = bandGrad;
+            cx.fillRect(cen - r, cen - bandH / 2, r * 2, bandH);
+            // Edge darkening
+            const edgeFade = cx.createLinearGradient(0, cen - bandH / 2, 0, cen + bandH / 2);
+            edgeFade.addColorStop(0, 'rgba(0,0,0,0.2)');
+            edgeFade.addColorStop(0.12, 'rgba(0,0,0,0)');
+            edgeFade.addColorStop(0.88, 'rgba(0,0,0,0)');
+            edgeFade.addColorStop(1, 'rgba(0,0,0,0.2)');
+            cx.fillStyle = edgeFade;
+            cx.fillRect(cen - r, cen - bandH / 2, r * 2, bandH);
+            cx.restore();
         } else if (num === 8) {
             // 8-ball: solid black with glossy finish
-            const eightGrd = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
-            eightGrd.addColorStop(0, '#333');
-            eightGrd.addColorStop(0.5, '#111');
-            eightGrd.addColorStop(1, '#000');
-            ctx.fillStyle = eightGrd;
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.fill();
+            const grad = cx.createRadialGradient(
+                cen - r * 0.3, cen - r * 0.3, 0, cen, cen, r
+            );
+            grad.addColorStop(0, '#444');
+            grad.addColorStop(0.3, '#222');
+            grad.addColorStop(0.7, '#111');
+            grad.addColorStop(1, '#000');
+            cx.fillStyle = grad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
         } else {
             // Solid ball with rich gradient
-            const ballGrd = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
-            ballGrd.addColorStop(0, lightenColor(color, 50));
-            ballGrd.addColorStop(0.4, lightenColor(color, 20));
-            ballGrd.addColorStop(0.7, color);
-            ballGrd.addColorStop(1, darkenColor(color, 50));
-            ctx.fillStyle = ballGrd;
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.fill();
+            const grad = cx.createRadialGradient(
+                cen - r * 0.3, cen - r * 0.3, r * 0.05,
+                cen + r * 0.05, cen + r * 0.05, r
+            );
+            grad.addColorStop(0, lightenColor(color, 60));
+            grad.addColorStop(0.25, lightenColor(color, 20));
+            grad.addColorStop(0.55, color);
+            grad.addColorStop(0.8, darkenColor(color, 25));
+            grad.addColorStop(1, darkenColor(color, 50));
+            cx.fillStyle = grad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
         }
 
-        // Number circle (white disc with number)
+        // Subsurface glow
+        if (num !== 8) {
+            cx.save();
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.clip();
+            const glowGrad = cx.createRadialGradient(cen + r * 0.15, cen + r * 0.2, 0, cen, cen, r);
+            glowGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+            glowGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+            cx.fillStyle = glowGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, r, 0, Math.PI * 2);
+            cx.fill();
+            cx.restore();
+        }
+
+        // Number circle
         if (num > 0) {
-            ctx.fillStyle = '#FFFEF7';
-            ctx.beginPath();
-            ctx.arc(0, 0, r * 0.42, 0, Math.PI * 2);
-            ctx.fill();
-            // Subtle number disc outline
-            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-
-            ctx.fillStyle = '#111';
-            ctx.font = `bold ${Math.round(r * 0.6)}px Arial, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(String(num), 0, 1);
+            const ncr = r * 0.42;
+            cx.shadowColor = 'rgba(0,0,0,0.3)';
+            cx.shadowBlur = 3;
+            cx.fillStyle = '#FFFFFF';
+            cx.beginPath();
+            cx.arc(cen, cen, ncr, 0, Math.PI * 2);
+            cx.fill();
+            cx.shadowBlur = 0;
+            const ncGrad = cx.createRadialGradient(cen - ncr * 0.2, cen - ncr * 0.2, 0, cen, cen, ncr);
+            ncGrad.addColorStop(0, '#FFFFFF');
+            ncGrad.addColorStop(0.7, '#F8F8F4');
+            ncGrad.addColorStop(1, '#E8E8E0');
+            cx.fillStyle = ncGrad;
+            cx.beginPath();
+            cx.arc(cen, cen, ncr - 0.5, 0, Math.PI * 2);
+            cx.fill();
+            cx.fillStyle = '#111111';
+            cx.font = `bold ${r * 0.58}px "Segoe UI", system-ui, sans-serif`;
+            cx.textAlign = 'center';
+            cx.textBaseline = 'middle';
+            cx.fillText(num.toString(), cen, cen + 1);
         }
 
-        // Primary specular highlight (top-left)
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.beginPath();
-        ctx.arc(-r * 0.28, -r * 0.28, r * 0.25, 0, Math.PI * 2);
-        ctx.fill();
+        // Primary specular highlight
+        const specGrad = cx.createRadialGradient(
+            cen - r * 0.32, cen - r * 0.38, 0,
+            cen - r * 0.2, cen - r * 0.25, r * 0.55
+        );
+        specGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
+        specGrad.addColorStop(0.3, 'rgba(255,255,255,0.35)');
+        specGrad.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+        specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = specGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
 
-        // Secondary specular (smaller, sharper)
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.beginPath();
-        ctx.arc(-r * 0.15, -r * 0.4, r * 0.1, 0, Math.PI * 2);
-        ctx.fill();
+        // Secondary specular dot
+        cx.fillStyle = 'rgba(255,255,255,0.85)';
+        cx.beginPath();
+        cx.arc(cen - r * 0.28, cen - r * 0.32, r * 0.1, 0, Math.PI * 2);
+        cx.fill();
 
-        // Rim light (bottom edge)
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(0, 0, r - 0.5, 0.3, Math.PI - 0.3);
-        ctx.stroke();
+        // Rim light
+        cx.save();
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.clip();
+        const rimGrad = cx.createRadialGradient(cen + r * 0.1, cen + r * 0.5, r * 0.3, cen, cen, r);
+        rimGrad.addColorStop(0, 'rgba(255,255,255,0.12)');
+        rimGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = rimGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+        cx.restore();
 
-        // Outline
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.stroke();
+        // Edge ring
+        cx.strokeStyle = 'rgba(0,0,0,0.2)';
+        cx.lineWidth = 1;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.stroke();
+
+        return c;
+    }
+
+    function buildCueBallCanvas() {
+        const sz = CUE_R * 2 * BALL_CACHE_SCALE;
+        const cen = sz / 2;
+        const r = sz / 2 - 2;
+        const c = document.createElement('canvas');
+        c.width = sz; c.height = sz;
+        const cx = c.getContext('2d');
+
+        // Drop shadow
+        cx.fillStyle = 'rgba(0,0,0,0.2)';
+        cx.beginPath();
+        cx.ellipse(cen + 2, cen + 3, r * 0.95, r * 0.7, 0, 0, Math.PI * 2);
+        cx.fill();
+
+        // White ball with subtle blue tint
+        const grad = cx.createRadialGradient(
+            cen - r * 0.3, cen - r * 0.3, r * 0.05,
+            cen + r * 0.05, cen + r * 0.05, r
+        );
+        grad.addColorStop(0, '#FFFFFF');
+        grad.addColorStop(0.3, '#FCFCF8');
+        grad.addColorStop(0.5, '#F5F5F0');
+        grad.addColorStop(0.85, '#D8D8D4');
+        grad.addColorStop(1, '#C0C0BC');
+        cx.fillStyle = grad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+
+        // Subtle blue tint
+        cx.fillStyle = 'rgba(200,210,255,0.06)';
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+
+        // Extra-bright specular
+        const specGrad = cx.createRadialGradient(
+            cen - r * 0.32, cen - r * 0.38, 0,
+            cen - r * 0.2, cen - r * 0.25, r * 0.55
+        );
+        specGrad.addColorStop(0, 'rgba(255,255,255,0.85)');
+        specGrad.addColorStop(0.3, 'rgba(255,255,255,0.45)');
+        specGrad.addColorStop(0.6, 'rgba(255,255,255,0.1)');
+        specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = specGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+
+        // Sharp specular dot
+        cx.fillStyle = 'rgba(255,255,255,0.9)';
+        cx.beginPath();
+        cx.arc(cen - r * 0.28, cen - r * 0.32, r * 0.12, 0, Math.PI * 2);
+        cx.fill();
+
+        // Rim light
+        cx.save();
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.clip();
+        const rimGrad = cx.createRadialGradient(cen + r * 0.1, cen + r * 0.5, r * 0.3, cen, cen, r);
+        rimGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
+        rimGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = rimGrad;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.fill();
+        cx.restore();
+
+        // Edge ring
+        cx.strokeStyle = 'rgba(0,0,0,0.12)';
+        cx.lineWidth = 1;
+        cx.beginPath();
+        cx.arc(cen, cen, r, 0, Math.PI * 2);
+        cx.stroke();
+
+        return c;
+    }
+
+    function prebuildBallCanvases() {
+        ballCanvasCache = {};
+        for (let n = 1; n <= 15; n++) {
+            ballCanvasCache[n] = buildBallCanvas(n);
+        }
+        ballCanvasCache['cue'] = buildCueBallCanvas();
+    }
+
+    function drawBilliardBall(bx, by, r, num, highlight) {
+        const cached = ballCanvasCache[num];
+        if (!cached) return;
+
+        const drawSize = r * 2;
+        ctx.save();
+        ctx.translate(bx, by);
+
+        // Subtle rolling rotation
+        if (num > 0) {
+            ctx.rotate(Math.sin((bx + by) * 0.04) * 0.05);
+        }
+
+        ctx.drawImage(cached, -drawSize / 2 - 0.5, -drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
 
         // Head highlight for chain leader
         if (highlight) {
@@ -1319,31 +1493,14 @@ window.CentiBalls = (() => {
         drawCueBallAt(cueBall.x, cueBall.y, cueBall.r);
     }
 
-    function drawCueBallAt(cx, cy, r) {
+    function drawCueBallAt(bx, by, r) {
+        const cached = ballCanvasCache['cue'];
+        if (!cached) return;
+
+        const drawSize = r * 2;
         ctx.save();
-        ctx.translate(cx, cy);
-
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.beginPath();
-        ctx.arc(2, 2, r, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Ball
-        const grd = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
-        grd.addColorStop(0, '#FFFFFF');
-        grd.addColorStop(0.5, '#F5F5F0');
-        grd.addColorStop(1, '#D4D4CC');
-        ctx.fillStyle = grd;
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Specular
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.beginPath();
-        ctx.arc(-r * 0.25, -r * 0.25, r * 0.3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.translate(bx, by);
+        ctx.drawImage(cached, -drawSize / 2 - 0.5, -drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
 
         // Mega glow
         if (activePowerup === PW_MEGA) {
@@ -1978,6 +2135,9 @@ window.CentiBalls = (() => {
         }
 
         loadSprites();
+
+        // Pre-render hi-res ball sprites
+        prebuildBallCanvases();
 
         DPR = Math.min(window.devicePixelRatio || 1, 3);
         SCALE = 1;
