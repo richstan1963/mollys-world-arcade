@@ -216,13 +216,16 @@ window.Pool = (() => {
     let frameCount = 0;
 
     // Theme colors
-    let FELT_CLR       = '#0B6623';
-    let FELT_CLR2      = '#0A5C1F';
+    let FELT_CLR       = '#1B5E20';
+    let FELT_CLR2      = '#14472A';
     let RAIL_CLR       = '#5C3A1E';
     let RAIL_HIGHLIGHT = '#8B6914';
     let BG_CLR         = '#1A1A2E';
     let ACCENT_CLR     = '#F472B6';
     let TEXT_CLR       = '#FFFFFF';
+
+    // Sprite load confirmation
+    let spriteLoadFlash = 0;
 
     // Ball data
     let balls = [];
@@ -498,11 +501,7 @@ window.Pool = (() => {
         const shadow = num === 0 ? '#C0C0B8' : (BALL_SHADOW[num] || '#333');
         const isStripe = num >= 9 && num <= 15;
 
-        // Drop shadow (soft)
-        cx.fillStyle = 'rgba(0,0,0,0.3)';
-        cx.beginPath();
-        cx.arc(cen + 2, cen + 2, r + 1, 0, Math.PI * 2);
-        cx.fill();
+        // (Shadows now drawn separately in drawAllBalls for proper offset)
 
         if (isStripe) {
             // WHITE BASE with rich gradient
@@ -1113,57 +1112,226 @@ window.Pool = (() => {
     //  DRAWING — TABLE with Kenney Sprites
     // ══════════════════════════════════════════════════════════
     function drawTable() {
-        // Outer dark frame
+        // ── POOL HALL BACKGROUND (dark wood paneling) ──
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, GAME_H);
+        bgGrad.addColorStop(0, '#0D0806');
+        bgGrad.addColorStop(0.3, '#1A110A');
+        bgGrad.addColorStop(0.5, '#1E140C');
+        bgGrad.addColorStop(0.7, '#1A110A');
+        bgGrad.addColorStop(1, '#0D0806');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+        // Wood paneling lines (vertical slats)
+        ctx.strokeStyle = 'rgba(60,35,15,0.35)';
+        ctx.lineWidth = 1;
+        for (let wx = 0; wx < GAME_W; wx += 32) {
+            ctx.beginPath();
+            ctx.moveTo(wx, 0);
+            ctx.lineTo(wx, GAME_H);
+            ctx.stroke();
+        }
+        // Horizontal grain on paneling
+        ctx.strokeStyle = 'rgba(80,50,20,0.12)';
+        for (let wy = 0; wy < GAME_H; wy += 8 + Math.sin(wy) * 3) {
+            ctx.beginPath();
+            ctx.moveTo(0, wy);
+            ctx.lineTo(GAME_W, wy);
+            ctx.stroke();
+        }
+
+        // ── TABLE DROP SHADOW (lifts table off background) ──
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.7)';
+        ctx.shadowBlur = 25;
+        ctx.shadowOffsetX = 6;
+        ctx.shadowOffsetY = 6;
+        ctx.fillStyle = '#2A1808';
+        ctx.fillRect(-2, -2, GAME_W + 4, GAME_H + 4);
+        ctx.restore();
+
+        // ── OUTER TABLE FRAME ──
         ctx.fillStyle = '#1A0E08';
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        // Background pattern using Kenney background
-        const bgImg = spr('bgLand');
-        if (bgImg) {
-            ctx.save();
-            ctx.globalAlpha = 0.15;
+        // ── THICK WOOD RAILS with manual grain ──
+        // Base wood color for all rails
+        const railColors = ['#6B3A1E', '#5C3018', '#7A4422', '#6B3A1E'];
+
+        // TOP RAIL
+        let rGrad = ctx.createLinearGradient(0, 0, 0, RAIL);
+        rGrad.addColorStop(0, '#8B6B40');   // lighter bevel top
+        rGrad.addColorStop(0.08, '#7A5428');
+        rGrad.addColorStop(0.3, '#6B3A1E');
+        rGrad.addColorStop(0.7, '#5C3018');
+        rGrad.addColorStop(0.92, '#4A2510');
+        rGrad.addColorStop(1, '#3A1A0A');   // darker bevel bottom
+        ctx.fillStyle = rGrad;
+        ctx.fillRect(0, 0, GAME_W, RAIL);
+
+        // BOTTOM RAIL
+        rGrad = ctx.createLinearGradient(0, GAME_H - RAIL, 0, GAME_H);
+        rGrad.addColorStop(0, '#8B6B40');
+        rGrad.addColorStop(0.08, '#7A5428');
+        rGrad.addColorStop(0.3, '#6B3A1E');
+        rGrad.addColorStop(0.7, '#5C3018');
+        rGrad.addColorStop(0.92, '#4A2510');
+        rGrad.addColorStop(1, '#3A1A0A');
+        ctx.fillStyle = rGrad;
+        ctx.fillRect(0, GAME_H - RAIL, GAME_W, RAIL);
+
+        // LEFT RAIL
+        rGrad = ctx.createLinearGradient(0, 0, RAIL, 0);
+        rGrad.addColorStop(0, '#8B6B40');
+        rGrad.addColorStop(0.08, '#7A5428');
+        rGrad.addColorStop(0.3, '#6B3A1E');
+        rGrad.addColorStop(0.7, '#5C3018');
+        rGrad.addColorStop(0.92, '#4A2510');
+        rGrad.addColorStop(1, '#3A1A0A');
+        ctx.fillStyle = rGrad;
+        ctx.fillRect(0, RAIL, RAIL, GAME_H - RAIL * 2);
+
+        // RIGHT RAIL
+        rGrad = ctx.createLinearGradient(GAME_W - RAIL, 0, GAME_W, 0);
+        rGrad.addColorStop(0, '#3A1A0A');
+        rGrad.addColorStop(0.08, '#4A2510');
+        rGrad.addColorStop(0.3, '#5C3018');
+        rGrad.addColorStop(0.7, '#6B3A1E');
+        rGrad.addColorStop(0.92, '#7A5428');
+        rGrad.addColorStop(1, '#8B6B40');
+        ctx.fillStyle = rGrad;
+        ctx.fillRect(GAME_W - RAIL, RAIL, RAIL, GAME_H - RAIL * 2);
+
+        // ── WOOD GRAIN LINES on rails ──
+        ctx.save();
+        ctx.globalAlpha = 0.2;
+        ctx.strokeStyle = '#2A1508';
+        ctx.lineWidth = 0.8;
+        // Horizontal grain on top/bottom rails
+        for (let gy = 3; gy < RAIL - 2; gy += 3 + Math.sin(gy * 1.7) * 2) {
             ctx.beginPath();
-            ctx.rect(0, 0, GAME_W, GAME_H);
-            ctx.clip();
-            for (let tx = 0; tx < GAME_W; tx += 128) {
-                for (let ty = 0; ty < GAME_H; ty += 128) {
-                    ctx.drawImage(bgImg, tx, ty, 128, 128);
-                }
-            }
-            ctx.restore();
+            ctx.moveTo(RAIL, gy);
+            ctx.bezierCurveTo(GAME_W * 0.25, gy + Math.sin(gy * 0.5) * 1.5, GAME_W * 0.75, gy - Math.sin(gy * 0.3) * 1.5, GAME_W - RAIL, gy);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(RAIL, GAME_H - RAIL + gy);
+            ctx.bezierCurveTo(GAME_W * 0.25, GAME_H - RAIL + gy + Math.sin(gy * 0.5) * 1.5, GAME_W * 0.75, GAME_H - RAIL + gy - Math.sin(gy * 0.3) * 1.5, GAME_W - RAIL, GAME_H - RAIL + gy);
+            ctx.stroke();
         }
+        // Vertical grain on left/right rails
+        for (let gx = 3; gx < RAIL - 2; gx += 3 + Math.sin(gx * 1.7) * 2) {
+            ctx.beginPath();
+            ctx.moveTo(gx, RAIL);
+            ctx.bezierCurveTo(gx + Math.sin(gx * 0.5) * 1.5, GAME_H * 0.25, gx - Math.sin(gx * 0.3) * 1.5, GAME_H * 0.75, gx, GAME_H - RAIL);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(GAME_W - RAIL + gx, RAIL);
+            ctx.bezierCurveTo(GAME_W - RAIL + gx + Math.sin(gx * 0.5) * 1.5, GAME_H * 0.25, GAME_W - RAIL + gx - Math.sin(gx * 0.3) * 1.5, GAME_H * 0.75, GAME_W - RAIL + gx, GAME_H - RAIL);
+            ctx.stroke();
+        }
+        ctx.restore();
 
-        // Rail wood tiled with Kenney wood sprites
-        drawTiledSprite('woodDark', 3, 3, GAME_W - 6, RAIL - 3, 70, 28, RAIL_CLR);
-        drawTiledSprite('woodDark', 3, GAME_H - RAIL, GAME_W - 6, RAIL - 3, 70, 28, RAIL_CLR);
-        drawTiledSprite('woodDark', 3, RAIL, RAIL - 3, GAME_H - RAIL * 2, 28, 70, RAIL_CLR);
-        drawTiledSprite('woodDark', GAME_W - RAIL, RAIL, RAIL - 3, GAME_H - RAIL * 2, 28, 70, RAIL_CLR);
-
-        // Wood overlay for texture richness
-        drawTiledSprite('woodLight', 5, 5, GAME_W - 10, 8, 70, 8, null);
-        drawTiledSprite('woodLight', 5, 5, 8, GAME_H - 10, 8, 70, null);
-
-        // Inner wood bevel
-        ctx.fillStyle = RAIL_HIGHLIGHT;
+        // ── RAIL BEVEL (inner light edge, outer dark edge) ──
+        // Inner bevel (light)
+        ctx.fillStyle = '#A07840';
         ctx.fillRect(RAIL - 4, RAIL - 4, TABLE_W + 8, 3);
         ctx.fillRect(RAIL - 4, RAIL - 4, 3, TABLE_H + 8);
-        ctx.fillStyle = '#3A2010';
+        // Outer bevel (dark)
+        ctx.fillStyle = '#2A1508';
         ctx.fillRect(RAIL - 4, TABLE_B + 1, TABLE_W + 8, 3);
         ctx.fillRect(TABLE_R + 1, RAIL - 4, 3, TABLE_H + 8);
+
+        // Top edge highlight
+        ctx.fillStyle = 'rgba(200,170,120,0.25)';
+        ctx.fillRect(RAIL, 1, TABLE_W, 2);
+        ctx.fillRect(1, RAIL, 2, TABLE_H);
+        // Bottom edge shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(RAIL, GAME_H - 3, TABLE_W, 2);
+        ctx.fillRect(GAME_W - 3, RAIL, 2, TABLE_H);
+
+        // ── DIAMOND SIGHTS / MARKERS on rails ──
+        ctx.save();
+        const diamondSize = 4;
+        // Top rail diamonds (3 markers)
+        for (let di = 1; di <= 3; di++) {
+            const dx = RAIL + TABLE_W * (di / 4);
+            const dy = RAIL / 2;
+            ctx.fillStyle = '#C8A860';
+            ctx.beginPath();
+            ctx.moveTo(dx, dy - diamondSize);
+            ctx.lineTo(dx + diamondSize * 0.6, dy);
+            ctx.lineTo(dx, dy + diamondSize);
+            ctx.lineTo(dx - diamondSize * 0.6, dy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#E8D090';
+            ctx.beginPath();
+            ctx.arc(dx, dy, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        // Bottom rail diamonds (3 markers)
+        for (let di = 1; di <= 3; di++) {
+            const dx = RAIL + TABLE_W * (di / 4);
+            const dy = GAME_H - RAIL / 2;
+            ctx.fillStyle = '#C8A860';
+            ctx.beginPath();
+            ctx.moveTo(dx, dy - diamondSize);
+            ctx.lineTo(dx + diamondSize * 0.6, dy);
+            ctx.lineTo(dx, dy + diamondSize);
+            ctx.lineTo(dx - diamondSize * 0.6, dy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#E8D090';
+            ctx.beginPath();
+            ctx.arc(dx, dy, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        // Left rail diamond (1 marker)
+        {
+            const dx = RAIL / 2;
+            const dy = RAIL + TABLE_H / 2;
+            ctx.fillStyle = '#C8A860';
+            ctx.beginPath();
+            ctx.moveTo(dx, dy - diamondSize);
+            ctx.lineTo(dx + diamondSize * 0.6, dy);
+            ctx.lineTo(dx, dy + diamondSize);
+            ctx.lineTo(dx - diamondSize * 0.6, dy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#E8D090';
+            ctx.beginPath();
+            ctx.arc(dx, dy, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        // Right rail diamond (1 marker)
+        {
+            const dx = GAME_W - RAIL / 2;
+            const dy = RAIL + TABLE_H / 2;
+            ctx.fillStyle = '#C8A860';
+            ctx.beginPath();
+            ctx.moveTo(dx, dy - diamondSize);
+            ctx.lineTo(dx + diamondSize * 0.6, dy);
+            ctx.lineTo(dx, dy + diamondSize);
+            ctx.lineTo(dx - diamondSize * 0.6, dy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#E8D090';
+            ctx.beginPath();
+            ctx.arc(dx, dy, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
 
         // Rail decorative bolts using Kenney metal bolt sprites
         const boltImg = spr('metalBolt');
         if (boltImg) {
             const boltPositions = [
-                // Top rail
                 [RAIL + TABLE_W * 0.15, 10], [RAIL + TABLE_W * 0.35, 10],
                 [RAIL + TABLE_W * 0.65, 10], [RAIL + TABLE_W * 0.85, 10],
-                // Bottom rail
                 [RAIL + TABLE_W * 0.15, GAME_H - 18], [RAIL + TABLE_W * 0.35, GAME_H - 18],
                 [RAIL + TABLE_W * 0.65, GAME_H - 18], [RAIL + TABLE_W * 0.85, GAME_H - 18],
-                // Left rail
                 [8, RAIL + TABLE_H * 0.25], [8, RAIL + TABLE_H * 0.75],
-                // Right rail
                 [GAME_W - 18, RAIL + TABLE_H * 0.25], [GAME_W - 18, RAIL + TABLE_H * 0.75],
             ];
             for (const [bx, by] of boltPositions) {
@@ -1171,25 +1339,65 @@ window.Pool = (() => {
             }
         }
 
-        // Felt (playing surface) with premium gradient
-        const feltGrad = ctx.createRadialGradient(GAME_W / 2, GAME_H / 2, 20, GAME_W / 2, GAME_H / 2, GAME_W * 0.5);
-        feltGrad.addColorStop(0, FELT_CLR);
-        feltGrad.addColorStop(0.6, FELT_CLR);
-        feltGrad.addColorStop(1, FELT_CLR2);
-        ctx.fillStyle = feltGrad;
+        // ── FELT (playing surface) — deep billiard green ──
+        ctx.fillStyle = '#1B5E20';
         ctx.fillRect(TABLE_L, TABLE_T, TABLE_W, TABLE_H);
 
-        // Felt subtle texture
-        ctx.fillStyle = 'rgba(0,0,0,0.025)';
-        for (let i = 0; i < 100; i++) {
-            const fx = TABLE_L + ((i * 137.5) % TABLE_W);
-            const fy = TABLE_T + ((i * 89.3 + 23) % TABLE_H);
+        // ── FELT WOVEN TEXTURE (diagonal cross-hatch) ──
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(TABLE_L, TABLE_T, TABLE_W, TABLE_H);
+        ctx.clip();
+
+        // Diagonal lines NW-SE
+        ctx.strokeStyle = 'rgba(0,40,0,0.12)';
+        ctx.lineWidth = 0.7;
+        for (let d = -TABLE_H; d < TABLE_W + TABLE_H; d += 6) {
             ctx.beginPath();
-            ctx.arc(fx, fy, 0.6, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(TABLE_L + d, TABLE_T);
+            ctx.lineTo(TABLE_L + d - TABLE_H, TABLE_B);
+            ctx.stroke();
+        }
+        // Diagonal lines NE-SW
+        ctx.strokeStyle = 'rgba(30,80,30,0.08)';
+        for (let d = -TABLE_H; d < TABLE_W + TABLE_H; d += 6) {
+            ctx.beginPath();
+            ctx.moveTo(TABLE_L + d, TABLE_T);
+            ctx.lineTo(TABLE_L + d + TABLE_H, TABLE_B);
+            ctx.stroke();
         }
 
-        // Head string
+        // Noise / grain effect (scattered dark/light dots)
+        ctx.globalAlpha = 1;
+        for (let i = 0; i < 400; i++) {
+            const fx = TABLE_L + ((i * 137.5 + 7) % TABLE_W);
+            const fy = TABLE_T + ((i * 89.3 + 23) % TABLE_H);
+            const isDark = (i % 3) !== 0;
+            ctx.fillStyle = isDark ? 'rgba(0,20,0,0.06)' : 'rgba(40,100,40,0.05)';
+            ctx.beginPath();
+            ctx.arc(fx, fy, 0.5 + (i % 3) * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // ── AMBIENT OVERHEAD LIGHT (pool hall lamp cone) ──
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(TABLE_L, TABLE_T, TABLE_W, TABLE_H);
+        ctx.clip();
+        const lightGrad = ctx.createRadialGradient(
+            GAME_W / 2, GAME_H / 2, 20,
+            GAME_W / 2, GAME_H / 2, TABLE_W * 0.55
+        );
+        lightGrad.addColorStop(0, 'rgba(255,240,200,0.10)');
+        lightGrad.addColorStop(0.3, 'rgba(255,240,200,0.06)');
+        lightGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
+        lightGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
+        ctx.fillStyle = lightGrad;
+        ctx.fillRect(TABLE_L, TABLE_T, TABLE_W, TABLE_H);
+        ctx.restore();
+
+        // ── Head string ──
         ctx.strokeStyle = 'rgba(255,255,255,0.07)';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
@@ -1210,62 +1418,104 @@ window.Pool = (() => {
         ctx.arc(TABLE_L + TABLE_W * 0.5, TABLE_T + TABLE_H / 2, 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Cushion inner edge
+        // ── GREEN CUSHION BUMPERS (inner edge) ──
+        ctx.fillStyle = '#2E7D32';
+        // Top cushion
+        ctx.fillRect(TABLE_L + POCKET_R + 8, TABLE_T, TABLE_W / 2 - POCKET_R * 2 - 8, 3);
+        ctx.fillRect(TABLE_L + TABLE_W / 2 + POCKET_R + 2, TABLE_T, TABLE_W / 2 - POCKET_R * 2 - 8, 3);
+        // Bottom cushion
+        ctx.fillRect(TABLE_L + POCKET_R + 8, TABLE_B - 3, TABLE_W / 2 - POCKET_R * 2 - 8, 3);
+        ctx.fillRect(TABLE_L + TABLE_W / 2 + POCKET_R + 2, TABLE_B - 3, TABLE_W / 2 - POCKET_R * 2 - 8, 3);
+        // Left cushion
+        ctx.fillRect(TABLE_L, TABLE_T + POCKET_R + 8, 3, TABLE_H - POCKET_R * 2 - 16);
+        // Right cushion
+        ctx.fillRect(TABLE_R - 3, TABLE_T + POCKET_R + 8, 3, TABLE_H - POCKET_R * 2 - 16);
+
+        // Cushion highlight
+        ctx.fillStyle = 'rgba(100,200,100,0.15)';
+        ctx.fillRect(TABLE_L + POCKET_R + 8, TABLE_T, TABLE_W / 2 - POCKET_R * 2 - 8, 1);
+        ctx.fillRect(TABLE_L + TABLE_W / 2 + POCKET_R + 2, TABLE_T, TABLE_W / 2 - POCKET_R * 2 - 8, 1);
+        ctx.fillRect(TABLE_L, TABLE_T + POCKET_R + 8, 1, TABLE_H - POCKET_R * 2 - 16);
+
+        // Inner edge line
         ctx.strokeStyle = '#1A5C30';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1;
         ctx.strokeRect(TABLE_L, TABLE_T, TABLE_W, TABLE_H);
     }
 
     function drawPockets() {
         for (const p of POCKETS) {
-            // Metal pocket backing using Kenney metal circle
+            // ── LAYER 1: Outer dark ring (the pocket cut in the rail) ──
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = '#0A0604';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, POCKET_R + 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Metal pocket surround
             const metalImg = spr('metalCircle');
-            const pocketSize = (POCKET_R + 6) * 2;
             if (metalImg) {
+                const pocketSize = (POCKET_R + 7) * 2;
                 ctx.save();
-                ctx.globalAlpha = 0.8;
+                ctx.globalAlpha = 0.5;
                 ctx.drawImage(metalImg, p.x - pocketSize / 2, p.y - pocketSize / 2, pocketSize, pocketSize);
                 ctx.restore();
             }
 
-            // Pocket shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            // ── LAYER 2: Middle dark ring ──
+            const midGrad = ctx.createRadialGradient(p.x, p.y, POCKET_R * 0.1, p.x, p.y, POCKET_R + 4);
+            midGrad.addColorStop(0, '#020202');
+            midGrad.addColorStop(0.6, '#050404');
+            midGrad.addColorStop(0.85, '#1A1008');
+            midGrad.addColorStop(1, '#2A1A0C');
+            ctx.fillStyle = midGrad;
             ctx.beginPath();
-            ctx.arc(p.x + 1, p.y + 1, POCKET_R + 2, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, POCKET_R + 4, 0, Math.PI * 2);
             ctx.fill();
 
-            // Pocket hole (deep black)
-            const pocketGrad = ctx.createRadialGradient(p.x, p.y, POCKET_R * 0.3, p.x, p.y, POCKET_R);
-            pocketGrad.addColorStop(0, '#050505');
-            pocketGrad.addColorStop(0.7, '#0A0A0A');
-            pocketGrad.addColorStop(1, '#1A1410');
-            ctx.fillStyle = pocketGrad;
+            // ── LAYER 3: Center void (pure black with depth gradient) ──
+            const voidGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, POCKET_R);
+            voidGrad.addColorStop(0, '#000000');
+            voidGrad.addColorStop(0.5, '#010101');
+            voidGrad.addColorStop(0.85, '#040303');
+            voidGrad.addColorStop(1, '#0A0806');
+            ctx.fillStyle = voidGrad;
             ctx.beginPath();
             ctx.arc(p.x, p.y, POCKET_R, 0, Math.PI * 2);
             ctx.fill();
 
-            // Metal rim using ring sprite overlay
+            // Metal rim ring sprite overlay
             const ringImg = spr('metalRing');
             if (ringImg) {
-                const ringSize = (POCKET_R + 3) * 2;
+                const ringSize = (POCKET_R + 5) * 2;
                 ctx.save();
-                ctx.globalAlpha = 0.6;
+                ctx.globalAlpha = 0.45;
                 ctx.drawImage(ringImg, p.x - ringSize / 2, p.y - ringSize / 2, ringSize, ringSize);
                 ctx.restore();
             }
 
-            // Pocket rim stroke
-            ctx.strokeStyle = '#5A4030';
-            ctx.lineWidth = 2;
+            // ── Bright rim highlight (top-left catch light) ──
+            ctx.strokeStyle = 'rgba(160,130,80,0.3)';
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, POCKET_R + 1, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, POCKET_R + 3, Math.PI * 1.1, Math.PI * 1.8);
             ctx.stroke();
 
-            // Inner reflection
+            // Dark rim (bottom-right shadow)
+            ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, POCKET_R + 3, Math.PI * 0.1, Math.PI * 0.8);
+            ctx.stroke();
+
+            // Inner reflection (subtle gleam)
             ctx.strokeStyle = 'rgba(255,255,255,0.04)';
             ctx.lineWidth = 0.8;
             ctx.beginPath();
-            ctx.arc(p.x - 1, p.y - 1, POCKET_R - 3, Math.PI * 1.1, Math.PI * 1.7);
+            ctx.arc(p.x - 2, p.y - 2, POCKET_R - 4, Math.PI * 1.1, Math.PI * 1.7);
             ctx.stroke();
         }
     }
@@ -1301,6 +1551,18 @@ window.Pool = (() => {
             if (b.num === 0) return -1;
             return a.num - b.num;
         });
+
+        // ── BALL SHADOWS (drawn first, under all balls) ──
+        for (const b of sorted) {
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.ellipse(b.x + 3, b.y + 3, BALL_R * 0.95, BALL_R * 0.7, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
         for (const b of sorted) drawBall(b);
     }
 
@@ -1311,57 +1573,156 @@ window.Pool = (() => {
         let pullBack = 0;
         if (state === ST_POWER || state === ST_AIMING) pullBack = aimPower * 1.8;
 
-        const stickLen = 160;
+        const stickLen = 180;
         const stickStart = BALL_R + 4 + pullBack;
         const stickEnd = stickStart + stickLen;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
 
-        const startX = cueBall.x - Math.cos(angle) * stickStart;
-        const startY = cueBall.y - Math.sin(angle) * stickStart;
-        const endX = cueBall.x - Math.cos(angle) * stickEnd;
-        const endY = cueBall.y - Math.sin(angle) * stickEnd;
+        const tipX = cueBall.x - cos * stickStart;
+        const tipY = cueBall.y - sin * stickStart;
+        const buttX = cueBall.x - cos * stickEnd;
+        const buttY = cueBall.y - sin * stickEnd;
 
-        // Shadow
-        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-        ctx.lineWidth = 6;
+        // Perpendicular direction for width
+        const px = -sin;
+        const py = cos;
+
+        // ── CUE SHADOW ──
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 7;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(startX + 2, startY + 2);
-        ctx.lineTo(endX + 2, endY + 2);
+        ctx.moveTo(tipX + 3, tipY + 3);
+        ctx.lineTo(buttX + 3, buttY + 3);
         ctx.stroke();
+        ctx.restore();
 
-        // Stick body gradient
-        const stickGrad = ctx.createLinearGradient(startX, startY, endX, endY);
-        stickGrad.addColorStop(0, '#F5E6C8');
-        stickGrad.addColorStop(0.12, '#E8D4A8');
-        stickGrad.addColorStop(0.18, '#C8A260');
-        stickGrad.addColorStop(0.22, '#8B6914');
-        stickGrad.addColorStop(0.5, '#5C3A1E');
-        stickGrad.addColorStop(0.8, '#4A2A14');
-        stickGrad.addColorStop(1, '#3A2010');
-        ctx.strokeStyle = stickGrad;
-        ctx.lineWidth = 4;
+        // ── TAPERED CUE BODY (drawn as polygon for taper) ──
+        const tipWidth = 2.2;    // narrow at tip
+        const buttWidth = 5.0;   // wide at butt
+
+        // Draw segments for smooth taper with gradient colors
+        const segments = 12;
+        for (let i = 0; i < segments; i++) {
+            const t0 = i / segments;
+            const t1 = (i + 1) / segments;
+            const w0 = tipWidth + (buttWidth - tipWidth) * t0;
+            const w1 = tipWidth + (buttWidth - tipWidth) * t1;
+
+            const x0 = tipX + (buttX - tipX) * t0;
+            const y0 = tipY + (buttY - tipY) * t0;
+            const x1 = tipX + (buttX - tipX) * t1;
+            const y1 = tipY + (buttY - tipY) * t1;
+
+            // Color: light shaft -> dark butt (like maple to dark wrap)
+            let r, g, b;
+            if (t0 < 0.15) {
+                // Ferrule zone (ivory white)
+                r = 240; g = 235; b = 220;
+            } else if (t0 < 0.55) {
+                // Shaft (light maple)
+                const p = (t0 - 0.15) / 0.4;
+                r = Math.floor(245 - p * 40);
+                g = Math.floor(220 - p * 50);
+                b = Math.floor(170 - p * 60);
+            } else {
+                // Butt (dark wood with wrap)
+                const p = (t0 - 0.55) / 0.45;
+                r = Math.floor(140 - p * 60);
+                g = Math.floor(90 - p * 40);
+                b = Math.floor(50 - p * 30);
+            }
+
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.beginPath();
+            ctx.moveTo(x0 + px * w0, y0 + py * w0);
+            ctx.lineTo(x1 + px * w1, y1 + py * w1);
+            ctx.lineTo(x1 - px * w1, y1 - py * w1);
+            ctx.lineTo(x0 - px * w0, y0 - py * w0);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // ── WOOD GRAIN LINES along cue ──
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.strokeStyle = '#5A3A10';
+        ctx.lineWidth = 0.5;
+        for (let g = -2; g <= 2; g += 1.3) {
+            ctx.beginPath();
+            ctx.moveTo(tipX + px * g * 0.5, tipY + py * g * 0.5);
+            ctx.lineTo(buttX + px * g * 1.2, buttY + py * g * 1.2);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // ── Edge highlight (top edge of cue catches light) ──
+        ctx.save();
+        ctx.globalAlpha = 0.2;
+        ctx.strokeStyle = 'rgba(255,245,220,0.5)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
+        ctx.moveTo(tipX + px * tipWidth * 0.8, tipY + py * tipWidth * 0.8);
+        ctx.lineTo(buttX + px * buttWidth * 0.6, buttY + py * buttWidth * 0.6);
         ctx.stroke();
+        ctx.restore();
 
-        // Ferrule (white wrap)
-        const ferruleX = cueBall.x - Math.cos(angle) * (stickStart + 6);
-        const ferruleY = cueBall.y - Math.sin(angle) * (stickStart + 6);
-        ctx.strokeStyle = '#E8E0D0';
-        ctx.lineWidth = 4.5;
+        // ── WRAP BAND (dark section near butt) ──
+        const wrapStart = 0.65;
+        const wrapEnd = 0.72;
+        const wx0 = tipX + (buttX - tipX) * wrapStart;
+        const wy0 = tipY + (buttY - tipY) * wrapStart;
+        const wx1 = tipX + (buttX - tipX) * wrapEnd;
+        const wy1 = tipY + (buttY - tipY) * wrapEnd;
+        const ww = tipWidth + (buttWidth - tipWidth) * wrapStart + 0.5;
+        ctx.fillStyle = '#1A1A1A';
         ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(ferruleX, ferruleY);
-        ctx.stroke();
-
-        // Tip (blue chalk)
-        ctx.fillStyle = '#4A90D9';
-        ctx.beginPath();
-        ctx.arc(startX, startY, 2.8, 0, Math.PI * 2);
+        ctx.moveTo(wx0 + px * ww, wy0 + py * ww);
+        ctx.lineTo(wx1 + px * ww, wy1 + py * ww);
+        ctx.lineTo(wx1 - px * ww, wy1 - py * ww);
+        ctx.lineTo(wx0 - px * ww, wy0 - py * ww);
+        ctx.closePath();
         ctx.fill();
 
-        // Power indicator glow at tip
+        // ── FERRULE (white/ivory band) ──
+        const ferrDist = stickStart + 10;
+        const ferrX = cueBall.x - cos * ferrDist;
+        const ferrY = cueBall.y - sin * ferrDist;
+        ctx.strokeStyle = '#F0EBE0';
+        ctx.lineWidth = tipWidth * 2 + 1;
+        ctx.lineCap = 'butt';
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(ferrX, ferrY);
+        ctx.stroke();
+
+        // Ferrule edge ring
+        ctx.strokeStyle = 'rgba(180,170,150,0.5)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(ferrX + px * (tipWidth + 0.8), ferrY + py * (tipWidth + 0.8));
+        ctx.lineTo(ferrX - px * (tipWidth + 0.8), ferrY - py * (tipWidth + 0.8));
+        ctx.stroke();
+
+        // ── TIP (blue chalk) ──
+        ctx.fillStyle = '#3A7BD5';
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+        // Chalk texture dots
+        ctx.fillStyle = '#5A9BE5';
+        ctx.beginPath();
+        ctx.arc(tipX - 0.5, tipY - 0.8, 1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#2A5BA5';
+        ctx.beginPath();
+        ctx.arc(tipX + 0.8, tipY + 0.3, 0.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // ── Power indicator glow at tip ──
         if (state === ST_POWER && aimPower > 2) {
             const glowAlpha = Math.min(0.5, aimPower / MAX_POWER * 0.6);
             ctx.save();
@@ -1370,7 +1731,7 @@ window.Pool = (() => {
             ctx.shadowBlur = aimPower * 1.5;
             ctx.fillStyle = '#FF6B35';
             ctx.beginPath();
-            ctx.arc(startX, startY, 3, 0, Math.PI * 2);
+            ctx.arc(tipX, tipY, 3, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
@@ -1826,6 +2187,27 @@ window.Pool = (() => {
 
         if (state === ST_TITLE) drawTitleScreen(time);
         if (state === ST_OVER)  drawGameOverScreen(time);
+
+        // ── SPRITE LOAD CONFIRMATION FLASH ──
+        if (spriteLoadFlash > 0) {
+            spriteLoadFlash--;
+            const flashAlpha = Math.min(1, spriteLoadFlash / 30) * 0.9;
+            if (flashAlpha > 0.01) {
+                ctx.save();
+                ctx.globalAlpha = flashAlpha;
+                const loaded = Object.values(spriteCache).filter(v => v !== null).length;
+                const txt = `SPRITES LOADED: ${loaded}/${spritesTotal}`;
+                ctx.font = 'bold 11px "Segoe UI", system-ui, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                ctx.fillStyle = '#00FF88';
+                ctx.shadowColor = '#00FF88';
+                ctx.shadowBlur = 6;
+                ctx.fillText(txt, GAME_W - 8, GAME_H - 4);
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+        }
     }
 
     // ══════════════════════════════════════════════════════════
@@ -2009,6 +2391,7 @@ window.Pool = (() => {
 
         // Load sprites then transition to title
         preloadSprites(() => {
+            spriteLoadFlash = 120; // flash for ~2 seconds
             state = ST_TITLE;
         });
 
