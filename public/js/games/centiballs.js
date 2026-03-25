@@ -1,44 +1,44 @@
-/* YWA CentiBalls — Centipede meets Billiards.
-   A centipede chain of billiard balls descends from the top of the table
-   toward the player at the bottom. The chain weaves horizontally, dropping
-   a row at each wall edge and at mushroom bumpers. Shoot the cue ball to
-   break segments loose, then pot them into the 6 pockets for bonus points.
-   Real pool physics — balls scatter, ricochet off mushrooms, chain-react. */
+/* YWA CentiBalls — 8-Ball Pool
+   Full 8-ball pool from break to finish. Slingshot aiming, elastic collision
+   physics, turn-based play vs AI, solids/stripes assignment, fouls, and
+   win/lose conditions. Hi-res 4x pre-cached ball rendering. */
 window.CentiBalls = (() => {
     // ── Design Constants ──
     const GAME_W = 640, GAME_H = 640;
-    const BALL_R = 12;
-    const CUE_R = 13;
+    const BALL_R = 11;
+    const CUE_R = 12;
     const POCKET_R = 22;
     const RAIL_W = 18;
-    const MUSH_R = 14;
-    const MUSH_HP_MAX = 3;
-    const FRICTION = 0.993;
-    const WALL_COR = 0.85;
-    const MUSH_COR = 1.1;
-    const BALL_COR = 0.96;
-    const MAX_SHOT_POWER = 16;
-    const MIN_SHOT_POWER = 3;
-    const CHAIN_SPEED_BASE = 0.5;
-    const CHAIN_DROP = BALL_R * 2.5;
-    const GRID_COLS = 18;
-    const GRID_ROWS = 16;
-    const GRID_OFFSET_X = RAIL_W + BALL_R + 4;
-    const GRID_OFFSET_Y = RAIL_W + BALL_R + 4;
-    const GRID_SPACE_X = (GAME_W - 2 * RAIL_W - 2 * BALL_R - 8) / (GRID_COLS - 1);
-    const GRID_SPACE_Y = (GAME_H - 2 * RAIL_W - 100) / (GRID_ROWS - 1);
-    const CUE_HOME_Y = GAME_H - RAIL_W - 30;
-    const SPEED_THRESHOLD = 0.15;
-    const POWERUP_DUR = 8000;
+    const FRICTION = 0.991;
+    const WALL_COR = 0.82;
+    const BALL_COR = 0.95;
+    const MAX_SHOT_POWER = 18;
+    const MIN_SHOT_POWER = 2;
+    const SPEED_THRESHOLD = 0.12;
+
+    // Table geometry — rectangular pool table
+    const TABLE_TOP = RAIL_W + BALL_R;
+    const TABLE_BOT = GAME_H - RAIL_W - BALL_R;
+    const TABLE_LEFT = RAIL_W + BALL_R;
+    const TABLE_RIGHT = GAME_W - RAIL_W - BALL_R;
+    const TABLE_CX = GAME_W / 2;
+    const TABLE_CY = GAME_H / 2;
+
+    // Rack / break positions
+    const FOOT_SPOT_Y = GAME_H * 0.30;   // where the rack apex sits
+    const HEAD_STRING_Y = GAME_H * 0.72;  // cue ball placement line
+    const KITCHEN_Y = HEAD_STRING_Y;
 
     // States
     const ST_TITLE = 0, ST_AIMING = 1, ST_SHOOTING = 2, ST_RESOLVING = 3;
-    const ST_LEVEL_CLEAR = 4, ST_GAMEOVER = 5;
+    const ST_BALL_IN_HAND = 4, ST_AI_THINKING = 5, ST_AI_SHOOTING = 6;
+    const ST_GAME_WON = 7, ST_GAME_LOST = 8;
 
-    // Power-up types
-    const PW_MEGA = 0, PW_MULTI = 1, PW_EXPLOSIVE = 2, PW_SLOW = 3;
-    const PW_NAMES = ['MEGA', 'MULTI', 'EXPLODE', 'SLOW'];
-    const PW_COLORS = ['#F97316', '#3B82F6', '#EF4444', '#A855F7'];
+    // Turn
+    const TURN_PLAYER = 0, TURN_AI = 1;
+
+    // Group
+    const GRP_NONE = 0, GRP_SOLIDS = 1, GRP_STRIPES = 2;
 
     // Billiard ball colors (solids 1-7, stripe 9-15)
     const BALL_COLORS = {
@@ -53,13 +53,8 @@ window.CentiBalls = (() => {
     let CLR_FELT2 = '#176332';
     let CLR_RAIL = '#8B5E3C';
     let CLR_RAIL_EDGE = '#6B4226';
-    let CLR_POCKET = '#0D1117';
     let CLR_HUD = '#F0E6D2';
-    let CLR_MUSH_CAP = '#22C55E';
-    let CLR_MUSH_STEM = '#166534';
-    let CLR_MUSH_GOLD = '#FBBF24';
     let CLR_CUE = '#F5F5F0';
-    let CLR_CHAIN_LINK = 'rgba(255,255,255,0.25)';
 
     // Hi-res ball cache (4x resolution)
     const BALL_CACHE_SCALE = 4;
@@ -73,12 +68,6 @@ window.CentiBalls = (() => {
         woodV: `${SPRITE_BASE}/kenney-physics/wood/elementWood020.png`,
         woodCorner: `${SPRITE_BASE}/kenney-physics/wood/elementWood047.png`,
         metalPocket: `${SPRITE_BASE}/kenney-physics/metal/elementMetal044.png`,
-        mushroom: `${SPRITE_BASE}/kenney-platform/tiles/bush.png`,
-        mushGold: `${SPRITE_BASE}/kenney-platform/items/star.png`,
-        fire0: `${SPRITE_BASE}/kenney-space/effects/fire00.png`,
-        fire1: `${SPRITE_BASE}/kenney-space/effects/fire04.png`,
-        fire2: `${SPRITE_BASE}/kenney-space/effects/fire08.png`,
-        fire3: `${SPRITE_BASE}/kenney-space/effects/fire12.png`,
         coin: `${SPRITE_BASE}/kenney-coins/coin_01.png`,
         starGold: `${SPRITE_BASE}/kenney-physics/other/starGold.png`,
         debris1: `${SPRITE_BASE}/kenney-physics/debris/debrisWood_1.png`,
@@ -87,12 +76,6 @@ window.CentiBalls = (() => {
         particle1: `${SPRITE_BASE}/kenney-particles/particleWhite_1.png`,
         particle2: `${SPRITE_BASE}/kenney-particles/particleWhite_3.png`,
         particle3: `${SPRITE_BASE}/kenney-particles/particleWhite_5.png`,
-        fireball: `${SPRITE_BASE}/kenney-platform/particles/fireball.png`,
-        gemRed: `${SPRITE_BASE}/kenney-platform/items/gemRed.png`,
-        gemBlue: `${SPRITE_BASE}/kenney-platform/items/gemBlue.png`,
-        gemGreen: `${SPRITE_BASE}/kenney-platform/items/gemGreen.png`,
-        gemYellow: `${SPRITE_BASE}/kenney-platform/items/gemYellow.png`,
-        heart: `${SPRITE_BASE}/kenney-platform/hud/hudHeart_full.png`,
     };
     let spritesLoaded = 0, spritesTotal = 0;
 
@@ -113,7 +96,6 @@ window.CentiBalls = (() => {
     let canvas, ctx, audioCtx;
     let W, H, SCALE, DPR;
     let animFrame, lastTime, state, gameActive = false;
-    let score, level, lives, shotsFired;
     let activePlayer, gameOverCB, playerColor;
     let highScore = parseInt(localStorage.getItem('ywa_centiballs_hi') || '0');
     let frameCount = 0, screenShake = 0;
@@ -122,12 +104,30 @@ window.CentiBalls = (() => {
     let keys_pressed = {};
 
     // Game entities
-    let cueBall, freeBalls, chains, mushrooms, pockets;
-    let particles, scorePopups, powerups, explosions;
-    let activePowerup, powerupTimer;
-    let levelClearTimer, comboCount;
-    let totalSegments, segmentsCleared;
-    let cueScratch;
+    let cueBall, balls, pockets;
+    let particles, scorePopups;
+    let pocketAnims;
+    let score, shotsFired;
+
+    // 8-ball state
+    let currentTurn;       // TURN_PLAYER or TURN_AI
+    let playerGroup;       // GRP_SOLIDS, GRP_STRIPES, or GRP_NONE
+    let aiGroup;
+    let isBreakShot;       // true until groups are assigned
+    let pottedThisTurn;    // balls potted during current shot
+    let firstHitThisTurn;  // first ball the cue ball hit this shot
+    let cuePotted;         // cue ball went in a pocket
+    let foulThisTurn;      // any foul occurred
+    let turnMessage;       // status message to display
+    let turnMessageTimer;
+    let ballInHandRestricted; // during break foul, behind head string
+    let playerBallsLeft;   // count of player's group remaining
+    let aiBallsLeft;       // count of AI's group remaining
+    let aiThinkTimer;      // countdown before AI shoots
+    let aiTargetAngle;     // angle AI will shoot
+    let aiTargetPower;     // power AI will shoot
+    let gameResult;        // 'win' or 'lose'
+    let eightBallPotted;
 
     // ═══════════════════════════════════════════
     //  AUDIO ENGINE
@@ -177,30 +177,31 @@ window.CentiBalls = (() => {
         playNoise(0.06, 0.05);
         playTone(150, 0.08, 'triangle', 0.04, 80);
     }
-    function sfxMushroomPing() {
-        playTone(660, 0.08, 'sine', 0.08, 880);
-    }
     function sfxPocketThud() {
         playTone(80, 0.2, 'sine', 0.12, 40);
         playNoise(0.1, 0.08);
     }
-    function sfxChainReaction() {
-        playNoise(0.3, 0.14);
-        playTone(100, 0.3, 'sawtooth', 0.1, 50);
-        playTone(200, 0.2, 'square', 0.06, 400);
-    }
-    function sfxLevelClear() {
-        [523, 659, 784, 1047].forEach((f, i) => {
-            setTimeout(() => playTone(f, 0.2, 'sine', 0.1), i * 120);
-        });
-    }
-    function sfxPowerup() {
-        playTone(440, 0.1, 'sine', 0.08, 880);
-        playTone(660, 0.15, 'sine', 0.06, 1320);
-    }
     function sfxScratch() {
         playTone(200, 0.3, 'sawtooth', 0.1, 80);
         playNoise(0.2, 0.06);
+    }
+    function sfxWin() {
+        [523, 659, 784, 1047].forEach((f, i) => {
+            setTimeout(() => playTone(f, 0.25, 'sine', 0.1), i * 140);
+        });
+    }
+    function sfxLose() {
+        [400, 350, 300, 200].forEach((f, i) => {
+            setTimeout(() => playTone(f, 0.25, 'triangle', 0.08), i * 180);
+        });
+    }
+    function sfxFoul() {
+        playTone(150, 0.25, 'sawtooth', 0.08, 80);
+        playNoise(0.15, 0.05);
+    }
+    function sfxAssign() {
+        playTone(440, 0.1, 'sine', 0.08, 880);
+        playTone(660, 0.15, 'sine', 0.06, 1320);
     }
 
     // ═══════════════════════════════════════════
@@ -215,7 +216,6 @@ window.CentiBalls = (() => {
     function randRange(a, b) { return a + Math.random() * (b - a); }
     function randInt(a, b) { return Math.floor(randRange(a, b + 1)); }
 
-    // roundRect polyfill
     function roundRect(c, x, y, w, h, r) {
         if (c.roundRect) { c.beginPath(); c.roundRect(x, y, w, h, r); return; }
         c.beginPath();
@@ -227,6 +227,11 @@ window.CentiBalls = (() => {
         c.closePath();
     }
 
+    function ballGroup(num) {
+        if (num === 0 || num === 8) return GRP_NONE;
+        return num <= 7 ? GRP_SOLIDS : GRP_STRIPES;
+    }
+
     // ═══════════════════════════════════════════
     //  PHYSICS — Elastic ball-ball collision
     // ═══════════════════════════════════════════
@@ -235,17 +240,15 @@ window.CentiBalls = (() => {
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d === 0) return;
         const nx = dx / d, ny = dy / d;
-        // Separate overlap
         const overlap = (a.r + b.r) - d;
         if (overlap > 0) {
             const sep = overlap / 2 + 0.5;
             a.x -= nx * sep; a.y -= ny * sep;
             b.x += nx * sep; b.y += ny * sep;
         }
-        // Relative velocity along normal
         const dvx = a.vx - b.vx, dvy = a.vy - b.vy;
         const dvn = dvx * nx + dvy * ny;
-        if (dvn <= 0) return; // moving apart
+        if (dvn <= 0) return;
         const restitution = cor || BALL_COR;
         const ma = a.mass || 1, mb = b.mass || 1;
         const j = (1 + restitution) * dvn / (1 / ma + 1 / mb);
@@ -259,10 +262,12 @@ window.CentiBalls = (() => {
         const top = RAIL_W + ball.r;
         const bottom = GAME_H - RAIL_W - ball.r;
 
-        if (ball.x < left) { ball.x = left; ball.vx = Math.abs(ball.vx) * WALL_COR; sfxCushionBounce(); }
-        if (ball.x > right) { ball.x = right; ball.vx = -Math.abs(ball.vx) * WALL_COR; sfxCushionBounce(); }
-        if (ball.y < top) { ball.y = top; ball.vy = Math.abs(ball.vy) * WALL_COR; sfxCushionBounce(); }
-        if (ball.y > bottom) { ball.y = bottom; ball.vy = -Math.abs(ball.vy) * WALL_COR; sfxCushionBounce(); }
+        let bounced = false;
+        if (ball.x < left) { ball.x = left; ball.vx = Math.abs(ball.vx) * WALL_COR; bounced = true; }
+        if (ball.x > right) { ball.x = right; ball.vx = -Math.abs(ball.vx) * WALL_COR; bounced = true; }
+        if (ball.y < top) { ball.y = top; ball.vy = Math.abs(ball.vy) * WALL_COR; bounced = true; }
+        if (ball.y > bottom) { ball.y = bottom; ball.vy = -Math.abs(ball.vy) * WALL_COR; bounced = true; }
+        if (bounced) sfxCushionBounce();
     }
 
     function checkPocket(ball) {
@@ -275,9 +280,8 @@ window.CentiBalls = (() => {
     }
 
     function applyFriction(ball) {
-        const f = (activePowerup === PW_SLOW) ? 0.985 : FRICTION;
-        ball.vx *= f;
-        ball.vy *= f;
+        ball.vx *= FRICTION;
+        ball.vy *= FRICTION;
         if (Math.abs(ball.vx) < 0.01) ball.vx = 0;
         if (Math.abs(ball.vy) < 0.01) ball.vy = 0;
     }
@@ -290,249 +294,10 @@ window.CentiBalls = (() => {
         return ballSpeed(b) > SPEED_THRESHOLD;
     }
 
-    // ═══════════════════════════════════════════
-    //  MUSHROOM SYSTEM
-    // ═══════════════════════════════════════════
-    function createMushrooms() {
-        mushrooms = [];
-        const density = 0.15 + level * 0.03;
-        const goldChance = 0.08 + level * 0.01;
-        for (let row = 1; row < GRID_ROWS - 2; row++) {
-            for (let col = 0; col < GRID_COLS; col++) {
-                if (Math.random() < density) {
-                    const mx = GRID_OFFSET_X + col * GRID_SPACE_X;
-                    const my = GRID_OFFSET_Y + row * GRID_SPACE_Y;
-                    mushrooms.push({
-                        x: mx, y: my, r: MUSH_R,
-                        hp: MUSH_HP_MAX,
-                        golden: Math.random() < goldChance,
-                        hitFlash: 0, shakeX: 0, shakeY: 0
-                    });
-                }
-            }
-        }
-    }
-
-    function mushroomBounce(ball) {
-        for (let i = mushrooms.length - 1; i >= 0; i--) {
-            const m = mushrooms[i];
-            const d = dist(ball.x, ball.y, m.x, m.y);
-            if (d < ball.r + m.r) {
-                // Bounce off mushroom like a bumper
-                const nx = (ball.x - m.x) / d;
-                const ny = (ball.y - m.y) / d;
-                const overlap = ball.r + m.r - d;
-                ball.x += nx * (overlap + 1);
-                ball.y += ny * (overlap + 1);
-                const dot = ball.vx * nx + ball.vy * ny;
-                ball.vx = (ball.vx - 2 * dot * nx) * MUSH_COR;
-                ball.vy = (ball.vy - 2 * dot * ny) * MUSH_COR;
-
-                m.hitFlash = 8;
-                m.shakeX = randRange(-3, 3);
-                m.shakeY = randRange(-3, 3);
-                sfxMushroomPing();
-
-                // Damage mushroom
-                m.hp--;
-                if (m.hp <= 0) {
-                    // Destroy mushroom
-                    spawnMushroomDebris(m.x, m.y, m.golden);
-                    if (m.golden) {
-                        spawnPowerup(m.x, m.y);
-                    }
-                    addScore(50, m.x, m.y);
-                    mushrooms.splice(i, 1);
-                } else {
-                    spawnParticles(m.x, m.y, 3, m.golden ? CLR_MUSH_GOLD : CLR_MUSH_CAP);
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // ═══════════════════════════════════════════
-    //  CHAIN (CENTIPEDE) SYSTEM
-    // ═══════════════════════════════════════════
-    function createChain(segCount, startX, startY, dir) {
-        const segs = [];
-        for (let i = 0; i < segCount; i++) {
-            const num = ((level - 1) * 15 + segs.length) % 15 + 1;
-            segs.push({
-                x: startX - i * BALL_R * 2.2 * dir,
-                y: startY,
-                targetX: 0, targetY: 0,
-                num: num,
-                r: BALL_R
-            });
-        }
-        return {
-            segs, dir, speed: CHAIN_SPEED_BASE + level * 0.06,
-            rowY: startY, moving: true
-        };
-    }
-
-    function updateChain(chain, dt) {
-        if (!chain.moving || chain.segs.length === 0) return;
-        const head = chain.segs[0];
-        const spd = chain.speed * (activePowerup === PW_SLOW ? 0.4 : 1);
-
-        // Move head horizontally
-        head.x += chain.dir * spd;
-
-        // Check wall collision — drop and reverse
-        const left = RAIL_W + BALL_R + 2;
-        const right = GAME_W - RAIL_W - BALL_R - 2;
-        let turned = false;
-        if (head.x < left) {
-            head.x = left;
-            chain.dir = 1;
-            chain.rowY += CHAIN_DROP;
-            turned = true;
-        } else if (head.x > right) {
-            head.x = right;
-            chain.dir = -1;
-            chain.rowY += CHAIN_DROP;
-            turned = true;
-        }
-
-        // Mushroom collision — chain turns at mushrooms like classic Centipede
-        if (!turned) {
-            for (const m of mushrooms) {
-                if (dist(head.x, head.y, m.x, m.y) < BALL_R + m.r) {
-                    // Push head back out of mushroom
-                    head.x -= chain.dir * spd;
-                    // Reverse direction and drop down a row
-                    chain.dir = -chain.dir;
-                    chain.rowY += CHAIN_DROP;
-                    // Visual feedback on mushroom
-                    m.hitFlash = 4;
-                    m.shakeX = randRange(-1.5, 1.5);
-                    m.shakeY = randRange(-1.5, 1.5);
-                    break;
-                }
-            }
-        }
-
-        head.y += (chain.rowY - head.y) * 0.1;
-
-        // Body follows head
-        for (let i = 1; i < chain.segs.length; i++) {
-            const prev = chain.segs[i - 1];
-            const seg = chain.segs[i];
-            const dx = prev.x - seg.x, dy = prev.y - seg.y;
-            const d = Math.sqrt(dx * dx + dy * dy);
-            const desired = BALL_R * 2.2;
-            if (d > desired) {
-                const pull = (d - desired) / d;
-                seg.x += dx * pull * 0.15;
-                seg.y += dy * pull * 0.15;
-            }
-        }
-
-        // Check if chain reached bottom
-        if (chain.rowY > GAME_H - RAIL_W - 60) {
-            // Game over condition — chain reached the bottom
-            lives--;
-            if (lives <= 0) {
-                state = ST_GAMEOVER;
-            } else {
-                // Reset chain position
-                chain.rowY = RAIL_W + 40;
-                for (const s of chain.segs) s.y = chain.rowY;
-            }
-        }
-    }
-
-    function hitChainSegment(chain, segIndex, hittingBall) {
-        const seg = chain.segs[segIndex];
-        comboCount++;
-
-        // Detach segment — becomes a free ball
-        const freed = {
-            x: seg.x, y: seg.y,
-            vx: 0, vy: 0,
-            r: BALL_R, num: seg.num,
-            mass: 1, fromChain: true
-        };
-
-        // Calculate collision impulse from hitting ball
-        const dx = seg.x - hittingBall.x;
-        const dy = seg.y - hittingBall.y;
-        const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const nx = dx / d, ny = dy / d;
-        const impactSpeed = ballSpeed(hittingBall);
-        freed.vx = nx * impactSpeed * 0.7 + randRange(-1, 1);
-        freed.vy = ny * impactSpeed * 0.7 + randRange(-1, 1);
-
-        freeBalls.push(freed);
-
-        // Explosive powerup: splash damage
-        if (activePowerup === PW_EXPLOSIVE && hittingBall === cueBall) {
-            spawnExplosion(seg.x, seg.y);
-            explosiveSplash(seg.x, seg.y, chain);
-        }
-
-        // Split chain into two
-        const before = chain.segs.slice(0, segIndex);
-        const after = chain.segs.slice(segIndex + 1);
-
-        // Score with combo multiplier
-        const pts = 100 * Math.min(comboCount, 5);
-        addScore(pts, seg.x, seg.y);
-        segmentsCleared++;
-
-        sfxBallClick();
-        if (comboCount > 1) {
-            sfxChainReaction();
-            screenShake = Math.min(4 + comboCount * 2, 16);
-        }
-
-        spawnParticles(seg.x, seg.y, 8, BALL_COLORS[seg.num] || '#FFF');
-
-        // Replace original chain with the two halves
-        const chainIdx = chains.indexOf(chain);
-        if (chainIdx === -1) return;
-        chains.splice(chainIdx, 1);
-
-        if (before.length > 0) {
-            chains.push({
-                segs: before, dir: chain.dir, speed: chain.speed,
-                rowY: before[0].y, moving: true
-            });
-        }
-        if (after.length > 0) {
-            // Reverse second half so it has its own head
-            chains.push({
-                segs: after, dir: -chain.dir, speed: chain.speed,
-                rowY: after[0].y, moving: true
-            });
-        }
-    }
-
-    function explosiveSplash(cx, cy, sourceChain) {
-        const splashR = 60;
-        for (const chain of [...chains]) {
-            for (let i = chain.segs.length - 1; i >= 0; i--) {
-                const s = chain.segs[i];
-                if (dist(cx, cy, s.x, s.y) < splashR) {
-                    hitChainSegment(chain, i, { x: cx, y: cy, vx: 0, vy: 0 });
-                    if (!chains.includes(chain)) break;
-                }
-            }
-        }
-    }
-
-    function checkBallChainCollisions(ball) {
-        for (const chain of [...chains]) {
-            for (let i = 0; i < chain.segs.length; i++) {
-                const seg = chain.segs[i];
-                if (dist(ball.x, ball.y, seg.x, seg.y) < ball.r + seg.r) {
-                    hitChainSegment(chain, i, ball);
-                    return true;
-                }
-            }
+    function anyBallMoving() {
+        if (cueBall && ballMoving(cueBall)) return true;
+        for (const b of balls) {
+            if (ballMoving(b)) return true;
         }
         return false;
     }
@@ -542,75 +307,130 @@ window.CentiBalls = (() => {
     // ═══════════════════════════════════════════
     function createPockets() {
         pockets = [
-            { x: RAIL_W + 6, y: RAIL_W + 6 },                          // top-left
-            { x: GAME_W - RAIL_W - 6, y: RAIL_W + 6 },                 // top-right
-            { x: RAIL_W + 6, y: GAME_H - RAIL_W - 6 },                 // bottom-left
-            { x: GAME_W - RAIL_W - 6, y: GAME_H - RAIL_W - 6 },        // bottom-right
-            { x: GAME_W / 2, y: RAIL_W + 2 },                           // top-center (side)
-            { x: GAME_W / 2, y: GAME_H - RAIL_W - 2 }                   // bottom-center (side)
+            { x: RAIL_W + 6, y: RAIL_W + 6 },
+            { x: GAME_W - RAIL_W - 6, y: RAIL_W + 6 },
+            { x: RAIL_W + 6, y: GAME_H - RAIL_W - 6 },
+            { x: GAME_W - RAIL_W - 6, y: GAME_H - RAIL_W - 6 },
+            { x: GAME_W / 2, y: RAIL_W + 2 },
+            { x: GAME_W / 2, y: GAME_H - RAIL_W - 2 }
         ];
     }
 
     // ═══════════════════════════════════════════
-    //  POWERUPS
+    //  RACK / SETUP
     // ═══════════════════════════════════════════
-    function spawnPowerup(x, y) {
-        const type = randInt(0, 3);
-        powerups.push({
-            x, y, type, r: 10,
-            vy: 0.5, life: 600, bobT: Math.random() * Math.PI * 2
-        });
+    function rackBalls() {
+        balls = [];
+        // Standard 8-ball triangle rack at foot spot
+        // Row 0: apex ball, Row 1: 2 balls, ... Row 4: 5 balls
+        // 8-ball must be in center (row 2, pos 1)
+        // One solid in one back corner, one stripe in the other
+        const spacing = BALL_R * 2.05;
+        const rowH = spacing * Math.sin(Math.PI / 3);
+
+        // Build the 15-ball order with 8 in the center
+        // Shuffle a set that satisfies: 8 in middle, corners of back row = one solid + one stripe
+        let solids = [1, 2, 3, 4, 5, 6, 7];
+        let stripes = [9, 10, 11, 12, 13, 14, 15];
+        shuffle(solids);
+        shuffle(stripes);
+
+        // Positions in triangle (row, col within row)
+        // Row 0: 1 ball (apex)
+        // Row 1: 2 balls
+        // Row 2: 3 balls (8 in middle)
+        // Row 3: 4 balls
+        // Row 4: 5 balls (corners must be one solid + one stripe)
+        const rackOrder = new Array(15);
+
+        // Place 8-ball at position index 4 (row 2, middle)
+        rackOrder[4] = 8;
+
+        // Row 4 corners: indices 10 and 14
+        // One solid corner, one stripe corner
+        if (Math.random() < 0.5) {
+            rackOrder[10] = solids.pop();
+            rackOrder[14] = stripes.pop();
+        } else {
+            rackOrder[10] = stripes.pop();
+            rackOrder[14] = solids.pop();
+        }
+
+        // Apex (index 0): random
+        const apex = Math.random() < 0.5 ? solids.pop() : stripes.pop();
+        rackOrder[0] = apex;
+
+        // Fill remaining positions with alternating-ish solids and stripes
+        const remaining = [...solids, ...stripes];
+        shuffle(remaining);
+        let ri = 0;
+        for (let i = 0; i < 15; i++) {
+            if (rackOrder[i] === undefined) {
+                rackOrder[i] = remaining[ri++];
+            }
+        }
+
+        // Map rack index to (row, col) position
+        let idx = 0;
+        for (let row = 0; row < 5; row++) {
+            const count = row + 1;
+            for (let col = 0; col < count; col++) {
+                const num = rackOrder[idx];
+                const bx = TABLE_CX + (col - (count - 1) / 2) * spacing;
+                const by = FOOT_SPOT_Y + row * rowH;
+                balls.push({
+                    x: bx + randRange(-0.3, 0.3), // tiny jitter for natural look
+                    y: by + randRange(-0.3, 0.3),
+                    vx: 0, vy: 0,
+                    r: BALL_R, num: num, mass: 1, potted: false
+                });
+                idx++;
+            }
+        }
     }
 
-    function collectPowerup(pu) {
-        activePowerup = pu.type;
-        powerupTimer = POWERUP_DUR;
-        sfxPowerup();
-        addScore(150, pu.x, pu.y);
-        spawnParticles(pu.x, pu.y, 12, PW_COLORS[pu.type]);
+    function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
     }
 
-    // ═══════════════════════════════════════════
-    //  CUE BALL + SHOOTING
-    // ═══════════════════════════════════════════
-    function resetCueBall() {
+    function resetCueBall(behindHeadString) {
         cueBall = {
-            x: GAME_W / 2, y: CUE_HOME_Y,
+            x: TABLE_CX, y: HEAD_STRING_Y,
             vx: 0, vy: 0,
-            r: activePowerup === PW_MEGA ? CUE_R * 1.5 : CUE_R,
-            mass: activePowerup === PW_MEGA ? 2.0 : 1.0,
-            isCue: true
+            r: CUE_R, mass: 1, isCue: true
         };
-        cueScratch = false;
+        if (behindHeadString) {
+            // Restrict placement to kitchen
+            ballInHandRestricted = true;
+        }
     }
 
+    // ═══════════════════════════════════════════
+    //  SHOOTING
+    // ═══════════════════════════════════════════
     function shoot(dirX, dirY, power) {
-        if (state !== ST_AIMING) return;
         const len = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
         const nx = dirX / len, ny = dirY / len;
         const p = clamp(power, MIN_SHOT_POWER, MAX_SHOT_POWER);
         cueBall.vx = nx * p;
         cueBall.vy = ny * p;
-        state = ST_SHOOTING;
-        shotsFired++;
-        comboCount = 0;
-        sfxCueStrike();
 
-        // Multi-shot powerup
-        if (activePowerup === PW_MULTI) {
-            const angle1 = Math.atan2(ny, nx) - 0.2;
-            const angle2 = Math.atan2(ny, nx) + 0.2;
-            for (const a of [angle1, angle2]) {
-                freeBalls.push({
-                    x: cueBall.x + Math.cos(a) * 20,
-                    y: cueBall.y + Math.sin(a) * 20,
-                    vx: Math.cos(a) * p * 0.8,
-                    vy: Math.sin(a) * p * 0.8,
-                    r: CUE_R * 0.8, num: 0, mass: 0.8,
-                    isCue: true, isExtra: true
-                });
-            }
+        if (state === ST_AIMING || state === ST_BALL_IN_HAND) {
+            state = ST_SHOOTING;
+        } else if (state === ST_AI_SHOOTING) {
+            state = ST_SHOOTING;
         }
+
+        shotsFired++;
+        pottedThisTurn = [];
+        firstHitThisTurn = null;
+        cuePotted = false;
+        foulThisTurn = false;
+        eightBallPotted = false;
+        sfxCueStrike();
     }
 
     // ═══════════════════════════════════════════
@@ -630,34 +450,6 @@ window.CentiBalls = (() => {
                 maxLife: 45
             });
         }
-    }
-
-    function spawnMushroomDebris(x, y, golden) {
-        for (let i = 0; i < 6; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = randRange(1.5, 3.5);
-            particles.push({
-                x, y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                r: randRange(3, 6),
-                color: golden ? CLR_MUSH_GOLD : CLR_MUSH_CAP,
-                life: randRange(30, 50),
-                maxLife: 50,
-                isDebris: true,
-                sprite: golden ? 'starGold' : ['debris1', 'debris2', 'debris3'][randInt(0, 2)]
-            });
-        }
-    }
-
-    function spawnExplosion(x, y) {
-        explosions.push({
-            x, y, r: 5, maxR: 50,
-            life: 30, maxLife: 30
-        });
-        screenShake = 12;
-        spawnParticles(x, y, 20, '#F97316');
-        spawnParticles(x, y, 10, '#EF4444');
     }
 
     function spawnPocketSwirl(x, y, color) {
@@ -683,53 +475,421 @@ window.CentiBalls = (() => {
             highScore = score;
             localStorage.setItem('ywa_centiballs_hi', String(highScore));
         }
-        scorePopups.push({
-            x, y, text: '+' + pts,
-            life: 50, vy: -1.5,
-            color: pts >= 300 ? '#FBBF24' : pts >= 200 ? '#F97316' : '#FFF'
-        });
+        if (pts !== 0) {
+            scorePopups.push({
+                x, y, text: (pts > 0 ? '+' : '') + pts,
+                life: 50, vy: -1.5,
+                color: pts >= 100 ? '#FBBF24' : pts > 0 ? '#FFF' : '#EF4444'
+            });
+        }
+    }
+
+    function showMessage(msg, dur) {
+        turnMessage = msg;
+        turnMessageTimer = dur || 120;
     }
 
     // ═══════════════════════════════════════════
-    //  LEVEL SETUP
+    //  GAME SETUP
     // ═══════════════════════════════════════════
-    function startLevel() {
-        const segCount = clamp(12 + level * 2, 12, 32);
-        totalSegments = segCount;
-        segmentsCleared = 0;
-        comboCount = 0;
+    function startGame() {
+        score = 0;
+        shotsFired = 0;
+        currentTurn = TURN_PLAYER;
+        playerGroup = GRP_NONE;
+        aiGroup = GRP_NONE;
+        isBreakShot = true;
+        pottedThisTurn = [];
+        firstHitThisTurn = null;
+        cuePotted = false;
+        foulThisTurn = false;
+        eightBallPotted = false;
+        turnMessage = '';
+        turnMessageTimer = 0;
+        ballInHandRestricted = false;
+        aiThinkTimer = 0;
+        gameResult = null;
         frameCount = 0;
-        freeBalls = [];
+        screenShake = 0;
         particles = [];
         scorePopups = [];
-        powerups = [];
-        explosions = [];
-        activePowerup = null;
-        powerupTimer = 0;
-
         pocketAnims = [];
-        createPockets();
-        createMushrooms();
 
-        // Create initial chain(s)
-        chains = [];
-        if (level <= 3) {
-            chains.push(createChain(segCount, RAIL_W + 40, RAIL_W + 40, 1));
-        } else if (level <= 6) {
-            const half = Math.floor(segCount / 2);
-            chains.push(createChain(half, RAIL_W + 40, RAIL_W + 40, 1));
-            chains.push(createChain(segCount - half, GAME_W - RAIL_W - 40, RAIL_W + 70, -1));
+        createPockets();
+        rackBalls();
+        resetCueBall(true); // behind head string for break
+        ballInHandRestricted = false; // break doesn't restrict placement
+        state = ST_AIMING;
+        showMessage('YOUR BREAK', 90);
+    }
+
+    // ═══════════════════════════════════════════
+    //  COUNT BALLS
+    // ═══════════════════════════════════════════
+    function countBalls() {
+        let solids = 0, stripes = 0;
+        for (const b of balls) {
+            if (b.potted) continue;
+            if (b.num >= 1 && b.num <= 7) solids++;
+            if (b.num >= 9 && b.num <= 15) stripes++;
+        }
+        if (playerGroup === GRP_SOLIDS) {
+            playerBallsLeft = solids;
+            aiBallsLeft = stripes;
+        } else if (playerGroup === GRP_STRIPES) {
+            playerBallsLeft = stripes;
+            aiBallsLeft = solids;
         } else {
-            const third = Math.floor(segCount / 3);
-            chains.push(createChain(third, RAIL_W + 40, RAIL_W + 40, 1));
-            chains.push(createChain(third, GAME_W - RAIL_W - 40, RAIL_W + 70, -1));
-            chains.push(createChain(segCount - 2 * third, GAME_W / 2, RAIL_W + 100, 1));
+            playerBallsLeft = 7;
+            aiBallsLeft = 7;
+        }
+    }
+
+    function isPlayerOnEightBall() {
+        return playerGroup !== GRP_NONE && playerBallsLeft === 0;
+    }
+
+    function isAIOnEightBall() {
+        return aiGroup !== GRP_NONE && aiBallsLeft === 0;
+    }
+
+    // ═══════════════════════════════════════════
+    //  RESOLVE TURN — called when all balls stop
+    // ═══════════════════════════════════════════
+    function resolveTurn() {
+        countBalls();
+
+        // Check game-ending conditions first
+        if (eightBallPotted) {
+            const shooter = currentTurn;
+            const shooterGroup = shooter === TURN_PLAYER ? playerGroup : aiGroup;
+            const shooterClear = shooter === TURN_PLAYER ? playerBallsLeft === 0 : aiBallsLeft === 0;
+
+            // Potting 8-ball early or scratching on 8-ball = loss
+            if (cuePotted || !shooterClear) {
+                // Shooter loses
+                if (shooter === TURN_PLAYER) {
+                    endGame('lose', cuePotted ? 'Scratched on the 8-ball!' : 'Potted 8-ball too early!');
+                } else {
+                    endGame('win', 'AI potted 8-ball illegally!');
+                }
+            } else {
+                // Legal 8-ball pot = shooter wins
+                if (shooter === TURN_PLAYER) {
+                    endGame('win', 'You potted the 8-ball!');
+                } else {
+                    endGame('lose', 'AI cleared the table!');
+                }
+            }
+            return;
         }
 
-        totalSegments = chains.reduce((s, c) => s + c.segs.length, 0);
+        // Determine fouls
+        if (cuePotted) {
+            foulThisTurn = true;
+        }
 
-        resetCueBall();
-        state = ST_AIMING;
+        // Check first-hit foul (must hit your own group first, or any ball if open)
+        if (!isBreakShot && firstHitThisTurn !== null && playerGroup !== GRP_NONE) {
+            const shooterGroup = currentTurn === TURN_PLAYER ? playerGroup : aiGroup;
+            const shooterOnEight = currentTurn === TURN_PLAYER ? isPlayerOnEightBall() : isAIOnEightBall();
+            if (shooterOnEight) {
+                // Must hit 8-ball first when on the 8
+                if (firstHitThisTurn !== 8) foulThisTurn = true;
+            } else {
+                const hitGroup = ballGroup(firstHitThisTurn);
+                if (hitGroup !== shooterGroup && firstHitThisTurn !== 8) {
+                    foulThisTurn = true;
+                }
+            }
+        }
+
+        // No ball hit = foul
+        if (firstHitThisTurn === null && !isBreakShot) {
+            foulThisTurn = true;
+        }
+
+        // Handle group assignment (first legal pot after break)
+        if (isBreakShot) {
+            isBreakShot = false;
+            // If balls were potted on break, assign groups
+            if (pottedThisTurn.length > 0 && !cuePotted) {
+                assignGroups(pottedThisTurn, currentTurn);
+            }
+        } else if (playerGroup === GRP_NONE && pottedThisTurn.length > 0 && !foulThisTurn) {
+            assignGroups(pottedThisTurn, currentTurn);
+        }
+
+        countBalls(); // recount after assignment
+
+        // Handle foul
+        if (foulThisTurn) {
+            if (cuePotted) {
+                sfxFoul();
+                showMessage('SCRATCH! Ball in hand.', 120);
+            } else {
+                sfxFoul();
+                showMessage('FOUL! Ball in hand.', 120);
+            }
+            addScore(-25, GAME_W / 2, GAME_H / 2);
+
+            // Switch turn, give ball in hand
+            switchTurn();
+            placeBallInHand();
+            return;
+        }
+
+        // Check if shooter potted any of their own balls
+        let pottedOwn = false;
+        if (pottedThisTurn.length > 0) {
+            const shooterGroup = currentTurn === TURN_PLAYER ? playerGroup : aiGroup;
+            for (const num of pottedThisTurn) {
+                if (num === 8) continue;
+                if (shooterGroup === GRP_NONE || ballGroup(num) === shooterGroup) {
+                    pottedOwn = true;
+                }
+            }
+        }
+
+        if (pottedOwn) {
+            // Shooter continues
+            if (currentTurn === TURN_PLAYER) {
+                showMessage('Nice shot! Shoot again.', 80);
+            }
+            beginTurn(currentTurn);
+        } else {
+            // Switch turn
+            switchTurn();
+            beginTurn(currentTurn);
+        }
+    }
+
+    function assignGroups(potted, shooter) {
+        // Find the first non-8 ball potted
+        let assignNum = null;
+        for (const num of potted) {
+            if (num !== 8) { assignNum = num; break; }
+        }
+        if (assignNum === null) return;
+
+        const grp = ballGroup(assignNum);
+        if (grp === GRP_NONE) return;
+
+        if (shooter === TURN_PLAYER) {
+            playerGroup = grp;
+            aiGroup = grp === GRP_SOLIDS ? GRP_STRIPES : GRP_SOLIDS;
+        } else {
+            aiGroup = grp;
+            playerGroup = grp === GRP_SOLIDS ? GRP_STRIPES : GRP_SOLIDS;
+        }
+
+        const playerName = playerGroup === GRP_SOLIDS ? 'SOLIDS (1-7)' : 'STRIPES (9-15)';
+        showMessage('You are ' + playerName, 150);
+        sfxAssign();
+    }
+
+    function switchTurn() {
+        currentTurn = currentTurn === TURN_PLAYER ? TURN_AI : TURN_PLAYER;
+    }
+
+    function beginTurn(who) {
+        if (who === TURN_PLAYER) {
+            state = ST_AIMING;
+            if (!turnMessage || turnMessageTimer <= 0) {
+                showMessage('YOUR SHOT', 60);
+            }
+        } else {
+            // AI turn
+            state = ST_AI_THINKING;
+            aiThinkTimer = 60 + Math.floor(Math.random() * 40); // ~1-1.5 sec "thinking"
+            showMessage('AI THINKING...', 120);
+            planAIShot();
+        }
+    }
+
+    function placeBallInHand() {
+        // Remove cue ball, place it for the opponent
+        cueBall = {
+            x: TABLE_CX, y: TABLE_CY,
+            vx: 0, vy: 0,
+            r: CUE_R, mass: 1, isCue: true
+        };
+        if (currentTurn === TURN_PLAYER) {
+            state = ST_BALL_IN_HAND;
+            ballInHandRestricted = false;
+        } else {
+            // AI places cue ball and shoots
+            aiPlaceCueBall();
+            state = ST_AI_THINKING;
+            aiThinkTimer = 50 + Math.floor(Math.random() * 30);
+            planAIShot();
+        }
+    }
+
+    function endGame(result, message) {
+        gameResult = result;
+        if (result === 'win') {
+            state = ST_GAME_WON;
+            addScore(500, GAME_W / 2, GAME_H / 2);
+            sfxWin();
+            showMessage(message || 'YOU WIN!', 999);
+        } else {
+            state = ST_GAME_LOST;
+            sfxLose();
+            showMessage(message || 'YOU LOSE', 999);
+        }
+        if (gameOverCB) {
+            setTimeout(() => gameOverCB(score), 100);
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    //  AI OPPONENT
+    // ═══════════════════════════════════════════
+    function planAIShot() {
+        if (!cueBall) return;
+
+        // Find target balls
+        let targets = [];
+        const myGroup = aiGroup;
+
+        if (isAIOnEightBall()) {
+            // Target the 8-ball
+            const eight = balls.find(b => b.num === 8 && !b.potted);
+            if (eight) targets = [eight];
+        } else if (myGroup !== GRP_NONE) {
+            targets = balls.filter(b => !b.potted && ballGroup(b.num) === myGroup);
+        } else {
+            // Open table: target any non-8 ball
+            targets = balls.filter(b => !b.potted && b.num !== 8);
+        }
+
+        if (targets.length === 0) {
+            // Fallback: aim at any ball
+            targets = balls.filter(b => !b.potted);
+        }
+
+        let bestScore = -Infinity;
+        let bestAngle = 0;
+        let bestPower = 10;
+
+        // Evaluate shots at each target toward each pocket
+        for (const target of targets) {
+            for (const pocket of pockets) {
+                // Direction from target to pocket
+                const tpx = pocket.x - target.x;
+                const tpy = pocket.y - target.y;
+                const tpd = Math.sqrt(tpx * tpx + tpy * tpy);
+                if (tpd < 1) continue;
+                const tpnx = tpx / tpd, tpny = tpy / tpd;
+
+                // Ghost ball position (where cue ball needs to be to send target to pocket)
+                const ghostX = target.x - tpnx * (BALL_R + CUE_R);
+                const ghostY = target.y - tpny * (BALL_R + CUE_R);
+
+                // Direction from cue ball to ghost position
+                const cgx = ghostX - cueBall.x;
+                const cgy = ghostY - cueBall.y;
+                const cgd = Math.sqrt(cgx * cgx + cgy * cgy);
+                if (cgd < 1) continue;
+
+                const angle = Math.atan2(cgy, cgx);
+
+                // Score this shot
+                let shotScore = 0;
+
+                // Prefer closer targets
+                shotScore -= cgd * 0.01;
+
+                // Prefer shots where target is closer to pocket
+                shotScore -= tpd * 0.005;
+
+                // Check for clear path (no obstructing balls)
+                let obstructed = false;
+                const stepX = cgx / cgd, stepY = cgy / cgd;
+                for (let s = CUE_R * 2; s < cgd - BALL_R * 2; s += BALL_R) {
+                    const checkX = cueBall.x + stepX * s;
+                    const checkY = cueBall.y + stepY * s;
+                    for (const b of balls) {
+                        if (b === target || b.potted) continue;
+                        if (dist(checkX, checkY, b.x, b.y) < BALL_R * 2.2) {
+                            obstructed = true;
+                            break;
+                        }
+                    }
+                    if (obstructed) break;
+                }
+
+                if (obstructed) shotScore -= 50;
+
+                // Angle quality — straighter shots score higher
+                const cueToBall = Math.atan2(target.y - ghostY, target.x - ghostX);
+                const ballToPocket = Math.atan2(tpy, tpx);
+                let angleDiff = Math.abs(cueToBall - ballToPocket);
+                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                shotScore -= angleDiff * 20;
+
+                if (shotScore > bestScore) {
+                    bestScore = shotScore;
+                    bestAngle = angle;
+                    // Power based on distance
+                    bestPower = clamp(cgd * 0.06 + 4, 6, 14);
+                }
+            }
+        }
+
+        // Add some randomness to make AI imperfect
+        const angleNoise = randRange(-0.06, 0.06);
+        const powerNoise = randRange(-1.5, 1.5);
+        aiTargetAngle = bestAngle + angleNoise;
+        aiTargetPower = clamp(bestPower + powerNoise, 5, 15);
+    }
+
+    function aiPlaceCueBall() {
+        if (!cueBall) return;
+        // AI places cue ball at a reasonable position
+        // Try to find a good spot near center or with clear shot to a target
+        let bestX = TABLE_CX, bestY = TABLE_CY;
+        let bestClearance = 0;
+
+        for (let attempt = 0; attempt < 20; attempt++) {
+            const tx = randRange(TABLE_LEFT + 40, TABLE_RIGHT - 40);
+            const ty = randRange(TABLE_TOP + 40, TABLE_BOT - 40);
+
+            // Check no overlap with existing balls
+            let tooClose = false;
+            for (const b of balls) {
+                if (b.potted) continue;
+                if (dist(tx, ty, b.x, b.y) < BALL_R + CUE_R + 4) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (tooClose) continue;
+
+            // Find minimum distance to any target ball (want it moderate, not too close or far)
+            let minDist = Infinity;
+            for (const b of balls) {
+                if (b.potted) continue;
+                const d = dist(tx, ty, b.x, b.y);
+                if (d < minDist) minDist = d;
+            }
+
+            if (minDist > bestClearance && minDist > CUE_R + BALL_R + 10) {
+                bestClearance = minDist;
+                bestX = tx;
+                bestY = ty;
+            }
+        }
+
+        cueBall.x = bestX;
+        cueBall.y = bestY;
+    }
+
+    function executeAIShot() {
+        const dx = Math.cos(aiTargetAngle);
+        const dy = Math.sin(aiTargetAngle);
+        shoot(dx, dy, aiTargetPower);
     }
 
     // ═══════════════════════════════════════════
@@ -738,19 +898,21 @@ window.CentiBalls = (() => {
     function update(dt) {
         frameCount++;
 
-        // Powerup timer
-        if (activePowerup !== null) {
-            powerupTimer -= dt * 1000;
-            if (powerupTimer <= 0) {
-                activePowerup = null;
-                if (cueBall) { cueBall.r = CUE_R; cueBall.mass = 1; }
+        // Message timer
+        if (turnMessageTimer > 0) turnMessageTimer--;
+
+        // AI thinking
+        if (state === ST_AI_THINKING) {
+            aiThinkTimer--;
+            if (aiThinkTimer <= 0) {
+                state = ST_AI_SHOOTING;
+                executeAIShot();
             }
+            return;
         }
 
-        if (state === ST_AIMING) {
-            // Chains still move while aiming
-            for (const chain of chains) updateChain(chain, dt);
-            // Keyboard aiming
+        // Keyboard aiming
+        if (state === ST_AIMING || state === ST_BALL_IN_HAND) {
             if (keys_pressed['ArrowLeft'] || keys_pressed['a']) mouseX -= 3;
             if (keys_pressed['ArrowRight'] || keys_pressed['d']) mouseX += 3;
             if (keys_pressed['ArrowUp'] || keys_pressed['w']) mouseY -= 3;
@@ -759,161 +921,113 @@ window.CentiBalls = (() => {
             mouseY = clamp(mouseY, RAIL_W, GAME_H - RAIL_W);
         }
 
-        if (state === ST_SHOOTING || state === ST_RESOLVING) {
-            // Update chains
-            for (const chain of chains) updateChain(chain, dt);
+        // Ball in hand — move cue ball with mouse
+        if (state === ST_BALL_IN_HAND && cueBall) {
+            cueBall.x = clamp(mouseX, TABLE_LEFT, TABLE_RIGHT);
+            cueBall.y = clamp(mouseY, TABLE_TOP, TABLE_BOT);
 
-            // Update cue ball
-            if (cueBall && !cueScratch) {
-                cueBall.x += cueBall.vx;
-                cueBall.y += cueBall.vy;
-                applyFriction(cueBall);
-                wallBounce(cueBall);
-                mushroomBounce(cueBall);
-                checkBallChainCollisions(cueBall);
-
-                // Check pocket (scratch)
-                const p = checkPocket(cueBall);
-                if (p) {
-                    sfxScratch();
-                    cueScratch = true;
-                    spawnPocketSwirl(p.x, p.y, CLR_CUE);
-                    addPocketAnim(p.x, p.y, 0, true);
-                    addScore(-50, p.x, p.y);
+            // Check not overlapping any ball
+            for (const b of balls) {
+                if (b.potted) continue;
+                if (dist(cueBall.x, cueBall.y, b.x, b.y) < CUE_R + BALL_R + 2) {
+                    // Push cue ball away
+                    const dx = cueBall.x - b.x;
+                    const dy = cueBall.y - b.y;
+                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                    cueBall.x = b.x + (dx / d) * (CUE_R + BALL_R + 3);
+                    cueBall.y = b.y + (dy / d) * (CUE_R + BALL_R + 3);
+                    cueBall.x = clamp(cueBall.x, TABLE_LEFT, TABLE_RIGHT);
+                    cueBall.y = clamp(cueBall.y, TABLE_TOP, TABLE_BOT);
                 }
             }
+        }
 
-            // Update free balls
-            for (let i = freeBalls.length - 1; i >= 0; i--) {
-                const b = freeBalls[i];
-                b.x += b.vx;
-                b.y += b.vy;
-                applyFriction(b);
-                wallBounce(b);
-                mushroomBounce(b);
+        if (state === ST_SHOOTING) {
+            // Physics step — run multiple sub-steps for accuracy
+            const subSteps = 2;
+            for (let sub = 0; sub < subSteps; sub++) {
+                // Update cue ball
+                if (cueBall && !cuePotted) {
+                    cueBall.x += cueBall.vx / subSteps;
+                    cueBall.y += cueBall.vy / subSteps;
+                    applyFriction(cueBall);
+                    wallBounce(cueBall);
 
-                // Free ball hits chain = CHAIN REACTION
-                if (b.fromChain && ballSpeed(b) > 1) {
-                    checkBallChainCollisions(b);
-                }
+                    // Cue ball vs object balls
+                    for (const b of balls) {
+                        if (b.potted) continue;
+                        if (dist(cueBall.x, cueBall.y, b.x, b.y) < cueBall.r + b.r) {
+                            // Track first hit
+                            if (firstHitThisTurn === null) {
+                                firstHitThisTurn = b.num;
+                            }
+                            resolveCollision(cueBall, b, BALL_COR);
+                            sfxBallClick();
+                        }
+                    }
 
-                // Ball-ball collisions among free balls
-                for (let j = i + 1; j < freeBalls.length; j++) {
-                    const b2 = freeBalls[j];
-                    if (dist(b.x, b.y, b2.x, b2.y) < b.r + b2.r) {
-                        resolveCollision(b, b2, BALL_COR);
-                        sfxBallClick();
+                    // Cue pocket check (scratch)
+                    const p = checkPocket(cueBall);
+                    if (p) {
+                        sfxScratch();
+                        cuePotted = true;
+                        spawnPocketSwirl(p.x, p.y, CLR_CUE);
+                        addPocketAnim(p.x, p.y, 0, true);
+                        cueBall.vx = 0; cueBall.vy = 0;
+                        cueBall.x = -100; cueBall.y = -100; // hide it
                     }
                 }
 
-                // Cue ball vs free ball collision
-                if (cueBall && !cueScratch && dist(b.x, b.y, cueBall.x, cueBall.y) < b.r + cueBall.r) {
-                    resolveCollision(cueBall, b, BALL_COR);
-                    sfxBallClick();
-                }
+                // Update object balls
+                for (let i = 0; i < balls.length; i++) {
+                    const b = balls[i];
+                    if (b.potted) continue;
 
-                // Check pocket
-                const p = checkPocket(b);
-                if (p) {
-                    sfxPocketThud();
-                    addScore(200, b.x, b.y);
-                    spawnPocketSwirl(p.x, p.y, BALL_COLORS[b.num] || '#FFF');
-                    addPocketAnim(p.x, p.y, b.num, false);
-                    freeBalls.splice(i, 1);
-                    continue;
-                }
+                    b.x += b.vx / subSteps;
+                    b.y += b.vy / subSteps;
+                    applyFriction(b);
+                    wallBounce(b);
 
-                // Collect powerups
-                for (let pi = powerups.length - 1; pi >= 0; pi--) {
-                    const pu = powerups[pi];
-                    if (dist(b.x, b.y, pu.x, pu.y) < b.r + pu.r) {
-                        collectPowerup(pu);
-                        powerups.splice(pi, 1);
+                    // Ball-ball collisions
+                    for (let j = i + 1; j < balls.length; j++) {
+                        const b2 = balls[j];
+                        if (b2.potted) continue;
+                        if (dist(b.x, b.y, b2.x, b2.y) < b.r + b2.r) {
+                            resolveCollision(b, b2, BALL_COR);
+                            sfxBallClick();
+                        }
                     }
-                }
-            }
 
-            // Cue ball collects powerups
-            if (cueBall && !cueScratch) {
-                for (let pi = powerups.length - 1; pi >= 0; pi--) {
-                    const pu = powerups[pi];
-                    if (dist(cueBall.x, cueBall.y, pu.x, pu.y) < cueBall.r + pu.r) {
-                        collectPowerup(pu);
-                        powerups.splice(pi, 1);
-                        if (activePowerup === PW_MEGA) {
-                            cueBall.r = CUE_R * 1.5;
-                            cueBall.mass = 2.0;
+                    // Pocket check
+                    const p = checkPocket(b);
+                    if (p) {
+                        sfxPocketThud();
+                        b.potted = true;
+                        b.vx = 0; b.vy = 0;
+                        pottedThisTurn.push(b.num);
+                        spawnPocketSwirl(p.x, p.y, BALL_COLORS[b.num] || '#FFF');
+                        addPocketAnim(p.x, p.y, b.num, false);
+                        spawnParticles(p.x, p.y, 10, BALL_COLORS[b.num] || '#FFF');
+
+                        if (b.num === 8) {
+                            eightBallPotted = true;
+                            screenShake = 8;
+                        } else {
+                            addScore(50, p.x, p.y);
                         }
                     }
                 }
             }
 
-            // Check if all balls have stopped
-            let anyMoving = false;
-            if (cueBall && !cueScratch && ballMoving(cueBall)) anyMoving = true;
-            for (const b of freeBalls) { if (ballMoving(b)) { anyMoving = true; break; } }
-
-            if (!anyMoving && state === ST_SHOOTING) {
+            // Check if all balls stopped
+            if (!anyBallMoving()) {
                 state = ST_RESOLVING;
             }
-
-            if (state === ST_RESOLVING && !anyMoving) {
-                // Clean up stopped free balls (remove them from play)
-                freeBalls = freeBalls.filter(b => ballMoving(b));
-
-                // Check level clear
-                const totalRemaining = chains.reduce((s, c) => s + c.segs.length, 0);
-                if (totalRemaining === 0) {
-                    state = ST_LEVEL_CLEAR;
-                    levelClearTimer = 180;
-                    sfxLevelClear();
-                    addScore(500 + level * 200, GAME_W / 2, GAME_H / 2);
-                } else {
-                    // Return cue ball for next shot
-                    if (cueScratch) {
-                        lives--;
-                        if (lives <= 0) {
-                            state = ST_GAMEOVER;
-                            return;
-                        }
-                    }
-                    freeBalls = [];
-                    resetCueBall();
-                    state = ST_AIMING;
-                }
-            }
         }
 
-        if (state === ST_LEVEL_CLEAR) {
-            levelClearTimer--;
-            if (levelClearTimer <= 0) {
-                level++;
-                if (level > 10) {
-                    // Victory — restart with higher score base
-                    level = 1;
-                    addScore(5000, GAME_W / 2, GAME_H / 2);
-                }
-                startLevel();
-            }
-        }
-
-        // Update powerups (float/bob)
-        for (let i = powerups.length - 1; i >= 0; i--) {
-            const pu = powerups[i];
-            pu.y += pu.vy;
-            pu.bobT += 0.08;
-            pu.life--;
-            if (pu.life <= 0 || pu.y > GAME_H - RAIL_W) {
-                powerups.splice(i, 1);
-            }
-        }
-
-        // Update explosions
-        for (let i = explosions.length - 1; i >= 0; i--) {
-            const e = explosions[i];
-            e.r += (e.maxR - e.r) * 0.15;
-            e.life--;
-            if (e.life <= 0) explosions.splice(i, 1);
+        if (state === ST_RESOLVING) {
+            // Small delay then resolve
+            resolveTurn();
         }
 
         // Update particles
@@ -934,18 +1048,33 @@ window.CentiBalls = (() => {
             if (sp.life <= 0) scorePopups.splice(i, 1);
         }
 
-        // Mushroom hit flash decay
-        for (const m of mushrooms) {
-            if (m.hitFlash > 0) m.hitFlash--;
-            m.shakeX *= 0.8; m.shakeY *= 0.8;
-        }
-
         // Update pocket animations
         updatePocketAnims();
 
         // Screen shake decay
         if (screenShake > 0) screenShake *= 0.88;
         if (screenShake < 0.5) screenShake = 0;
+    }
+
+    // Pocket swallow animations
+    let pocketAnimsList = [];
+    function addPocketAnim(x, y, num, isCue) {
+        pocketAnimsList.push({
+            x, y, num, isCue,
+            r: isCue ? CUE_R : BALL_R,
+            angle: 0, shrink: 1,
+            life: 25, maxLife: 25
+        });
+    }
+
+    function updatePocketAnims() {
+        for (let i = pocketAnimsList.length - 1; i >= 0; i--) {
+            const pa = pocketAnimsList[i];
+            pa.life--;
+            pa.angle += 0.4;
+            pa.shrink = pa.life / pa.maxLife;
+            if (pa.life <= 0) pocketAnimsList.splice(i, 1);
+        }
     }
 
     // ═══════════════════════════════════════════
@@ -955,7 +1084,6 @@ window.CentiBalls = (() => {
         ctx.save();
         ctx.setTransform(SCALE * DPR, 0, 0, SCALE * DPR, 0, 0);
 
-        // Screen shake
         if (screenShake > 0) {
             ctx.translate(randRange(-screenShake, screenShake), randRange(-screenShake, screenShake));
         }
@@ -964,36 +1092,33 @@ window.CentiBalls = (() => {
         drawFeltLines();
         drawPockets();
         drawPocketAnims();
-        drawMushrooms();
         drawBallTrails();
-        drawChains();
-        drawFreeBalls();
-        drawExplosions();
-        drawPowerups();
-        if (cueBall && !cueScratch) drawCueBall();
-        if (state === ST_AIMING) drawAimLine();
+        drawObjectBalls();
+        if (cueBall && !cuePotted) drawCueBall();
+        if ((state === ST_AIMING || state === ST_BALL_IN_HAND) && currentTurn === TURN_PLAYER) drawAimLine();
+        if (state === ST_BALL_IN_HAND) drawBallInHandGuide();
+        if (state === ST_AI_THINKING) drawAIThinking();
         drawParticles();
         drawScorePopups();
-        drawComboText();
-        drawLevelIntro();
         drawHUD();
+        drawTurnMessage();
+        drawPottedBallsTracker();
 
         if (state === ST_TITLE) drawTitleScreen();
-        if (state === ST_LEVEL_CLEAR) drawLevelClear();
-        if (state === ST_GAMEOVER) drawGameOver();
+        if (state === ST_GAME_WON) drawWinScreen();
+        if (state === ST_GAME_LOST) drawLoseScreen();
 
         ctx.restore();
     }
 
     function drawTable() {
-        // Felt background with gradient
         const feltGrd = ctx.createRadialGradient(GAME_W / 2, GAME_H / 2, 50, GAME_W / 2, GAME_H / 2, 400);
         feltGrd.addColorStop(0, CLR_FELT);
         feltGrd.addColorStop(1, CLR_FELT2);
         ctx.fillStyle = feltGrd;
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        // Felt texture (subtle dots)
+        // Felt texture
         ctx.fillStyle = 'rgba(0,0,0,0.03)';
         for (let i = 0; i < 200; i++) {
             const fx = (i * 97.3) % GAME_W;
@@ -1003,50 +1128,37 @@ window.CentiBalls = (() => {
 
         // Rails
         ctx.fillStyle = CLR_RAIL;
-        // Top
         roundRect(ctx, 0, 0, GAME_W, RAIL_W, 4); ctx.fill();
-        // Bottom
         roundRect(ctx, 0, GAME_H - RAIL_W, GAME_W, RAIL_W, 4); ctx.fill();
-        // Left
         roundRect(ctx, 0, 0, RAIL_W, GAME_H, 4); ctx.fill();
-        // Right
         roundRect(ctx, GAME_W - RAIL_W, 0, RAIL_W, GAME_H, 4); ctx.fill();
 
-        // Rail inner edge highlight
         ctx.strokeStyle = CLR_RAIL_EDGE;
         ctx.lineWidth = 2;
         ctx.strokeRect(RAIL_W, RAIL_W, GAME_W - 2 * RAIL_W, GAME_H - 2 * RAIL_W);
 
-        // Rail bevel highlights (wood grain effect)
+        // Rail bevel highlights
         ctx.strokeStyle = 'rgba(255,220,150,0.15)';
         ctx.lineWidth = 1;
-        // Top rail bevel
         ctx.beginPath(); ctx.moveTo(RAIL_W, 3); ctx.lineTo(GAME_W - RAIL_W, 3); ctx.stroke();
-        // Bottom rail bevel
         ctx.beginPath(); ctx.moveTo(RAIL_W, GAME_H - 3); ctx.lineTo(GAME_W - RAIL_W, GAME_H - 3); ctx.stroke();
-        // Left rail bevel
         ctx.beginPath(); ctx.moveTo(3, RAIL_W); ctx.lineTo(3, GAME_H - RAIL_W); ctx.stroke();
-        // Right rail bevel
         ctx.beginPath(); ctx.moveTo(GAME_W - 3, RAIL_W); ctx.lineTo(GAME_W - 3, GAME_H - RAIL_W); ctx.stroke();
 
-        // Inner cushion rubber (green rubber under the rail lip)
+        // Inner cushion rubber
         ctx.fillStyle = '#2D8B4E';
-        ctx.fillRect(RAIL_W, RAIL_W, GAME_W - 2 * RAIL_W, 3); // top
-        ctx.fillRect(RAIL_W, GAME_H - RAIL_W - 3, GAME_W - 2 * RAIL_W, 3); // bottom
-        ctx.fillRect(RAIL_W, RAIL_W, 3, GAME_H - 2 * RAIL_W); // left
-        ctx.fillRect(GAME_W - RAIL_W - 3, RAIL_W, 3, GAME_H - 2 * RAIL_W); // right
+        ctx.fillRect(RAIL_W, RAIL_W, GAME_W - 2 * RAIL_W, 3);
+        ctx.fillRect(RAIL_W, GAME_H - RAIL_W - 3, GAME_W - 2 * RAIL_W, 3);
+        ctx.fillRect(RAIL_W, RAIL_W, 3, GAME_H - 2 * RAIL_W);
+        ctx.fillRect(GAME_W - RAIL_W - 3, RAIL_W, 3, GAME_H - 2 * RAIL_W);
 
-        // Diamond sights on rails
+        // Diamond sights
         ctx.fillStyle = '#D4A54A';
         const diamonds = [0.2, 0.35, 0.5, 0.65, 0.8];
         for (const d of diamonds) {
-            // Top rail
             drawDiamond(GAME_W * d, RAIL_W / 2, 3);
-            // Bottom rail
             drawDiamond(GAME_W * d, GAME_H - RAIL_W / 2, 3);
-            // Left rail
             drawDiamond(RAIL_W / 2, GAME_H * d, 3);
-            // Right rail
             drawDiamond(GAME_W - RAIL_W / 2, GAME_H * d, 3);
         }
 
@@ -1071,13 +1183,11 @@ window.CentiBalls = (() => {
 
     function drawPockets() {
         for (const p of pockets) {
-            // Pocket shadow
             ctx.fillStyle = 'rgba(0,0,0,0.6)';
             ctx.beginPath();
             ctx.arc(p.x, p.y, POCKET_R + 3, 0, Math.PI * 2);
             ctx.fill();
 
-            // Pocket hole
             const pGrd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, POCKET_R);
             pGrd.addColorStop(0, '#000');
             pGrd.addColorStop(0.8, '#111');
@@ -1087,65 +1197,38 @@ window.CentiBalls = (() => {
             ctx.arc(p.x, p.y, POCKET_R, 0, Math.PI * 2);
             ctx.fill();
 
-            // Pocket rim
             ctx.strokeStyle = '#555';
             ctx.lineWidth = 2;
             ctx.stroke();
         }
     }
 
-    function drawMushrooms() {
-        for (const m of mushrooms) {
-            const ox = m.shakeX, oy = m.shakeY;
-            const flash = m.hitFlash > 0;
-            const hpRatio = m.hp / MUSH_HP_MAX;
+    function drawFeltLines() {
+        // Head string line
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(RAIL_W + 10, HEAD_STRING_Y);
+        ctx.lineTo(GAME_W - RAIL_W - 10, HEAD_STRING_Y);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-            ctx.save();
-            ctx.translate(m.x + ox, m.y + oy);
+        // Foot spot
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.arc(TABLE_CX, FOOT_SPOT_Y, 3, 0, Math.PI * 2);
+        ctx.fill();
 
-            // Mushroom body (stem)
-            ctx.fillStyle = flash ? '#FFF' : CLR_MUSH_STEM;
-            roundRect(ctx, -5, -2, 10, m.r, 3);
-            ctx.fill();
+        // Head spot
+        ctx.beginPath();
+        ctx.arc(TABLE_CX, HEAD_STRING_Y, 3, 0, Math.PI * 2);
+        ctx.fill();
 
-            // Mushroom cap
-            const capColor = m.golden ? CLR_MUSH_GOLD : (flash ? '#FFF' : CLR_MUSH_CAP);
-            ctx.fillStyle = capColor;
-            ctx.beginPath();
-            ctx.arc(0, -2, m.r * 0.85, Math.PI, 0);
-            ctx.closePath();
-            ctx.fill();
-
-            // Cap spots
-            if (!m.golden) {
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.beginPath(); ctx.arc(-3, -6, 2.5, 0, Math.PI * 2); ctx.fill();
-                ctx.beginPath(); ctx.arc(4, -4, 2, 0, Math.PI * 2); ctx.fill();
-            } else {
-                // Golden shimmer
-                ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.2 * Math.sin(frameCount * 0.1)) + ')';
-                ctx.beginPath(); ctx.arc(0, -5, 4, 0, Math.PI * 2); ctx.fill();
-            }
-
-            // HP indicator (darken as damaged)
-            if (hpRatio < 1) {
-                ctx.fillStyle = `rgba(0,0,0,${0.3 * (1 - hpRatio)})`;
-                ctx.beginPath();
-                ctx.arc(0, -2, m.r * 0.85, Math.PI, 0);
-                ctx.closePath();
-                ctx.fill();
-            }
-
-            // Hit glow
-            if (flash) {
-                ctx.fillStyle = `rgba(255,255,255,${m.hitFlash / 10})`;
-                ctx.beginPath();
-                ctx.arc(0, 0, m.r + 4, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            ctx.restore();
-        }
+        // Center spot
+        ctx.beginPath();
+        ctx.arc(TABLE_CX, TABLE_CY, 3, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1336,7 +1419,7 @@ window.CentiBalls = (() => {
         cx.ellipse(cen + 2, cen + 3, r * 0.95, r * 0.7, 0, 0, Math.PI * 2);
         cx.fill();
 
-        // White ball with subtle blue tint
+        // White ball
         const grad = cx.createRadialGradient(
             cen - r * 0.3, cen - r * 0.3, r * 0.05,
             cen + r * 0.05, cen + r * 0.05, r
@@ -1409,30 +1492,14 @@ window.CentiBalls = (() => {
         ballCanvasCache['cue'] = buildCueBallCanvas();
     }
 
-    function drawBilliardBall(bx, by, r, num, highlight) {
+    function drawBilliardBall(bx, by, r, num) {
         const cached = ballCanvasCache[num];
         if (!cached) return;
 
         const drawSize = r * 2;
         ctx.save();
         ctx.translate(bx, by);
-
-        // Subtle rolling rotation
-        if (num > 0) {
-            ctx.rotate(Math.sin((bx + by) * 0.04) * 0.05);
-        }
-
         ctx.drawImage(cached, -drawSize / 2 - 0.5, -drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
-
-        // Head highlight for chain leader
-        if (highlight) {
-            ctx.strokeStyle = `rgba(255,255,255,${0.4 + 0.2 * Math.sin(frameCount * 0.1)})`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(0, 0, r + 2, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-
         ctx.restore();
     }
 
@@ -1451,66 +1518,40 @@ window.CentiBalls = (() => {
         return { r, g, b };
     }
 
-    function drawChains() {
-        for (const chain of chains) {
-            // Draw connecting links
-            ctx.strokeStyle = CLR_CHAIN_LINK;
-            ctx.lineWidth = 2;
-            for (let i = 1; i < chain.segs.length; i++) {
-                const a = chain.segs[i - 1], b = chain.segs[i];
-                ctx.beginPath();
-                ctx.moveTo(a.x, a.y);
-                ctx.lineTo(b.x, b.y);
-                ctx.stroke();
-            }
-            // Draw balls
-            for (let i = chain.segs.length - 1; i >= 0; i--) {
-                const s = chain.segs[i];
-                drawBilliardBall(s.x, s.y, s.r, s.num, i === 0);
-            }
-        }
-    }
+    function drawObjectBalls() {
+        for (const b of balls) {
+            if (b.potted) continue;
+            drawBilliardBall(b.x, b.y, b.r, b.num);
 
-    function drawFreeBalls() {
-        for (const b of freeBalls) {
-            if (b.isCue && b.isExtra) {
-                drawCueBallAt(b.x, b.y, b.r);
-            } else {
-                drawBilliardBall(b.x, b.y, b.r, b.num, false);
-            }
-            // Motion trail
-            if (ballSpeed(b) > 2) {
-                const alpha = clamp(ballSpeed(b) / 15, 0.05, 0.3);
-                ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+            // Highlight player's ball group
+            if (playerGroup !== GRP_NONE && ballGroup(b.num) === playerGroup && state === ST_AIMING) {
+                ctx.strokeStyle = `rgba(255,255,255,${0.15 + 0.1 * Math.sin(frameCount * 0.08)})`;
+                ctx.lineWidth = 1.5;
                 ctx.beginPath();
-                ctx.arc(b.x - b.vx * 2, b.y - b.vy * 2, b.r * 0.5, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.arc(b.x, b.y, b.r + 3, 0, Math.PI * 2);
+                ctx.stroke();
             }
         }
     }
 
     function drawCueBall() {
-        drawCueBallAt(cueBall.x, cueBall.y, cueBall.r);
+        const cached = ballCanvasCache['cue'];
+        if (!cached || !cueBall) return;
+
+        const drawSize = cueBall.r * 2;
+        ctx.save();
+        ctx.translate(cueBall.x, cueBall.y);
+        ctx.drawImage(cached, -drawSize / 2 - 0.5, -drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
+        ctx.restore();
     }
 
     function drawCueBallAt(bx, by, r) {
         const cached = ballCanvasCache['cue'];
         if (!cached) return;
-
         const drawSize = r * 2;
         ctx.save();
         ctx.translate(bx, by);
         ctx.drawImage(cached, -drawSize / 2 - 0.5, -drawSize / 2 - 0.5, drawSize + 1, drawSize + 1);
-
-        // Mega glow
-        if (activePowerup === PW_MEGA) {
-            ctx.strokeStyle = `rgba(249,115,22,${0.5 + 0.3 * Math.sin(frameCount * 0.15)})`;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(0, 0, r + 3, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-
         ctx.restore();
     }
 
@@ -1528,16 +1569,67 @@ window.CentiBalls = (() => {
         ctx.beginPath();
         ctx.moveTo(cueBall.x, cueBall.y);
 
-        // Project line forward
-        const projLen = 200;
+        // Project and check for ball collision along the aim line
+        let hitBall = null;
+        let hitDist = Infinity;
+        const step = 2;
+        for (let s = CUE_R + 2; s < 400; s += step) {
+            const cx2 = cueBall.x + nx * s;
+            const cy2 = cueBall.y + ny * s;
+
+            // Check wall
+            if (cx2 < RAIL_W + CUE_R || cx2 > GAME_W - RAIL_W - CUE_R ||
+                cy2 < RAIL_W + CUE_R || cy2 > GAME_H - RAIL_W - CUE_R) {
+                hitDist = s;
+                break;
+            }
+
+            // Check ball collision
+            for (const b of balls) {
+                if (b.potted) continue;
+                if (dist(cx2, cy2, b.x, b.y) < CUE_R + b.r) {
+                    hitBall = b;
+                    hitDist = s;
+                    break;
+                }
+            }
+            if (hitBall || hitDist < Infinity) break;
+        }
+
+        const projLen = Math.min(hitDist, 400);
         const endX = cueBall.x + nx * projLen;
         const endY = cueBall.y + ny * projLen;
         ctx.lineTo(endX, endY);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Aim direction indicator (arrowhead)
-        const arrowDist = 40;
+        // Draw ghost ball and deflection preview if hitting a ball
+        if (hitBall) {
+            // Ghost ball position
+            const gbx = endX, gby = endY;
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(gbx, gby, CUE_R, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Deflection line showing where object ball would go
+            const toBallX = hitBall.x - gbx;
+            const toBallY = hitBall.y - gby;
+            const toBallD = Math.sqrt(toBallX * toBallX + toBallY * toBallY) || 1;
+            const deflX = toBallX / toBallD, deflY = toBallY / toBallD;
+
+            ctx.strokeStyle = 'rgba(255,200,100,0.35)';
+            ctx.setLineDash([3, 5]);
+            ctx.beginPath();
+            ctx.moveTo(hitBall.x, hitBall.y);
+            ctx.lineTo(hitBall.x + deflX * 60, hitBall.y + deflY * 60);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Aim direction indicator
+        const arrowDist = 30;
         const ax = cueBall.x + nx * arrowDist;
         const ay = cueBall.y + ny * arrowDist;
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -1570,7 +1662,6 @@ window.CentiBalls = (() => {
             const stickEndX = stickStartX - nx * 100;
             const stickEndY = stickStartY - ny * 100;
 
-            // Cue stick
             ctx.strokeStyle = '#C4956A';
             ctx.lineWidth = 4;
             ctx.beginPath();
@@ -1578,7 +1669,6 @@ window.CentiBalls = (() => {
             ctx.lineTo(stickEndX, stickEndY);
             ctx.stroke();
 
-            // Tip
             ctx.strokeStyle = '#E8DFD0';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -1588,302 +1678,37 @@ window.CentiBalls = (() => {
         }
     }
 
-    function drawExplosions() {
-        for (const e of explosions) {
-            const alpha = e.life / e.maxLife;
-            const grd = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r);
-            grd.addColorStop(0, `rgba(255,200,50,${alpha * 0.8})`);
-            grd.addColorStop(0.5, `rgba(255,100,20,${alpha * 0.5})`);
-            grd.addColorStop(1, `rgba(200,30,0,0)`);
-            ctx.fillStyle = grd;
-            ctx.beginPath();
-            ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
-            ctx.fill();
+    function drawBallInHandGuide() {
+        if (!cueBall) return;
+        // Pulsing ring around cue ball to show it can be placed
+        const pulse = 0.4 + 0.3 * Math.sin(frameCount * 0.1);
+        ctx.strokeStyle = `rgba(100,200,255,${pulse})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(cueBall.x, cueBall.y, CUE_R + 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-            // Fire sprites
-            if (sprites.fire0 && sprites.fire0.complete) {
-                const fireSprites = [sprites.fire0, sprites.fire1, sprites.fire2, sprites.fire3];
-                const fi = Math.floor((1 - e.life / e.maxLife) * fireSprites.length);
-                const fs = fireSprites[clamp(fi, 0, 3)];
-                if (fs && fs.complete) {
-                    ctx.globalAlpha = alpha;
-                    ctx.drawImage(fs, e.x - e.r * 0.6, e.y - e.r * 0.6, e.r * 1.2, e.r * 1.2);
-                    ctx.globalAlpha = 1;
-                }
-            }
-        }
-    }
-
-    function drawPowerups() {
-        for (const pu of powerups) {
-            const bob = Math.sin(pu.bobT) * 3;
-            const alpha = pu.life < 60 ? pu.life / 60 : 1;
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.translate(pu.x, pu.y + bob);
-
-            // Glow
-            ctx.fillStyle = PW_COLORS[pu.type] + '40';
-            ctx.beginPath();
-            ctx.arc(0, 0, pu.r + 5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Icon
-            const gemSprites = [sprites.gemRed, sprites.gemBlue, sprites.gemYellow, sprites.gemGreen];
-            const gs = gemSprites[pu.type];
-            if (gs && gs.complete) {
-                ctx.drawImage(gs, -pu.r, -pu.r, pu.r * 2, pu.r * 2);
-            } else {
-                ctx.fillStyle = PW_COLORS[pu.type];
-                ctx.beginPath();
-                ctx.arc(0, 0, pu.r, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            ctx.restore();
-        }
-    }
-
-    function drawParticles() {
-        for (const p of particles) {
-            const alpha = p.life / (p.maxLife || 40);
-            if (p.isDebris && p.sprite && sprites[p.sprite] && sprites[p.sprite].complete) {
-                ctx.globalAlpha = alpha;
-                ctx.drawImage(sprites[p.sprite], p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
-                ctx.globalAlpha = 1;
-            } else {
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = alpha;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r * alpha, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-            }
-        }
-    }
-
-    function drawScorePopups() {
-        for (const sp of scorePopups) {
-            const alpha = sp.life / 50;
-            ctx.globalAlpha = alpha;
-            ctx.fillStyle = sp.color;
-            ctx.font = `bold ${sp.text.includes('500') || sp.text.includes('1000') ? 18 : 14}px Arial, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(sp.text, sp.x, sp.y);
-            ctx.globalAlpha = 1;
-        }
-    }
-
-    function drawHUD() {
-        const pad = 6;
-        // Top bar background
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        roundRect(ctx, RAIL_W + 2, RAIL_W + 2, GAME_W - 2 * RAIL_W - 4, 22, 4);
-        ctx.fill();
-
-        ctx.font = 'bold 12px Arial, sans-serif';
-        ctx.textBaseline = 'middle';
-        const ty = RAIL_W + 13;
-
-        // Score
-        ctx.fillStyle = CLR_HUD;
-        ctx.textAlign = 'left';
-        ctx.fillText(`SCORE: ${score}`, RAIL_W + pad + 4, ty);
-
-        // Level
+        // Instruction text
+        ctx.fillStyle = 'rgba(100,200,255,0.8)';
+        ctx.font = '11px Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`LEVEL ${level}`, GAME_W / 2, ty);
-
-        // Lives (hearts)
-        ctx.textAlign = 'right';
-        const livesStr = '\u2764'.repeat(Math.max(lives, 0));
-        ctx.fillStyle = '#EF4444';
-        ctx.fillText(livesStr, GAME_W - RAIL_W - pad - 4, ty);
-
-        // Hi Score
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.font = '9px Arial, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText(`HI: ${highScore}`, GAME_W - RAIL_W - pad - 4, ty + 14);
-
-        // Active powerup indicator
-        if (activePowerup !== null) {
-            const ptLeft = RAIL_W + 4;
-            const ptTop = GAME_H - RAIL_W - 24;
-            ctx.fillStyle = PW_COLORS[activePowerup] + '80';
-            roundRect(ctx, ptLeft, ptTop, 80, 18, 4);
-            ctx.fill();
-            ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 10px Arial, sans-serif';
-            ctx.textAlign = 'left';
-            ctx.fillText(PW_NAMES[activePowerup] + ' ' + Math.ceil(powerupTimer / 1000) + 's', ptLeft + 6, ptTop + 10);
-        }
-
-        // Segments remaining
-        const remaining = chains.reduce((s, c) => s + c.segs.length, 0);
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.font = '9px Arial, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Segments: ${remaining}`, RAIL_W + pad + 4, ty + 14);
+        ctx.fillText('Click to place, then aim', cueBall.x, cueBall.y - CUE_R - 14);
     }
 
-    function drawTitleScreen() {
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(0, 0, GAME_W, GAME_H);
-
-        // Title
-        ctx.fillStyle = '#FBBF24';
-        ctx.font = 'bold 42px Arial, sans-serif';
+    function drawAIThinking() {
+        // Show dots animation while AI thinks
+        const dots = '.'.repeat(1 + Math.floor((frameCount / 15) % 4));
+        ctx.fillStyle = 'rgba(255,200,100,0.7)';
+        ctx.font = 'bold 14px Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('CENTIBALLS', GAME_W / 2, GAME_H * 0.25);
-
-        // Subtitle
-        ctx.fillStyle = '#94A3B8';
-        ctx.font = '16px Arial, sans-serif';
-        ctx.fillText('Centipede urgency + pool satisfaction', GAME_W / 2, GAME_H * 0.33);
-
-        // Decorative balls
-        const demoNums = [1, 3, 5, 8, 11, 14];
-        for (let i = 0; i < demoNums.length; i++) {
-            const angle = frameCount * 0.01 + (i / demoNums.length) * Math.PI * 2;
-            const bx = GAME_W / 2 + Math.cos(angle) * 80;
-            const by = GAME_H * 0.48 + Math.sin(angle) * 30;
-            drawBilliardBall(bx, by, 14, demoNums[i], false);
-        }
-
-        // Instructions
-        ctx.fillStyle = '#E0E7FF';
-        ctx.font = '13px Arial, sans-serif';
-        const instructions = [
-            'The chain descends \u2014 stop it before it reaches you!',
-            'Shoot the cue ball to break segments loose',
-            'Pot freed balls into pockets for bonus points',
-            'Mushrooms deflect balls AND turn the chain',
-            '',
-            'Click/drag to aim \u2014 release to shoot',
-            'Arrow keys or WASD to fine-tune aim'
-        ];
-        instructions.forEach((line, i) => {
-            ctx.fillText(line, GAME_W / 2, GAME_H * 0.62 + i * 20);
-        });
-
-        // Start prompt
-        const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.06);
-        ctx.fillStyle = `rgba(251,191,36,${pulse})`;
-        ctx.font = 'bold 18px Arial, sans-serif';
-        ctx.fillText('CLICK TO START', GAME_W / 2, GAME_H * 0.88);
-    }
-
-    function drawLevelClear() {
-        const alpha = clamp(1 - levelClearTimer / 180, 0, 1);
-        ctx.fillStyle = `rgba(0,0,0,${alpha * 0.5})`;
-        ctx.fillRect(0, 0, GAME_W, GAME_H);
-
-        ctx.fillStyle = '#22C55E';
-        ctx.font = 'bold 36px Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.globalAlpha = alpha;
-        ctx.fillText('LEVEL CLEAR!', GAME_W / 2, GAME_H * 0.4);
-
-        ctx.fillStyle = '#FBBF24';
-        ctx.font = '20px Arial, sans-serif';
-        ctx.fillText(`+${500 + level * 200} BONUS`, GAME_W / 2, GAME_H * 0.5);
-
-        ctx.globalAlpha = 1;
-    }
-
-    function drawGameOver() {
-        ctx.fillStyle = 'rgba(0,0,0,0.75)';
-        ctx.fillRect(0, 0, GAME_W, GAME_H);
-
-        ctx.fillStyle = '#EF4444';
-        ctx.font = 'bold 40px Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('GAME OVER', GAME_W / 2, GAME_H * 0.3);
-
-        ctx.fillStyle = '#E0E7FF';
-        ctx.font = '20px Arial, sans-serif';
-        ctx.fillText(`Score: ${score}`, GAME_W / 2, GAME_H * 0.4);
-        ctx.fillText(`Level: ${level}`, GAME_W / 2, GAME_H * 0.47);
-        ctx.fillText(`Shots Fired: ${shotsFired}`, GAME_W / 2, GAME_H * 0.54);
-
-        // Accuracy stat
-        if (shotsFired > 0) {
-            const acc = Math.round((segmentsCleared / Math.max(shotsFired, 1)) * 100);
-            ctx.fillStyle = '#94A3B8';
-            ctx.font = '14px Arial, sans-serif';
-            ctx.fillText(`Accuracy: ${acc}% segments/shot`, GAME_W / 2, GAME_H * 0.60);
-        }
-
-        if (score >= highScore && score > 0) {
-            ctx.fillStyle = '#FBBF24';
-            ctx.font = 'bold 16px Arial, sans-serif';
-            const shimmer = 0.7 + 0.3 * Math.sin(frameCount * 0.1);
-            ctx.globalAlpha = shimmer;
-            ctx.fillText('NEW HIGH SCORE!', GAME_W / 2, GAME_H * 0.67);
-            ctx.globalAlpha = 1;
-        }
-
-        const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.06);
-        ctx.fillStyle = `rgba(251,191,36,${pulse})`;
-        ctx.font = 'bold 18px Arial, sans-serif';
-        ctx.fillText('CLICK TO RESTART', GAME_W / 2, GAME_H * 0.80);
-    }
-
-    // Level names for flavor text
-    const LEVEL_NAMES = [
-        '', 'The Break', 'Corner Pocket', 'Mushroom Mayhem',
-        'Double Trouble', 'Chain Lightning', 'Full Rack',
-        'Bumper Frenzy', 'Split Decision', 'Eight Ball',
-        'The Final Table'
-    ];
-
-    function drawComboText() {
-        if (comboCount > 1 && (state === ST_SHOOTING || state === ST_RESOLVING)) {
-            const alpha = Math.min(1, comboCount * 0.3);
-            const size = 24 + comboCount * 4;
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.fillStyle = comboCount >= 4 ? '#EF4444' : comboCount >= 3 ? '#F97316' : '#FBBF24';
-            ctx.font = `bold ${clamp(size, 24, 48)}px Arial, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const bounce = Math.sin(frameCount * 0.15) * 5;
-            ctx.fillText(`${comboCount}x COMBO!`, GAME_W / 2, GAME_H * 0.2 + bounce);
-            ctx.globalAlpha = 1;
-            ctx.restore();
-        }
-    }
-
-    function drawLevelIntro() {
-        // Brief level name flash during first frames of aiming
-        if (state === ST_AIMING && frameCount < 120) {
-            const alpha = clamp(1 - frameCount / 120, 0, 1);
-            ctx.save();
-            ctx.globalAlpha = alpha * 0.8;
-            ctx.fillStyle = '#FBBF24';
-            ctx.font = 'bold 28px Arial, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(`Level ${level}`, GAME_W / 2, GAME_H * 0.4);
-            if (LEVEL_NAMES[level]) {
-                ctx.fillStyle = '#E0E7FF';
-                ctx.font = '16px Arial, sans-serif';
-                ctx.fillText(LEVEL_NAMES[level], GAME_W / 2, GAME_H * 0.46);
-            }
-            ctx.globalAlpha = 1;
-            ctx.restore();
-        }
+        ctx.fillText('AI thinking' + dots, GAME_W / 2, GAME_H - RAIL_W - 40);
     }
 
     function drawBallTrails() {
-        // Draw motion trails for fast-moving balls
-        const allBalls = [...freeBalls];
-        if (cueBall && !cueScratch) allBalls.push(cueBall);
+        const allBalls = [...balls.filter(b => !b.potted)];
+        if (cueBall && !cuePotted) allBalls.push(cueBall);
         for (const b of allBalls) {
             const spd = ballSpeed(b);
             if (spd > 3) {
@@ -1903,29 +1728,8 @@ window.CentiBalls = (() => {
         }
     }
 
-    // Pocket swallow animations (balls spiraling into pocket)
-    let pocketAnims = [];
-    function addPocketAnim(x, y, num, isCue) {
-        pocketAnims.push({
-            x, y, num, isCue,
-            r: isCue ? CUE_R : BALL_R,
-            angle: 0, shrink: 1,
-            life: 25, maxLife: 25
-        });
-    }
-
-    function updatePocketAnims() {
-        for (let i = pocketAnims.length - 1; i >= 0; i--) {
-            const pa = pocketAnims[i];
-            pa.life--;
-            pa.angle += 0.4;
-            pa.shrink = pa.life / pa.maxLife;
-            if (pa.life <= 0) pocketAnims.splice(i, 1);
-        }
-    }
-
     function drawPocketAnims() {
-        for (const pa of pocketAnims) {
+        for (const pa of pocketAnimsList) {
             const ox = Math.cos(pa.angle) * POCKET_R * 0.3 * pa.shrink;
             const oy = Math.sin(pa.angle) * POCKET_R * 0.3 * pa.shrink;
             const drawR = pa.r * pa.shrink;
@@ -1934,31 +1738,272 @@ window.CentiBalls = (() => {
             if (pa.isCue) {
                 drawCueBallAt(pa.x + ox, pa.y + oy, drawR);
             } else {
-                drawBilliardBall(pa.x + ox, pa.y + oy, drawR, pa.num, false);
+                drawBilliardBall(pa.x + ox, pa.y + oy, drawR, pa.num);
             }
             ctx.globalAlpha = 1;
         }
     }
 
-    function drawFeltLines() {
-        // Subtle diamond/guide markings on felt (like a real table)
-        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-        ctx.lineWidth = 0.5;
-        // Headstring line
-        const headY = GAME_H - RAIL_W - 120;
-        ctx.beginPath();
-        ctx.moveTo(RAIL_W + 10, headY);
-        ctx.lineTo(GAME_W - RAIL_W - 10, headY);
-        ctx.stroke();
-        // Center spot
-        ctx.fillStyle = 'rgba(255,255,255,0.05)';
-        ctx.beginPath();
-        ctx.arc(GAME_W / 2, GAME_H / 2, 3, 0, Math.PI * 2);
+    function drawParticles() {
+        for (const p of particles) {
+            const alpha = p.life / (p.maxLife || 40);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = alpha;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * alpha, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function drawScorePopups() {
+        for (const sp of scorePopups) {
+            const alpha = sp.life / 50;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = sp.color;
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(sp.text, sp.x, sp.y);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function drawHUD() {
+        const pad = 6;
+        // Top bar background
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        roundRect(ctx, RAIL_W + 2, RAIL_W + 2, GAME_W - 2 * RAIL_W - 4, 26, 4);
         ctx.fill();
-        // Foot spot
-        ctx.beginPath();
-        ctx.arc(GAME_W / 2, RAIL_W + 120, 3, 0, Math.PI * 2);
+
+        ctx.font = 'bold 11px Arial, sans-serif';
+        ctx.textBaseline = 'middle';
+        const ty = RAIL_W + 15;
+
+        // Turn indicator
+        const isPlayerTurn = currentTurn === TURN_PLAYER;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = isPlayerTurn ? '#3B82F6' : '#F97316';
+        const turnLabel = isPlayerTurn ? '\u25B6 PLAYER' : '\u25B6 AI';
+        ctx.fillText(turnLabel, RAIL_W + pad + 4, ty);
+
+        // Group indicator
+        ctx.textAlign = 'center';
+        if (playerGroup === GRP_NONE) {
+            ctx.fillStyle = '#94A3B8';
+            ctx.fillText('OPEN TABLE', GAME_W / 2, ty);
+        } else {
+            const pLabel = playerGroup === GRP_SOLIDS ? 'SOLIDS' : 'STRIPES';
+            const aLabel = aiGroup === GRP_SOLIDS ? 'SOLIDS' : 'STRIPES';
+            ctx.fillStyle = '#3B82F6';
+            ctx.font = 'bold 10px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('You: ' + pLabel, GAME_W / 2 - 50, ty);
+            ctx.fillStyle = '#F97316';
+            ctx.fillText('AI: ' + aLabel, GAME_W / 2 + 50, ty);
+        }
+
+        // Score
+        ctx.textAlign = 'right';
+        ctx.fillStyle = CLR_HUD;
+        ctx.font = 'bold 11px Arial, sans-serif';
+        ctx.fillText(`SCORE: ${score}`, GAME_W - RAIL_W - pad - 4, ty);
+    }
+
+    function drawPottedBallsTracker() {
+        // Bottom bar showing remaining balls for each side
+        if (playerGroup === GRP_NONE && !isBreakShot) return;
+        if (state === ST_TITLE) return;
+
+        countBalls();
+
+        const barY = GAME_H - RAIL_W - 28;
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        roundRect(ctx, RAIL_W + 2, barY - 2, GAME_W - 2 * RAIL_W - 4, 24, 4);
         ctx.fill();
+
+        const miniR = 6;
+        const spacing = 16;
+
+        // Player's balls (left side)
+        const playerNums = playerGroup === GRP_SOLIDS ? [1,2,3,4,5,6,7] :
+                           playerGroup === GRP_STRIPES ? [9,10,11,12,13,14,15] : [];
+        let px = RAIL_W + 14;
+        ctx.fillStyle = '#3B82F6';
+        ctx.font = 'bold 8px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        if (playerNums.length > 0) {
+            ctx.fillText('YOU', px, barY + 4);
+            px += 24;
+        }
+
+        for (const num of playerNums) {
+            const potted = balls.find(b => b.num === num && b.potted);
+            if (potted) {
+                // Dimmed / crossed out
+                ctx.globalAlpha = 0.25;
+            }
+            const cached = ballCanvasCache[num];
+            if (cached) {
+                ctx.drawImage(cached, px - miniR, barY + 2, miniR * 2, miniR * 2);
+            }
+            ctx.globalAlpha = 1;
+            px += spacing;
+        }
+
+        // 8-ball in center
+        const eightPotted = balls.find(b => b.num === 8 && b.potted);
+        const eightX = GAME_W / 2;
+        if (!eightPotted) {
+            const cached = ballCanvasCache[8];
+            if (cached) {
+                ctx.drawImage(cached, eightX - miniR, barY + 2, miniR * 2, miniR * 2);
+            }
+        }
+
+        // AI's balls (right side)
+        const aiNums = aiGroup === GRP_SOLIDS ? [1,2,3,4,5,6,7] :
+                       aiGroup === GRP_STRIPES ? [9,10,11,12,13,14,15] : [];
+        let ax = GAME_W - RAIL_W - 14 - aiNums.length * spacing - 20;
+        ctx.fillStyle = '#F97316';
+        ctx.font = 'bold 8px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        if (aiNums.length > 0) {
+            ctx.fillText('AI', ax, barY + 4);
+            ax += 16;
+        }
+
+        for (const num of aiNums) {
+            const potted = balls.find(b => b.num === num && b.potted);
+            if (potted) ctx.globalAlpha = 0.25;
+            const cached = ballCanvasCache[num];
+            if (cached) {
+                ctx.drawImage(cached, ax - miniR, barY + 2, miniR * 2, miniR * 2);
+            }
+            ctx.globalAlpha = 1;
+            ax += spacing;
+        }
+    }
+
+    function drawTurnMessage() {
+        if (turnMessageTimer <= 0 || !turnMessage) return;
+        const alpha = clamp(turnMessageTimer / 30, 0, 1);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Background pill
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        const w = ctx.measureText ? 240 : 240;
+        roundRect(ctx, GAME_W / 2 - 120, GAME_H / 2 - 18, 240, 36, 8);
+        ctx.fill();
+
+        ctx.fillStyle = '#FFF';
+        ctx.font = 'bold 16px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(turnMessage, GAME_W / 2, GAME_H / 2);
+
+        ctx.restore();
+    }
+
+    function drawTitleScreen() {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+        ctx.fillStyle = '#FBBF24';
+        ctx.font = 'bold 42px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('8-BALL POOL', GAME_W / 2, GAME_H * 0.2);
+
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '15px Arial, sans-serif';
+        ctx.fillText('CentiBalls', GAME_W / 2, GAME_H * 0.27);
+
+        // Decorative balls
+        const demoNums = [1, 3, 5, 8, 11, 14];
+        for (let i = 0; i < demoNums.length; i++) {
+            const angle = frameCount * 0.01 + (i / demoNums.length) * Math.PI * 2;
+            const bx = GAME_W / 2 + Math.cos(angle) * 80;
+            const by = GAME_H * 0.40 + Math.sin(angle) * 25;
+            drawBilliardBall(bx, by, 14, demoNums[i]);
+        }
+
+        ctx.fillStyle = '#E0E7FF';
+        ctx.font = '13px Arial, sans-serif';
+        const instructions = [
+            'Drag from the cue ball to aim and set power',
+            'Pot all your balls (solids or stripes)',
+            'Then sink the 8-ball to win!',
+            '',
+            'Scratching gives opponent ball-in-hand',
+            'Potting 8-ball early = you lose',
+        ];
+        instructions.forEach((line, i) => {
+            ctx.fillText(line, GAME_W / 2, GAME_H * 0.55 + i * 20);
+        });
+
+        const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.06);
+        ctx.fillStyle = `rgba(251,191,36,${pulse})`;
+        ctx.font = 'bold 18px Arial, sans-serif';
+        ctx.fillText('CLICK TO BREAK', GAME_W / 2, GAME_H * 0.88);
+    }
+
+    function drawWinScreen() {
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+        ctx.fillStyle = '#22C55E';
+        ctx.font = 'bold 44px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('YOU WIN!', GAME_W / 2, GAME_H * 0.3);
+
+        ctx.fillStyle = '#E0E7FF';
+        ctx.font = '20px Arial, sans-serif';
+        ctx.fillText(`Score: ${score}`, GAME_W / 2, GAME_H * 0.42);
+
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '14px Arial, sans-serif';
+        ctx.fillText(`Shots taken: ${shotsFired}`, GAME_W / 2, GAME_H * 0.50);
+
+        if (score >= highScore && score > 0) {
+            ctx.fillStyle = '#FBBF24';
+            ctx.font = 'bold 16px Arial, sans-serif';
+            const shimmer = 0.7 + 0.3 * Math.sin(frameCount * 0.1);
+            ctx.globalAlpha = shimmer;
+            ctx.fillText('NEW HIGH SCORE!', GAME_W / 2, GAME_H * 0.60);
+            ctx.globalAlpha = 1;
+        }
+
+        const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.06);
+        ctx.fillStyle = `rgba(251,191,36,${pulse})`;
+        ctx.font = 'bold 18px Arial, sans-serif';
+        ctx.fillText('CLICK TO PLAY AGAIN', GAME_W / 2, GAME_H * 0.78);
+    }
+
+    function drawLoseScreen() {
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+        ctx.fillStyle = '#EF4444';
+        ctx.font = 'bold 44px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('YOU LOSE', GAME_W / 2, GAME_H * 0.3);
+
+        ctx.fillStyle = '#E0E7FF';
+        ctx.font = '18px Arial, sans-serif';
+        ctx.fillText(turnMessage || '', GAME_W / 2, GAME_H * 0.42);
+
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '14px Arial, sans-serif';
+        ctx.fillText(`Score: ${score}  |  Shots: ${shotsFired}`, GAME_W / 2, GAME_H * 0.52);
+
+        const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.06);
+        ctx.fillStyle = `rgba(251,191,36,${pulse})`;
+        ctx.font = 'bold 18px Arial, sans-serif';
+        ctx.fillText('CLICK TO PLAY AGAIN', GAME_W / 2, GAME_H * 0.78);
     }
 
     // ═══════════════════════════════════════════
@@ -1969,8 +2014,24 @@ window.CentiBalls = (() => {
         const dt = Math.min((ts - (lastTime || ts)) / 1000, 0.05);
         lastTime = ts;
 
-        if (state !== ST_TITLE && state !== ST_GAMEOVER) {
+        if (state !== ST_TITLE && state !== ST_GAME_WON && state !== ST_GAME_LOST) {
             update(dt);
+        } else {
+            // Still update visual effects on end screens
+            frameCount++;
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.vx *= 0.96; p.vy *= 0.96;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+            for (let i = scorePopups.length - 1; i >= 0; i--) {
+                scorePopups[i].y += scorePopups[i].vy;
+                scorePopups[i].life--;
+                if (scorePopups[i].life <= 0) scorePopups.splice(i, 1);
+            }
+            updatePocketAnims();
         }
         draw();
 
@@ -1984,9 +2045,9 @@ window.CentiBalls = (() => {
         const rect = canvas.getBoundingClientRect();
         const sx = GAME_W / rect.width;
         const sy = GAME_H / rect.height;
-        const cx = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-        const cy = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
-        return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy };
+        const cx2 = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const cy2 = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        return { x: (cx2 - rect.left) * sx, y: (cy2 - rect.top) * sy };
     }
 
     function onMouseDown(e) {
@@ -1996,17 +2057,20 @@ window.CentiBalls = (() => {
         mouseX = pos.x; mouseY = pos.y;
 
         if (state === ST_TITLE) {
-            score = 0; level = 1; lives = 3; shotsFired = 0;
-            startLevel();
+            startGame();
             return;
         }
-        if (state === ST_GAMEOVER) {
-            if (gameOverCB) gameOverCB(score);
-            score = 0; level = 1; lives = 3; shotsFired = 0;
-            startLevel();
+        if (state === ST_GAME_WON || state === ST_GAME_LOST) {
+            startGame();
             return;
         }
-        if (state === ST_AIMING && cueBall) {
+        if (state === ST_BALL_IN_HAND && currentTurn === TURN_PLAYER) {
+            // Place the cue ball, then switch to aiming
+            state = ST_AIMING;
+            ballInHandRestricted = false;
+            return;
+        }
+        if (state === ST_AIMING && cueBall && currentTurn === TURN_PLAYER) {
             isAiming = true;
             aimStartX = pos.x;
             aimStartY = pos.y;
@@ -2019,7 +2083,7 @@ window.CentiBalls = (() => {
     }
 
     function onMouseUp(e) {
-        if (!isAiming || state !== ST_AIMING || !cueBall) {
+        if (!isAiming || state !== ST_AIMING || !cueBall || currentTurn !== TURN_PLAYER) {
             isAiming = false;
             return;
         }
@@ -2030,7 +2094,7 @@ window.CentiBalls = (() => {
         const pullDist = Math.sqrt(dx * dx + dy * dy);
         if (pullDist < 10) return; // too small, ignore
 
-        const power = clamp(pullDist / 30, MIN_SHOT_POWER / MAX_SHOT_POWER, 1) * MAX_SHOT_POWER;
+        const power = clamp(pullDist / 25, MIN_SHOT_POWER / MAX_SHOT_POWER, 1) * MAX_SHOT_POWER;
         shoot(dx, dy, power);
     }
 
@@ -2044,7 +2108,6 @@ window.CentiBalls = (() => {
     }
     function onTouchEnd(e) {
         e.preventDefault();
-        // Use changedTouches for the end position
         const touch = e.changedTouches ? e.changedTouches[0] : e;
         onMouseUp(touch);
     }
@@ -2054,17 +2117,16 @@ window.CentiBalls = (() => {
         if (e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
             if (state === ST_TITLE) {
-                score = 0; level = 1; lives = 3; shotsFired = 0;
-                startLevel();
-            } else if (state === ST_GAMEOVER) {
-                if (gameOverCB) gameOverCB(score);
-                score = 0; level = 1; lives = 3; shotsFired = 0;
-                startLevel();
-            } else if (state === ST_AIMING && cueBall) {
-                // Shoot in aim direction with medium power
+                startGame();
+            } else if (state === ST_GAME_WON || state === ST_GAME_LOST) {
+                startGame();
+            } else if (state === ST_BALL_IN_HAND && currentTurn === TURN_PLAYER) {
+                state = ST_AIMING;
+                ballInHandRestricted = false;
+            } else if (state === ST_AIMING && cueBall && currentTurn === TURN_PLAYER) {
                 const dx = cueBall.x - mouseX;
                 const dy = cueBall.y - mouseY;
-                shoot(dx, dy, MAX_SHOT_POWER * 0.6);
+                shoot(dx, dy, MAX_SHOT_POWER * 0.5);
             }
         }
     }
@@ -2105,38 +2167,33 @@ window.CentiBalls = (() => {
         lastTime = 0;
         state = ST_TITLE;
         score = 0;
-        level = 1;
-        lives = 3;
         shotsFired = 0;
         frameCount = 0;
         screenShake = 0;
-        comboCount = 0;
-        activePowerup = null;
-        powerupTimer = 0;
-        chains = [];
-        freeBalls = [];
-        mushrooms = [];
+        balls = [];
         particles = [];
         scorePopups = [];
-        powerups = [];
-        explosions = [];
         pockets = [];
+        pocketAnimsList = [];
         cueBall = null;
-        cueScratch = false;
+        cuePotted = false;
         isAiming = false;
         keys_pressed = {};
+        currentTurn = TURN_PLAYER;
+        playerGroup = GRP_NONE;
+        aiGroup = GRP_NONE;
+        isBreakShot = true;
+        turnMessage = '';
+        turnMessageTimer = 0;
+        gameResult = null;
 
         playerColor = (player && player.color) || '#3B82F6';
-
-        // Theme integration
         const _t = (window.ThemeEngine && ThemeEngine.getCurrentTheme) ? ThemeEngine.getCurrentTheme() : null;
         if (_t && _t.colors && _t.colors.length >= 4) {
             playerColor = _t.colors[0] || playerColor;
         }
 
         loadSprites();
-
-        // Pre-render hi-res ball sprites
         prebuildBallCanvases();
 
         DPR = Math.min(window.devicePixelRatio || 1, 3);
@@ -2175,13 +2232,10 @@ window.CentiBalls = (() => {
         document.removeEventListener('keyup', onKeyUp);
         window.removeEventListener('resize', fitCanvas);
         keys_pressed = {};
-        chains = [];
-        freeBalls = [];
+        balls = [];
         particles = [];
         scorePopups = [];
-        powerups = [];
-        explosions = [];
-        pocketAnims = [];
+        pocketAnimsList = [];
     }
 
     return { init, destroy };
