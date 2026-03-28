@@ -543,6 +543,10 @@ window.MollyPop = (() => {
 
         // ── Background ──
         drawBackground(w, h);
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
 
         ctx.save();
         // Screen shake (oscillating with decay for smoother feel)
@@ -672,8 +676,6 @@ window.MollyPop = (() => {
             // Soft glow halo behind larger stars
             if (star.size > 1.2) {
                 const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, star.size * 4);
-                glow.addColorStop(0, star.color.replace(')', `,${alpha * 0.3})`).replace('rgb', 'rgba').replace('#', ''));
-                glow.addColorStop(1, 'rgba(0,0,0,0)');
                 // Approximate glow with semi-transparent circle
                 ctx.globalAlpha = alpha * 0.25;
                 ctx.fillStyle = star.color;
@@ -1366,19 +1368,20 @@ window.MollyPop = (() => {
 
     // ── Canvas sizing ──
     function fitCanvas() {
-        if (!canvas || !canvas.parentElement) return;
-        const parent = canvas.parentElement;
-        const pw = Math.max(320, parent.clientWidth || 480);
-        const ph = Math.max(400, parent.clientHeight || 640);
-        canvas.width = pw;
-        canvas.height = ph;
+        if (!canvas) return;
+        // Use current canvas size (set by app.js) or fall back to parent
+        const pw = canvas.width || (canvas.parentElement ? Math.max(320, canvas.parentElement.clientWidth || 480) : 480);
+        const ph = canvas.height || (canvas.parentElement ? Math.max(400, canvas.parentElement.clientHeight || 640) : 640);
+        if (canvas.width !== pw) canvas.width = pw;
+        if (canvas.height !== ph) canvas.height = ph;
         const hudSpace = 60;
         const availH = canvas.height - hudSpace - 20;
         const availW = canvas.width - 20;
         blockSize = Math.floor(Math.min(availW / COLS, availH / ROWS));
         gridOffsetX = Math.round((canvas.width - blockSize * COLS) / 2);
         gridOffsetY = hudSpace;
-        buildEmojiCache(blockSize);
+        if (blockSize > 0) buildEmojiCache(blockSize);
+        if (grid.length > 0) updatePositions();
     }
 
     // ── Public API ──
