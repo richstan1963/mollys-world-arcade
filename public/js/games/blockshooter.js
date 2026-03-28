@@ -63,9 +63,7 @@ window.BlockShooter = (() => {
             '/img/game-assets/kenney-tiles/tileOrange_01.png',
         ],
         balls: [
-            '/img/game-assets/kenney-balls/ballRed_01.png',
             '/img/game-assets/kenney-balls/ballBlue_01.png',
-            '/img/game-assets/kenney-balls/ballGreen_01.png',
             '/img/game-assets/kenney-balls/ballYellow_01.png',
         ],
         bomb: '/img/game-assets/match3-candy/PNG/ico/12.png',
