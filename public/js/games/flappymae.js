@@ -1900,7 +1900,6 @@ window.FlappyMae = (() => {
         }
         update();
         render();
-        __loadSprites(null);
         animFrame = requestAnimationFrame(loop);
     }
 
@@ -1974,6 +1973,7 @@ window.FlappyMae = (() => {
         screenClearTimer = 0;
         pipesSpawnedTotal = 0;
 
+        __loadSprites(null);
         initClouds();
         initHills();
         fitCanvas();

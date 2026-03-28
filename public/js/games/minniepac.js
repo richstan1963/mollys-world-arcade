@@ -1864,7 +1864,6 @@ window.MinniePac = (() => {
 
     function render() {
         if (!canvas || !ctx) return;
-        __loadSprites(null);
         animFrame = requestAnimationFrame(render);
         // Loading screen
         if (!__allSpritesReady) {
@@ -2016,6 +2015,7 @@ window.MinniePac = (() => {
         WALL_COLOR = '#E91E8C';
         CANDY_COLORS = ['#FF69B4','#FF85C8','#FFB6D9','#FF4DA6','#FF1493','#FF6EB4'];
 
+        __loadSprites(null);
         // Canvas sizing
         fitCanvas();
         requestAnimationFrame(() => { fitCanvas(); requestAnimationFrame(fitCanvas); });
