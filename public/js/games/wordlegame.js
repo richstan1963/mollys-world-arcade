@@ -168,7 +168,7 @@ window.WordleGame = (() => {
     let SCALE = 1;
 
     // Theme colors
-    let BG_GRAD = ['#0A0A1A', '#1A0A2E'];
+    let BG_GRAD = ['#12122A', '#251440'];
     let THEME_COLORS = ['#22C55E', '#EAB308', '#6B7280', '#3B82F6', '#F43F5E'];
     let TILE_BG = '#374151';
     let TILE_BORDER = '#4B5563';

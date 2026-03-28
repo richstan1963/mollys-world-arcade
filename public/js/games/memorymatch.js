@@ -90,7 +90,7 @@ window.MemoryMatch = (() => {
     function drawLoadingScreen() {
         if (!canvas || !ctx) return;
         const cW = canvas.width / (window.devicePixelRatio || 1), cH = canvas.height / (window.devicePixelRatio || 1);
-        ctx.fillStyle = '#0A0A1A';
+        ctx.fillStyle = '#12122A';
         ctx.fillRect(0, 0, cW, cH);
         ctx.fillStyle = '#E040FB';
         ctx.font = 'bold 28px "Segoe UI", system-ui, sans-serif';
@@ -182,7 +182,7 @@ window.MemoryMatch = (() => {
 
     // Theme
     let theme = null;
-    let BG_GRAD = ['#0A0A1A', '#1A0A2E'];
+    let BG_GRAD = ['#12122A', '#251440'];
     let ACCENT = '#E040FB';
     let CARD_BACK_COLOR = '#1E1E3F';
     let CARD_BACK_PATTERN_COLOR = 'rgba(255,255,255,0.06)';
@@ -1416,11 +1416,11 @@ window.MemoryMatch = (() => {
         theme = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(themeId) : null;
         if (theme) {
             const c = theme.colors || {};
-            BG_GRAD = [c.bgDark || '#0A0A1A', c.bgLight || '#1A0A2E'];
+            BG_GRAD = [c.bgDark || '#12122A', c.bgLight || '#251440'];
             ACCENT = c.accent || c.primary || '#E040FB';
             CARD_BACK_COLOR = c.cardBg || '#1E1E3F';
         } else {
-            BG_GRAD = ['#0A0A1A', '#1A0A2E'];
+            BG_GRAD = ['#12122A', '#251440'];
             ACCENT = '#E040FB';
             CARD_BACK_COLOR = '#1E1E3F';
         }

@@ -9,7 +9,7 @@ window.MollyPop = (() => {
     // ── Theme-driven block config (set in init) ──
     let theme = null;        // ArcadeThemes theme object
     let BLOCK_COLORS = [];   // [{hex, light, dark, emoji}] built from theme
-    let BG_GRAD = ['#0A0015', '#050010']; // background gradient from theme
+    let BG_GRAD = ['#12082A', '#0D0820']; // background gradient from theme
     const CANDIES = [];          // Sprite-based candy rendering removed — using emoji blocks
     const SPRITE_BASE = '/images/candy/pack1-candy-pack/yaycandies/size2/';
     const EXPLOSION_COLORS = ['red', 'blue', 'green', 'pink'];
@@ -178,7 +178,7 @@ window.MollyPop = (() => {
                 { hex: '#06B6D4', light: '#67E8F9', dark: '#0891B2', emoji: '🟢' },
                 { hex: '#EC4899', light: '#F9A8D4', dark: '#BE185D', emoji: '🔴' },
             ];
-            BG_GRAD = ['#0A0A1A', '#1A0A2E'];
+            BG_GRAD = ['#12122A', '#251440'];
             return;
         }
         const colors = theme.colors || [];
@@ -194,7 +194,7 @@ window.MollyPop = (() => {
                 emoji: emojis[i % emojis.length],
             });
         }
-        BG_GRAD = theme.bgGradient || ['#0A0015', '#050010'];
+        BG_GRAD = theme.bgGradient || ['#12082A', '#0D0820'];
     }
 
     // Color helpers delegated to shared ArcadeThemes (lighten/darken removed — use ArcadeThemes.lighten/darken)
@@ -650,9 +650,9 @@ window.MollyPop = (() => {
 
         // Deep gradient from theme with subtle animated color shift
         const bg = ctx.createLinearGradient(0, 0, w * 0.3, h);
-        bg.addColorStop(0, BG_GRAD[0] || '#0A0015');
-        bg.addColorStop(0.5, BG_GRAD[1] || '#050010');
-        bg.addColorStop(1, BG_GRAD[0] || '#0A0015');
+        bg.addColorStop(0, BG_GRAD[0] || '#12082A');
+        bg.addColorStop(0.5, BG_GRAD[1] || '#0D0820');
+        bg.addColorStop(1, BG_GRAD[0] || '#12082A');
         ctx.fillStyle = bg;
         ctx.fillRect(0, 0, w, h);
 

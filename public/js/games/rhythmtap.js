@@ -57,7 +57,7 @@ window.RhythmTap = (() => {
 
     // Theme
     let theme = null;
-    let BG_GRAD = ['#0A001A', '#050010'];
+    let BG_GRAD = ['#12082A', '#0D0820'];
     let ACCENT = '#FF2D87';
 
     // ── Audio ──
@@ -355,10 +355,10 @@ window.RhythmTap = (() => {
         theme = (typeof ArcadeThemes !== 'undefined') ? ArcadeThemes.get(themeId) : null;
         if (theme) {
             const c = theme.colors || {};
-            BG_GRAD = [c.bgDark || '#0A001A', c.bgLight || '#050010'];
+            BG_GRAD = [c.bgDark || '#12082A', c.bgLight || '#0D0820'];
             ACCENT = c.accent || c.primary || '#FF2D87';
         } else {
-            BG_GRAD = ['#0A001A', '#050010'];
+            BG_GRAD = ['#12082A', '#0D0820'];
             ACCENT = '#FF2D87';
         }
     }

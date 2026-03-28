@@ -78,7 +78,7 @@ window.TicTacMae = (() => {
     let STICK_COLORS = ['#F43F5E', '#EC4899']; // X piece colors
     let LOLLI_COLORS = ['#06B6D4', '#3B82F6', '#10B981']; // O piece colors
     let BOARD_COLOR = '#8B5CF6'; // Grid lines
-    let BG_GRAD = ['#0A0A1A', '#1A0A2E']; // Background gradient
+    let BG_GRAD = ['#12122A', '#251440']; // Background gradient
     let THEME_EMOJI = ['🎮', '🎯', '🧩', '🎲', '🎪', '🎨', '🎭']; // Piece emoji
     let THEME_ICON = '🎮'; // Scoreboard icon
 
@@ -171,8 +171,8 @@ window.TicTacMae = (() => {
     function drawBg(w, h) {
         // Deep atmospheric gradient background
         const grad = ctx.createRadialGradient(w/2, h * 0.4, 0, w/2, h/2, Math.max(w, h) * 0.85);
-        grad.addColorStop(0, BG_GRAD[1] || '#1A0A2E');
-        grad.addColorStop(0.6, BG_GRAD[0] || '#0A0A1A');
+        grad.addColorStop(0, BG_GRAD[1] || '#251440');
+        grad.addColorStop(0.6, BG_GRAD[0] || '#12122A');
         grad.addColorStop(1, '#000005');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
@@ -208,8 +208,8 @@ window.TicTacMae = (() => {
         // Vignette overlay
         const vigOuter = ctx.createRadialGradient(w/2, h/2, Math.min(w,h) * 0.25, w/2, h/2, Math.max(w,h) * 0.7);
         vigOuter.addColorStop(0, 'rgba(0,0,0,0)');
-        vigOuter.addColorStop(0.7, 'rgba(0,0,0,0.15)');
-        vigOuter.addColorStop(1, 'rgba(0,0,0,0.5)');
+        vigOuter.addColorStop(0.7, 'rgba(0,0,0,0.08)');
+        vigOuter.addColorStop(1, 'rgba(0,0,0,0.25)');
         ctx.fillStyle = vigOuter;
         ctx.fillRect(0, 0, w, h);
     }
@@ -1170,7 +1170,7 @@ window.TicTacMae = (() => {
         // Dark overlay with gradient
         ctx.globalAlpha = alpha * 0.8;
         const overlayGrad = ctx.createRadialGradient(w/2, h*0.45, 0, w/2, h/2, Math.max(w,h)*0.7);
-        overlayGrad.addColorStop(0, BG_GRAD[1] || '#1A0A2E');
+        overlayGrad.addColorStop(0, BG_GRAD[1] || '#251440');
         overlayGrad.addColorStop(1, '#000');
         ctx.fillStyle = overlayGrad;
         ctx.fillRect(0, 0, w, h);
@@ -1404,7 +1404,7 @@ window.TicTacMae = (() => {
         STICK_COLORS = [TC[0], TC[1]];
         LOLLI_COLORS = [TC[2], TC[3], TC[5]];
         BOARD_COLOR = TC[4];
-        BG_GRAD = theme ? theme.bgGradient : ['#0A0A1A', '#1A0A2E'];
+        BG_GRAD = theme ? theme.bgGradient : ['#12122A', '#251440'];
         THEME_EMOJI = TE;
         THEME_ICON = theme?.icon || '🎮';
 
